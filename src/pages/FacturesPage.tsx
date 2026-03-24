@@ -235,7 +235,10 @@ export default function FacturesPage() {
     }
     setSaving(true);
     const numero = genNumero();
+    const userId = getNexoraUser()?.id;
+    if (!userId) { toast({ title: "Erreur", description: "Utilisateur non connecté", variant: "destructive" }); setSaving(false); return; }
     const { data: newF, error } = await supabase.from("factures" as any).insert({
+      user_id: userId,
       numero, date_facture: new Date().toISOString().split("T")[0], heure_facture: getHeureNow(),
       vendeur_nom: form.vendeur_nom, vendeur_ifu: form.vendeur_ifu || null,
       vendeur_adresse: form.vendeur_adresse, vendeur_pays: form.vendeur_pays,

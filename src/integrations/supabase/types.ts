@@ -106,6 +106,47 @@ export type Database = {
         }
         Relationships: []
       }
+      articles_facture: {
+        Row: {
+          created_at: string | null
+          facture_id: string
+          id: string
+          montant: number
+          nom: string
+          ordre: number | null
+          prix_unitaire: number
+          quantite: number
+        }
+        Insert: {
+          created_at?: string | null
+          facture_id: string
+          id?: string
+          montant?: number
+          nom: string
+          ordre?: number | null
+          prix_unitaire?: number
+          quantite?: number
+        }
+        Update: {
+          created_at?: string | null
+          facture_id?: string
+          id?: string
+          montant?: number
+          nom?: string
+          ordre?: number | null
+          prix_unitaire?: number
+          quantite?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articles_facture_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boutiques: {
         Row: {
           actif: boolean
@@ -420,15 +461,23 @@ export type Database = {
       }
       factures: {
         Row: {
+          client_adresse: string | null
+          client_contact: string | null
           client_email: string | null
+          client_ifu: string | null
           client_nom: string
+          client_pays: string | null
           client_tel: string | null
           created_at: string | null
           date_echeance: string | null
           date_emission: string
+          date_facture: string | null
           devise: string
+          heure_facture: string | null
           id: string
           items: Json
+          mode_paiement: string | null
+          note: string | null
           notes: string | null
           numero: string
           sous_total: number
@@ -437,17 +486,31 @@ export type Database = {
           total: number
           updated_at: string | null
           user_id: string
+          vendeur_adresse: string | null
+          vendeur_contact: string | null
+          vendeur_email: string | null
+          vendeur_ifu: string | null
+          vendeur_nom: string | null
+          vendeur_pays: string | null
         }
         Insert: {
+          client_adresse?: string | null
+          client_contact?: string | null
           client_email?: string | null
+          client_ifu?: string | null
           client_nom: string
+          client_pays?: string | null
           client_tel?: string | null
           created_at?: string | null
           date_echeance?: string | null
           date_emission?: string
+          date_facture?: string | null
           devise?: string
+          heure_facture?: string | null
           id?: string
           items?: Json
+          mode_paiement?: string | null
+          note?: string | null
           notes?: string | null
           numero: string
           sous_total?: number
@@ -456,17 +519,31 @@ export type Database = {
           total?: number
           updated_at?: string | null
           user_id: string
+          vendeur_adresse?: string | null
+          vendeur_contact?: string | null
+          vendeur_email?: string | null
+          vendeur_ifu?: string | null
+          vendeur_nom?: string | null
+          vendeur_pays?: string | null
         }
         Update: {
+          client_adresse?: string | null
+          client_contact?: string | null
           client_email?: string | null
+          client_ifu?: string | null
           client_nom?: string
+          client_pays?: string | null
           client_tel?: string | null
           created_at?: string | null
           date_echeance?: string | null
           date_emission?: string
+          date_facture?: string | null
           devise?: string
+          heure_facture?: string | null
           id?: string
           items?: Json
+          mode_paiement?: string | null
+          note?: string | null
           notes?: string | null
           numero?: string
           sous_total?: number
@@ -475,6 +552,12 @@ export type Database = {
           total?: number
           updated_at?: string | null
           user_id?: string
+          vendeur_adresse?: string | null
+          vendeur_contact?: string | null
+          vendeur_email?: string | null
+          vendeur_ifu?: string | null
+          vendeur_nom?: string | null
+          vendeur_pays?: string | null
         }
         Relationships: [
           {
