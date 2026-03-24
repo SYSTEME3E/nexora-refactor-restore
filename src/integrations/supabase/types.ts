@@ -150,39 +150,84 @@ export type Database = {
       boutiques: {
         Row: {
           actif: boolean
+          adresse: string
+          api_conversion_actif: boolean
+          api_conversion_token: string
+          banniere_url: string | null
           created_at: string | null
           description: string | null
+          devise: string
+          domaine_actif: boolean
+          domaine_personnalise: string
+          email: string
           id: string
           logo_url: string | null
           nom: string
+          notifications_actives: boolean
+          pays: string
+          pixel_actif: boolean
+          pixel_facebook_id: string
           slug: string
+          telephone: string
           type_boutique: string
           updated_at: string | null
           user_id: string
+          ville: string
+          whatsapp: string
         }
         Insert: {
           actif?: boolean
+          adresse?: string
+          api_conversion_actif?: boolean
+          api_conversion_token?: string
+          banniere_url?: string | null
           created_at?: string | null
           description?: string | null
+          devise?: string
+          domaine_actif?: boolean
+          domaine_personnalise?: string
+          email?: string
           id?: string
           logo_url?: string | null
           nom: string
+          notifications_actives?: boolean
+          pays?: string
+          pixel_actif?: boolean
+          pixel_facebook_id?: string
           slug: string
+          telephone?: string
           type_boutique?: string
           updated_at?: string | null
           user_id: string
+          ville?: string
+          whatsapp?: string
         }
         Update: {
           actif?: boolean
+          adresse?: string
+          api_conversion_actif?: boolean
+          api_conversion_token?: string
+          banniere_url?: string | null
           created_at?: string | null
           description?: string | null
+          devise?: string
+          domaine_actif?: boolean
+          domaine_personnalise?: string
+          email?: string
           id?: string
           logo_url?: string | null
           nom?: string
+          notifications_actives?: boolean
+          pays?: string
+          pixel_actif?: boolean
+          pixel_facebook_id?: string
           slug?: string
+          telephone?: string
           type_boutique?: string
           updated_at?: string | null
           user_id?: string
+          ville?: string
+          whatsapp?: string
         }
         Relationships: [
           {
@@ -715,9 +760,11 @@ export type Database = {
       }
       nexora_annonces_immo: {
         Row: {
+          auteur_nom: string
           contact: string
           created_at: string | null
           description: string | null
+          favoris: Json
           id: string
           images: Json | null
           prix: number
@@ -731,9 +778,11 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          auteur_nom?: string
           contact?: string
           created_at?: string | null
           description?: string | null
+          favoris?: Json
           id?: string
           images?: Json | null
           prix?: number
@@ -747,9 +796,11 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          auteur_nom?: string
           contact?: string
           created_at?: string | null
           description?: string | null
+          favoris?: Json
           id?: string
           images?: Json | null
           prix?: number
@@ -1027,15 +1078,38 @@ export type Database = {
           categorie: string | null
           created_at: string | null
           description: string | null
+          dimensions: string | null
+          fichier_nom: string | null
+          fichier_taille: string | null
+          fichier_url: string | null
           id: string
+          livraison_automatique: boolean
+          mode_tarification: string | null
+          modules: Json
+          moyens_paiement: Json
+          nb_telechargements: number | null
           nom: string
+          paiement_lien: string | null
+          paiement_reception: boolean
           photos: Json | null
+          poids: string | null
+          politique_confidentialite: string | null
+          politique_remboursement: string | null
           prix: number
           prix_promo: number | null
+          protection_antipiratage: boolean
+          reseaux_sociaux: Json
+          seo_description: string | null
+          seo_titre: string | null
+          sku: string | null
           stock: number
           stock_illimite: boolean
+          tags: Json
+          type: string
+          type_digital: string | null
           type_produit: string
           updated_at: string | null
+          vedette: boolean
         }
         Insert: {
           actif?: boolean
@@ -1043,15 +1117,38 @@ export type Database = {
           categorie?: string | null
           created_at?: string | null
           description?: string | null
+          dimensions?: string | null
+          fichier_nom?: string | null
+          fichier_taille?: string | null
+          fichier_url?: string | null
           id?: string
+          livraison_automatique?: boolean
+          mode_tarification?: string | null
+          modules?: Json
+          moyens_paiement?: Json
+          nb_telechargements?: number | null
           nom: string
+          paiement_lien?: string | null
+          paiement_reception?: boolean
           photos?: Json | null
+          poids?: string | null
+          politique_confidentialite?: string | null
+          politique_remboursement?: string | null
           prix: number
           prix_promo?: number | null
+          protection_antipiratage?: boolean
+          reseaux_sociaux?: Json
+          seo_description?: string | null
+          seo_titre?: string | null
+          sku?: string | null
           stock?: number
           stock_illimite?: boolean
+          tags?: Json
+          type?: string
+          type_digital?: string | null
           type_produit?: string
           updated_at?: string | null
+          vedette?: boolean
         }
         Update: {
           actif?: boolean
@@ -1059,15 +1156,38 @@ export type Database = {
           categorie?: string | null
           created_at?: string | null
           description?: string | null
+          dimensions?: string | null
+          fichier_nom?: string | null
+          fichier_taille?: string | null
+          fichier_url?: string | null
           id?: string
+          livraison_automatique?: boolean
+          mode_tarification?: string | null
+          modules?: Json
+          moyens_paiement?: Json
+          nb_telechargements?: number | null
           nom?: string
+          paiement_lien?: string | null
+          paiement_reception?: boolean
           photos?: Json | null
+          poids?: string | null
+          politique_confidentialite?: string | null
+          politique_remboursement?: string | null
           prix?: number
           prix_promo?: number | null
+          protection_antipiratage?: boolean
+          reseaux_sociaux?: Json
+          seo_description?: string | null
+          seo_titre?: string | null
+          sku?: string | null
           stock?: number
           stock_illimite?: boolean
+          tags?: Json
+          type?: string
+          type_digital?: string | null
           type_produit?: string
           updated_at?: string | null
+          vedette?: boolean
         }
         Relationships: [
           {
@@ -1153,6 +1273,38 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "nexora_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      variations_produit: {
+        Row: {
+          created_at: string
+          id: string
+          nom: string
+          produit_id: string
+          valeurs: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nom: string
+          produit_id: string
+          valeurs?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nom?: string
+          produit_id?: string
+          valeurs?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variations_produit_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
             referencedColumns: ["id"]
           },
         ]
