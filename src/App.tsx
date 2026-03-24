@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NexoraAuthGuard from "@/components/NexoraAuthGuard";
 import PageLoader from "@/components/PageLoader";
 import { hasNexoraPremium } from "@/lib/nexora-auth";
+import { Crown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import AppLayout from "@/components/AppLayout";
 
 // Auth
 import NexoraLoginPage from "@/pages/NexoraLoginPage";
@@ -38,22 +41,21 @@ import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
 import ImmobilierPage from "@/pages/ImmobilierPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
 
-// Abonnement
+// Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
+import PaymentCallbackPage from "@/pages/PaymentCallbackPage"; // Ajouté ici
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
 
 import NotFound from "@/pages/NotFound";
 
-import AppLayout from "@/components/AppLayout";
-import { Crown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-
 const queryClient = new QueryClient();
 
 const LOADER_LOGIN = 800;
-const LOADER_PAGE  = 800;
+const LOADER_PAGE = 800;
+
+// --- Composants de Garde (Guards) ---
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
   <NexoraAuthGuard>
@@ -107,6 +109,8 @@ const PremiumPage = ({ children }: { children: React.ReactNode }) => (
   </NexoraAuthGuard>
 );
 
+// --- Application Principale ---
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
@@ -114,6 +118,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
+          {/* Public / Auth */}
           <Route path="/login" element={
             <PageLoader duration={LOADER_LOGIN}>
               <NexoraLoginPage />
@@ -121,36 +126,44 @@ const App = () => (
           } />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          <Route path="/dashboard"        element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
-          <Route path="/historique"       element={<ProtectedPage><HistoriquePage /></ProtectedPage>} />
-          <Route path="/coffre-fort"      element={<ProtectedPage><CoffreFortPage /></ProtectedPage>} />
-          <Route path="/liens"            element={<ProtectedPage><LiensPage /></ProtectedPage>} />
-          <Route path="/profil"           element={<ProtectedPage><ProfilPage /></ProtectedPage>} />
-          <Route path="/abonnement"       element={<ProtectedPage><AbonnementPage /></ProtectedPage>} />
-          <Route path="/transfert"        element={<ProtectedPage><TransfertPage /></ProtectedPage>} />
+          {/* Routes Protégées Standard */}
+          <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
+          <Route path="/historique"        element={<ProtectedPage><HistoriquePage /></ProtectedPage>} />
+          <Route path="/coffre-fort"       element={<ProtectedPage><CoffreFortPage /></ProtectedPage>} />
+          <Route path="/liens"             element={<ProtectedPage><LiensPage /></ProtectedPage>} />
+          <Route path="/profil"            element={<ProtectedPage><ProfilPage /></ProtectedPage>} />
+          <Route path="/abonnement"        element={<ProtectedPage><AbonnementPage /></ProtectedPage>} />
+          <Route path="/transfert"         element={<ProtectedPage><TransfertPage /></ProtectedPage>} />
+          <Route path="/factures"          element={<ProtectedPage><FacturesPage /></ProtectedPage>} />
+          <Route path="/prets"             element={<ProtectedPage><PretsPage /></ProtectedPage>} />
+          <Route path="/entrees-depenses"  element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
+          <Route path="/investissements"   element={<ProtectedPage><InvestissementsPage /></ProtectedPage>} />
+          
+          {/* Callback Paiement Moneroo */}
+          <Route path="/payment/callback"  element={<ProtectedPage><PaymentCallbackPage /></ProtectedPage>} />
 
-          <Route path="/factures"         element={<ProtectedPage><FacturesPage /></ProtectedPage>} />
-          <Route path="/prets"            element={<ProtectedPage><PretsPage /></ProtectedPage>} />
-          <Route path="/entrees-depenses" element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
-          <Route path="/entrees"          element={<Navigate to="/entrees-depenses" replace />} />
-          <Route path="/depenses"         element={<Navigate to="/entrees-depenses" replace />} />
-          <Route path="/investissements"  element={<ProtectedPage><InvestissementsPage /></ProtectedPage>} />
+          {/* Redirections */}
+          <Route path="/entrees"           element={<Navigate to="/entrees-depenses" replace />} />
+          <Route path="/depenses"          element={<Navigate to="/entrees-depenses" replace />} />
 
-          <Route path="/immobilier"           element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
-          <Route path="/boutique"             element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
-          <Route path="/boutique/produits"    element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
-          <Route path="/boutique/commandes"   element={<PremiumPage><CommandesPage /></PremiumPage>} />
-          <Route path="/boutique/parametres"  element={<PremiumPage><BoutiqueParametresPage /></PremiumPage>} />
-          <Route path="/boutique/finances"    element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
+          {/* Routes Premium */}
+          <Route path="/immobilier"             element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
+          <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
+          <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
+          <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
+          <Route path="/boutique/parametres"    element={<PremiumPage><BoutiqueParametresPage /></PremiumPage>} />
+          <Route path="/boutique/finances"      element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
 
-          <Route path="/shop/:slug"                    element={<BoutiqueVitrinePage />} />
-          <Route path="/shop/:slug/produit/:produitId" element={<ProduitDetailPage />} />
+          {/* Vitrines (Accessibles via slugs) */}
+          <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
+          <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
+          <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
 
-          <Route path="/immobilier/vendeur/:userId" element={<ProfilVendeurPage />} />
-
+          {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
           <Route path="/medias" element={<AdminPage><MediasPage /></AdminPage>} />
 
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>
