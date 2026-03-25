@@ -25,37 +25,22 @@ function getDateStr() {
   });
 }
 
-// ── Badge Premium vert brillant animé ────────────────────
-function PremiumBadge() {
+// ── Badge de vérification bleu rond statique ────────────────────
+function VerifiedBadge() {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        width: "16px",
-        height: "16px",
+        width: "18px",
+        height: "18px",
         borderRadius: "999px",
-        background: "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)",
-        boxShadow: "0 0 8px 2px rgba(34,197,94,0.7), 0 0 2px 0 rgba(34,197,94,0.4)",
-        animation: "premiumPulse 2s ease-in-out infinite",
+        background: "#3b82f6",
         flexShrink: 0,
-        border: "1px solid rgba(255,255,255,0.3)",
-        position: "relative" as const,
-        overflow: "hidden",
+        border: "2px solid rgba(255,255,255,0.4)",
       }}>
-
-      {/* Reflet brillant */}
-      <span style={{
-        position: "absolute",
-        top: 0, left: "-60%",
-        width: "40%", height: "100%",
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
-        animation: "shine 2.5s ease-in-out infinite",
-        pointerEvents: "none",
-      }} />
-
-      <BadgeCheck style={{ width: 10, height: 10, color: "#fff", flexShrink: 0 }} />
+      <BadgeCheck style={{ width: 11, height: 11, color: "#fff", flexShrink: 0 }} />
     </span>
   );
 }
