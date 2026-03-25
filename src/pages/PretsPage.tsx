@@ -235,8 +235,11 @@ async function generatePDF(pret: Pret) {
   doc.rect(0, 282, W, 15, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("NEXORA", W / 2, 288, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Document genere le ${today} — Application MES SECRETS — Confidentiel`, W / 2, 291, { align: "center" });
+  doc.setFontSize(7);
+  doc.text(`Document genere le ${today} — nexora-app.lovable.app`, W / 2, 293, { align: "center" });
 
   doc.save(`contrat_pret_${pret.nom_personne.replace(/\s/g, "_")}_${new Date(pret.date_pret).toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
 }
