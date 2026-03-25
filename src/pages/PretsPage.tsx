@@ -53,8 +53,7 @@ const STATUT_COLORS: Record<Statut, string> = {
   rembourse: "bg-green-100 text-green-800",
 };
 
-const MOI = "Eric Kpakpo";
-const LIMITE_GRATUIT = 5;
+const LIMITE_GRATUIT = 10;
 
 async function generatePDF(pret: Pret) {
   const jspdf = await import("jspdf");
