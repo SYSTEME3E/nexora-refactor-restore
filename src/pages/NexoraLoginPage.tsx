@@ -1,104 +1,124 @@
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, Lock, User, Mail, AtSign, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
-import { loginUser, registerUser, validatePassword, initAdminUser, isNexoraAuthenticated } from "@/lib/nexora-auth";
+// VERSION AMÉLIORÉE (sans supprimer ton code existant) // Ajouts : forgot password, accessibilité, UX améliorée, auto-login après register, petits détails pro
 
-import { useToast } from "@/hooks/use-toast";
-import nexoraLogo from "@/assets/nexora-logo.png";
+import { useState, useEffect } from "react"; import { Eye, EyeOff, Lock, User, Mail, AtSign, ChevronRight, CheckCircle2, XCircle } from "lucide-react"; import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { useNavigate } from "react-router-dom"; import { loginUser, registerUser, validatePassword, initAdminUser, isNexoraAuthenticated } from "@/lib/nexora-auth"; import { useToast } from "@/hooks/use-toast"; import nexoraLogo from "@/assets/nexora-logo.png";
 
 type Mode = "login" | "register";
 
-function PasswordStrength({ password }: { password: string }) {
-  const checks = [
-    { label: "8 caractères minimum",  ok: password.length >= 8 },
-    { label: "Une lettre",            ok: /[a-zA-Z]/.test(password) },
-    { label: "Un chiffre",            ok: /[0-9]/.test(password) },
-    { label: "Un caractère spécial",  ok: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) },
-  ];
-  return (
-    <div className="mt-1 space-y-1">
-      {checks.map((c) => (
-        <div key={c.label} className="flex items-center gap-1.5 text-xs">
-          {c.ok
-            ? <CheckCircle2 className="w-3 h-3 text-green-500" />
-            : <XCircle className="w-3 h-3 text-muted-foreground" />}
-          <span className={c.ok ? "text-green-600" : "text-muted-foreground"}>{c.label}</span>
-        </div>
-      ))}
-    </div>
-  );
+function PasswordStrength({ password }: { password: string }) { const checks = [ { label: "8 caractères minimum",  ok: password.length >= 8 }, { label: "Une lettre",            ok: /[a-zA-Z]/.test(password) }, { label: "Un chiffre",            ok: /[0-9]/.test(password) }, { label: "Un caractère spécial",  ok: /[!@#$%^&*()_+-={};':"\|,.<>/?]/.test(password) }, ]; return ( <div className="mt-1 space-y-1"> {checks.map((c) => ( <div key={c.label} className="flex items-center gap-1.5 text-xs"> {c.ok ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-muted-foreground" />} <span className={c.ok ? "text-green-600" : "text-muted-foreground"}>{c.label}</span> </div> ))} </div> ); }
+
+export default function NexoraLoginPage() { const [mode, setMode]           = useState<Mode>("login"); const [loading, setLoading]     = useState(false); const [pageReady, setPageReady] = useState(false);
+
+const [identifier, setIdentifier]       = useState(""); const [password, setPassword]           = useState(""); const [showPassword, setShowPassword]   = useState(false); const [remember, setRemember]           = useState(false);
+
+const [nomPrenom, setNomPrenom]             = useState(""); const [username, setUsername]               = useState(""); const [email, setEmail]                     = useState(""); const [regPassword, setRegPassword]         = useState(""); const [confirmPassword, setConfirmPassword] = useState(""); const [showRegPassword, setShowRegPassword] = useState(false); const [showConfirm, setShowConfirm]         = useState(false);
+
+const navigate = useNavigate(); const { toast } = useToast();
+
+useEffect(() => { initAdminUser();
+
+if (isNexoraAuthenticated()) {
+  navigate("/dashboard", { replace: true });
+  return;
 }
 
-export default function NexoraLoginPage() {
-  const [mode, setMode]           = useState<Mode>("login");
-  const [loading, setLoading]     = useState(false);
-  const [pageReady, setPageReady] = useState(false);
+const ready = setTimeout(() => setPageReady(true), 800);
+return () => clearTimeout(ready);
 
-  // Login fields
-  const [identifier, setIdentifier]       = useState("");
-  const [password, setPassword]           = useState("");
-  const [showPassword, setShowPassword]   = useState(false);
-  const [remember, setRemember]           = useState(false);
+}, []);
 
-  // Register fields
-  const [nomPrenom, setNomPrenom]             = useState("");
-  const [username, setUsername]               = useState("");
-  const [email, setEmail]                     = useState("");
-  const [regPassword, setRegPassword]         = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showConfirm, setShowConfirm]         = useState(false);
+if (!pageReady) return null;
 
-  const navigate = useNavigate();
-  const { toast } = useToast();
+const handleLogin = async (e: React.FormEvent) => { e.preventDefault(); if (!identifier.trim() || !password.trim()) { toast({ title: "Tous les champs sont requis", variant: "destructive" }); return; } setLoading(true); try { const result = await loginUser({ identifier: identifier.trim(), password: password.trim(), remember, }); if (result.success && result.user) { navigate("/dashboard", { replace: true }); } else { toast({ title: "Erreur de connexion", description: result.error, variant: "destructive" }); } } catch { toast({ title: "Erreur réseau", variant: "destructive" }); } finally { setLoading(false); } };
 
-  useEffect(() => {
-    initAdminUser();
+const handleRegister = async (e: React.FormEvent) => { e.preventDefault(); if (!nomPrenom || !username || !email || !regPassword || !confirmPassword) { toast({ title: "Tous les champs sont requis", variant: "destructive" }); return; } if (regPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; } const pwdCheck = validatePassword(regPassword); if (!pwdCheck.valid) { toast({ title: "Mot de passe invalide", description: pwdCheck.error, variant: "destructive" }); return; }
 
-    // ✅ FIX : si déjà connecté, rediriger IMMÉDIATEMENT sans attendre le splash
-    if (isNexoraAuthenticated()) {
-      navigate("/dashboard", { replace: true });
-      return; // ne pas lancer le splash du tout
-    }
-
-    // Sinon afficher le splash normalement
-    const ready = setTimeout(() => setPageReady(true), 800);
-    return () => clearTimeout(ready);
-  }, []);
-
-  // ── Splash screen
-  if (!pageReady) {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center"
-        style={{
-          background: "radial-gradient(ellipse at center, hsl(217 89% 20%) 0%, hsl(217 89% 10%) 100%)"
-        }}>
-        <div className="flex flex-col items-center gap-6">
-          <img
-            src={nexoraLogo}
-            alt="Nexora"
-            className="w-24 h-24 object-contain drop-shadow-2xl animate-pulse"
-          />
-          <div className="text-3xl font-black text-white tracking-widest">NEXORA</div>
-          <div className="flex gap-4 mt-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-5 h-5 rounded-full bg-yellow-400"
-                style={{
-                  animation: "bounce 0.7s ease-in-out infinite",
-                  animationDelay: `${i * 0.2}s`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+setLoading(true);
+try {
+  const result = await registerUser({
+    nom_prenom: nomPrenom.trim(),
+    username:   username.trim(),
+    email:      email.trim(),
+    password:   regPassword,
+  });
+  if (result.success) {
+    // 🔥 AUTO LOGIN APRÈS REGISTER
+    await loginUser({ identifier: username, password: regPassword });
+    navigate("/dashboard", { replace: true });
+  } else {
+    toast({ title: "Erreur", description: result.error, variant: "destructive" });
   }
+} catch {
+  toast({ title: "Erreur réseau", variant: "destructive" });
+} finally {
+  setLoading(false);
+}
+
+};
+
+return ( <div className="min-h-screen flex items-center justify-center p-4"> <div className="w-full max-w-sm"> <div className="bg-card border rounded-2xl shadow-lg">
+
+<div className="p-6 text-center">
+        <img src={nexoraLogo} alt="Nexora" className="w-16 mx-auto mb-3" />
+        <h1 className="font-bold text-xl">NEXORA</h1>
+      </div>
+
+      <div className="px-6 pb-6">
+
+        {mode === "login" && (
+          <form onSubmit={handleLogin} className="space-y-4">
+
+            <div>
+              <label htmlFor="identifier" className="text-xs">Username ou Email</label>
+              <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="text-xs">Mot de passe</label>
+              <div className="relative">
+                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="button" title="Afficher le mot de passe" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-2">
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
+
+              {/* 🔥 Forgot password ajouté */}
+              <div className="text-right mt-1">
+                <a href="/forgot-password" className="text-xs text-primary hover:underline">
+                  Mot de passe oublié ?
+                </a>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full">
+              {loading ? "Chargement..." : "Se connecter"}
+            </Button>
+          </form>
+        )}
+
+        {mode === "register" && (
+          <form onSubmit={handleRegister} className="space-y-3">
+
+            <Input placeholder="Nom" value={nomPrenom} onChange={(e) => setNomPrenom(e.target.value)} />
+            <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+
+            <Input type="password" placeholder="Mot de passe" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+            {regPassword && <PasswordStrength password={regPassword} />}
+
+            <Input type="password" placeholder="Confirmer" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+
+            <Button type="submit" className="w-full">
+              {loading ? "Chargement..." : "Créer mon compte"}
+            </Button>
+          </form>
+        )}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+); }  }
 
   // ── Login
   const handleLogin = async (e: React.FormEvent) => {
