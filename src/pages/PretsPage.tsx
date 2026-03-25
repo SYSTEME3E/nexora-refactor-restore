@@ -53,8 +53,7 @@ const STATUT_COLORS: Record<Statut, string> = {
   rembourse: "bg-green-100 text-green-800",
 };
 
-const MOI = "Eric Kpakpo";
-const LIMITE_GRATUIT = 5;
+const LIMITE_GRATUIT = 10;
 
 async function generatePDF(pret: Pret) {
   const jspdf = await import("jspdf");
@@ -69,8 +68,10 @@ async function generatePDF(pret: Pret) {
   const noir: [number, number, number] = [15, 23, 42];
   const vert: [number, number, number] = [22, 163, 74];
 
-  const preteur = pret.type === "pret" ? MOI : pret.nom_personne;
-  const emprunteur = pret.type === "pret" ? pret.nom_personne : MOI;
+  const user = getNexoraUser();
+  const userName = user?.nom_prenom || "Utilisateur";
+  const preteur = pret.type === "pret" ? userName : pret.nom_personne;
+  const emprunteur = pret.type === "pret" ? pret.nom_personne : userName;
 
   doc.setFillColor(...bleu);
   doc.rect(0, 0, W, 40, "F");
@@ -82,8 +83,8 @@ async function generatePDF(pret: Pret) {
   doc.setFont("helvetica", "normal");
   doc.text(
     pret.type === "pret"
-      ? `Preteur : ${MOI}  |  Emprunteur : ${pret.nom_personne}`
-      : `Preteur : ${pret.nom_personne}  |  Emprunteur : ${MOI}`,
+      ? `Preteur : ${preteur}  |  Emprunteur : ${pret.nom_personne}`
+      : `Preteur : ${pret.nom_personne}  |  Emprunteur : ${emprunteur}`,
     W / 2, 28, { align: "center" }
   );
   doc.text(`Ref: ${pret.id.substring(0, 8).toUpperCase()}`, W / 2, 35, { align: "center" });
@@ -234,8 +235,11 @@ async function generatePDF(pret: Pret) {
   doc.rect(0, 282, W, 15, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("NEXORA", W / 2, 288, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Document genere le ${today} — Application MES SECRETS — Confidentiel`, W / 2, 291, { align: "center" });
+  doc.setFontSize(7);
+  doc.text(`Document genere le ${today} — nexora-app.lovable.app`, W / 2, 293, { align: "center" });
 
   doc.save(`contrat_pret_${pret.nom_personne.replace(/\s/g, "_")}_${new Date(pret.date_pret).toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
 }
@@ -359,8 +363,9 @@ export default function PretsPage() {
   const filteredPrets = prets.filter(p => p.type === activeTab);
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const preteurLabel = activeTab === "pret" ? MOI : form.nom_personne || "...";
-  const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : MOI;
+  const currentUserName = getNexoraUser()?.nom_prenom || "Moi";
+  const preteurLabel = activeTab === "pret" ? currentUserName : form.nom_personne || "...";
+  const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : currentUserName;
 
   return (
     <AppLayout>
@@ -551,8 +556,8 @@ export default function PretsPage() {
               const pct = pret.montant > 0 ? Math.min(100, (pret.montant_rembourse / pret.montant) * 100) : 0;
               const isExpanded = expandedId === pret.id;
               const rembList = rembPour(pret.id);
-              const preteurNom = pret.type === "pret" ? MOI : pret.nom_personne;
-              const emprunteurNom = pret.type === "pret" ? pret.nom_personne : MOI;
+              const preteurNom = pret.type === "pret" ? currentUserName : pret.nom_personne;
+              const emprunteurNom = pret.type === "pret" ? pret.nom_personne : currentUserName;
 
               return (
                 <div key={pret.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">

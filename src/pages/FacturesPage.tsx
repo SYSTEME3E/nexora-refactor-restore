@@ -80,19 +80,26 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   const gris: [number,number,number] = [100,116,139];
   const noir: [number,number,number] = [15,23,42];
   const grisLight: [number,number,number] = [241,245,249];
-  const factureUrl = `https://budget-and-vault.vercel.app/factures?id=${facture.id}`;
 
+  // ── HEADER: Logo N + NEXORA FACTURE ──
   doc.setFillColor(...bleu); doc.rect(0,0,W,48,"F");
+  // Logo "N" circle
+  doc.setFillColor(255,255,255);
+  doc.circle(margin + 10, 16, 8, "F");
+  doc.setTextColor(...bleu); doc.setFont("helvetica","bold"); doc.setFontSize(14);
+  doc.text("N", margin + 10, 19.5, { align: "center" });
+  // NEXORA FACTURE title
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(16);
-  doc.text(facture.vendeur_nom.toUpperCase(), margin, 14);
-  if (facture.vendeur_ifu) { doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.text(`IFU : ${facture.vendeur_ifu}`, margin, 21); }
-  doc.setFont("helvetica","bold"); doc.setFontSize(18);
-  doc.text("FACTURE DE VENTE", W-margin, 14, { align:"right" });
+  doc.text("NEXORA FACTURE", margin + 24, 14);
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text(`Facture # ${facture.numero}`, W-margin, 22, { align:"right" });
-  doc.text(`Date : ${new Date(facture.date_facture).toLocaleDateString("fr-FR")}`, W-margin, 28, { align:"right" });
-  doc.text(`Heure : ${facture.heure_facture}`, W-margin, 34, { align:"right" });
-  doc.text(`Vendeur : ${facture.vendeur_nom}`, W-margin, 40, { align:"right" });
+  doc.text(facture.vendeur_nom.toUpperCase(), margin + 24, 21);
+  if (facture.vendeur_ifu) { doc.text(`IFU : ${facture.vendeur_ifu}`, margin + 24, 27); }
+  doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  doc.text(`Facture # ${facture.numero}`, W-margin, 14, { align:"right" });
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.text(`Date : ${new Date(facture.date_facture).toLocaleDateString("fr-FR")}`, W-margin, 22, { align:"right" });
+  doc.text(`Heure : ${facture.heure_facture}`, W-margin, 28, { align:"right" });
+  doc.text(`Vendeur : ${facture.vendeur_nom}`, W-margin, 34, { align:"right" });
 
   let y = 55;
   const colW = (W-margin*2-8)/2;
@@ -111,6 +118,7 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
     .filter(Boolean).forEach((l,i) => doc.text(l, cx+4, y+14+i*6));
   y += 52;
 
+  // ── TABLE DES ARTICLES ──
   const cw = [8,74,28,18,32]; const cxs: number[] = []; let ox = margin;
   cw.forEach(w => { cxs.push(ox); ox += w; });
   doc.setFillColor(...bleu); doc.rect(margin, y, W-margin*2, 8, "F");
@@ -146,22 +154,20 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   doc.setTextColor(...gris); doc.setFont("helvetica","italic"); doc.setFontSize(8);
   doc.text(`Arrêté la présente facture à la somme de ${fmt(facture.total, facture.devise)} TTC`, margin, y);
   if (facture.note) { y+=8; doc.setTextColor(...noir); doc.setFont("helvetica","normal"); doc.text(`Note : ${facture.note}`, margin, y); }
-  y += 12;
-  try {
-    const qrResponse = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(factureUrl)}`);
-    const blob = await qrResponse.blob();
-    await new Promise<void>(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => { try { doc.addImage(reader.result as string, "PNG", margin, y, 25, 25); } catch {} resolve(); };
-      reader.readAsDataURL(blob);
-    });
-    doc.setTextColor(...gris); doc.setFontSize(7); doc.setFont("helvetica","normal");
-    doc.text("Scanner pour voir la facture en ligne", margin+28, y+8);
-    doc.text(factureUrl, margin+28, y+14);
-  } catch {}
+
+  // ── FOOTER: NEXORA branding + watermark ──
   doc.setFillColor(...bleu); doc.rect(0,282,W,15,"F");
-  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","normal");
-  doc.text(`Document généré le ${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})} — Application MES SECRETS — Confidentiel`, W/2, 291, { align:"center" });
+  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
+  doc.text("NEXORA", W/2, 288, { align:"center" });
+  doc.setFont("helvetica","normal"); doc.setFontSize(7);
+  doc.text(`Document généré le ${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})} — nexora-app.lovable.app`, W/2, 293, { align:"center" });
+
+  // Watermark diagonal
+  doc.setTextColor(200, 210, 230);
+  doc.setFontSize(40);
+  doc.setFont("helvetica","bold");
+  doc.text("NEXORA", W/2, 160, { align:"center", angle: 45 });
+
   doc.save(`facture_${facture.numero}_${facture.client_nom.replace(/\s/g,"_")}.pdf`);
 }
 

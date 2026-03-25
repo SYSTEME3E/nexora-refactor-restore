@@ -1,11 +1,11 @@
 import { useState } from "react";
 import AppLayout from "@/components/AppLayout"; // Corrigé: import au lieu de importer
 import { getNexoraUser } from "@/lib/nexora-auth";
-import { payAndRedirect } from "@/lib/moneroo"; // Importation de la fonction de paiement
+import { payAndRedirect } from "@/lib/Moneroo";
 import {
   Crown, Check, X, Zap, ShieldCheck, Star, Sparkles,
   TrendingUp, Store, PiggyBank, ArrowLeftRight, Home,
-  BadgeCheck, ChevronDown, ChevronUp, Lock
+  BadgeCheck, ChevronDown, ChevronUp, Lock, Wallet
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
