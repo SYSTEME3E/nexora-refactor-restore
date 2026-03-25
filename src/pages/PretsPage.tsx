@@ -68,8 +68,10 @@ async function generatePDF(pret: Pret) {
   const noir: [number, number, number] = [15, 23, 42];
   const vert: [number, number, number] = [22, 163, 74];
 
-  const preteur = pret.type === "pret" ? MOI : pret.nom_personne;
-  const emprunteur = pret.type === "pret" ? pret.nom_personne : MOI;
+  const user = getNexoraUser();
+  const userName = user?.nom_prenom || "Utilisateur";
+  const preteur = pret.type === "pret" ? userName : pret.nom_personne;
+  const emprunteur = pret.type === "pret" ? pret.nom_personne : userName;
 
   doc.setFillColor(...bleu);
   doc.rect(0, 0, W, 40, "F");
