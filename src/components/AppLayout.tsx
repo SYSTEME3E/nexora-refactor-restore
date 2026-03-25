@@ -214,9 +214,9 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           </button>
 
           {canGoBack && (
-            <button onClick={() => navigate(-1)}
+            <button onClick={() => navigate("/dashboard")}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
-              title="Retour">
+              title="Retour au Dashboard">
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}

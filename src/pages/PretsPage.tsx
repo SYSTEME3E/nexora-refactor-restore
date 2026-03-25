@@ -553,8 +553,8 @@ export default function PretsPage() {
               const pct = pret.montant > 0 ? Math.min(100, (pret.montant_rembourse / pret.montant) * 100) : 0;
               const isExpanded = expandedId === pret.id;
               const rembList = rembPour(pret.id);
-              const preteurNom = pret.type === "pret" ? MOI : pret.nom_personne;
-              const emprunteurNom = pret.type === "pret" ? pret.nom_personne : MOI;
+              const preteurNom = pret.type === "pret" ? currentUserName : pret.nom_personne;
+              const emprunteurNom = pret.type === "pret" ? pret.nom_personne : currentUserName;
 
               return (
                 <div key={pret.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">

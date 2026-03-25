@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { verifyPaymentFromCallback } from "@/lib/moneroo";
+import { verifyPaymentFromCallback } from "@/lib/Moneroo";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 

@@ -120,20 +120,7 @@ export default function DashboardPage() {
     <AppLayout>
 
       {/* ── Animations CSS injectées ── */}
-      <style>{`
-        @keyframes premiumPulse {
-          0%, 100% {
-            box-shadow: 0 0 6px 2px rgba(34,197,94,0.6), 0 0 2px 0 rgba(34,197,94,0.3);
-          }
-          50% {
-            box-shadow: 0 0 14px 5px rgba(34,197,94,0.9), 0 0 6px 2px rgba(74,222,128,0.6);
-          }
-        }
-        @keyframes shine {
-          0% { left: -60%; }
-          100% { left: 130%; }
-        }
-      `}</style>
+      {/* Badge is now static, no animations needed */}
 
       <div
         className="w-full overflow-hidden"
