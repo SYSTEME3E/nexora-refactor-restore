@@ -1,5 +1,5 @@
 import { useState } from "react";
-import AppLayout from "@/components/AppLayout"; // Corrigé: import au lieu de importer
+import AppLayout from "@/components/AppLayout";
 import { getNexoraUser } from "@/lib/nexora-auth";
 import { payAndRedirect } from "@/lib/Moneroo";
 import {
@@ -20,32 +20,20 @@ const FEATURES_COMPARE = [
     items: [
       { label: "Entrées & Dépenses",     gratuit: "10 / mois",       premium: "Illimité" },
       { label: "Historique financier",   gratuit: "7 jours",        premium: "Illimité" },
-      { label: "Factures",               gratuit: "10 factures",    premium: "Illimité" },
-      { label: "Prêts & Dettes",         gratuit: "10 prêts",        premium: "Illimité" },
-      { label: "Investissements",        gratuit: "Avancé",        premium: "Avancé" },
+      { label: "Factures",                gratuit: "10 factures",    premium: "Illimité" },
+      { label: "Prêts & Dettes",          gratuit: "10 prêts",        premium: "Illimité" },
     ],
   },
   {
-    categorie: "Épargne NEXORA",
-    icon: Wallet,
-    items: [
-      { label: "Accès à l'épargne",      gratuit: true,              premium: true },
-      { label: "Épargne Libre",          gratuit: true,              premium: true },
-      { label: "Plans bloqués (6m-3ans)", gratuit: true,             premium: true },
-      { label: "Retraits Mobile Money",  gratuit: true,             premium: true },
-      { label: "Historique épargne",     gratuit: true,             premium: true },
-    ],
-  },
-  {
-    categorie: "Nexora Shop",
+    categorie: "Nexora Shop (Boutique)",
     icon: Store,
     items: [
-      { label: "Accès boutique",         gratuit: true,              premium: true },
-      { label: "Produits physiques",     gratuit: true,      premium: "Illimité" },
-      { label: "Produits digitaux",      gratuit: true,             premium: true },
-      { label: "Gestion commandes",      gratuit: true,             premium: true },
-      { label: "Facebook Pixel",         gratuit: true,             premium: true },
-      { label: "Domaine personnalisé",   gratuit: true,             premium: true },
+      { label: "Accès boutique",          gratuit: true,              premium: true },
+      { label: "Produits physiques",      gratuit: "5 produits",      premium: "Illimité" },
+      { label: "Produits digitaux",       gratuit: "2 produits",      premium: "Illimité" },
+      { label: "Gestion commandes",       gratuit: true,              premium: true },
+      { label: "Facebook Pixel",          gratuit: false,             premium: true },
+      { label: "Domaine personnalisé",    gratuit: false,             premium: true },
     ],
   },
   {
@@ -55,7 +43,6 @@ const FEATURES_COMPARE = [
       { label: "Transfert inter-pays",   gratuit: false,             premium: true },
       { label: "24 pays africains",      gratuit: false,             premium: true },
       { label: "Tous réseaux Mobile Money", gratuit: false,          premium: true },
-      { label: "Factures PDF",           gratuit: false,             premium: true },
     ],
   },
 ];
@@ -97,14 +84,13 @@ export default function AbonnementPage() {
   const user        = getNexoraUser();
   const currentPlan = user?.plan || "gratuit";
   const isPremium   = currentPlan !== "gratuit";
-  const [openCat, setOpenCat] = useState<string | null>("Finance personnelle");
+  const [openCat, setOpenCat] = useState<string | null>("Nexora Shop (Boutique)");
 
-  // Fonction pour gérer l'achat
   const handleUpgrade = async () => {
     try {
       await payAndRedirect({
         type: "abonnement_premium",
-        amount: 7440, // 12$ en FCFA (Taux 620)
+        amount: 3100, // 5$ en FCFA (Taux ~620)
       });
     } catch (error) {
       console.error("Erreur d'initialisation du paiement:", error);
@@ -122,37 +108,35 @@ export default function AbonnementPage() {
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               Nexora Premium
             </div>
-            <h1 className="text-4xl font-black mb-3">Passez à la vitesse supérieure</h1>
+            <h1 className="text-4xl font-black mb-3">Libérez tout votre potentiel</h1>
             <p className="text-white/60 text-sm max-w-sm mx-auto">
-              Un seul abonnement pour débloquer l'immobilier, le transfert et la boutique illimitée.
+              Débloquez le transfert international et gérez votre boutique sans aucune limite.
             </p>
           </div>
         </div>
 
         {/* CARTES DE PRIX */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Plan Gratuit */}
           <div className="bg-card border-2 border-border rounded-3xl p-6 flex flex-col opacity-80">
             <h3 className="text-lg font-black mb-1 text-foreground">Gratuit</h3>
-            <p className="text-xs text-muted-foreground mb-4">Découverte de l'écosystème</p>
+            <p className="text-xs text-muted-foreground mb-4">Essentiels inclus</p>
             <div className="mb-6">
               <span className="text-4xl font-black text-foreground">0</span>
               <span className="text-sm text-muted-foreground ml-1">FCFA / mois</span>
             </div>
             <button disabled className="w-full py-3 bg-muted text-muted-foreground font-bold rounded-xl text-sm mb-4">
-              {currentPlan === "gratuit" ? "Plan actuel" : "Inclus par défaut"}
+              {currentPlan === "gratuit" ? "Plan actuel" : "Inclus"}
             </button>
           </div>
 
-          {/* Plan Premium */}
           <div className="relative bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 flex flex-col shadow-xl border-2 border-indigo-500/30">
-            <div className="absolute top-4 right-4 bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-md">HOT</div>
+            <div className="absolute top-4 right-4 bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-md">PROMO</div>
             <h3 className="text-lg font-black text-white mb-1">Premium</h3>
-            <p className="text-xs text-white/50 mb-4">Puissance & Liberté</p>
+            <p className="text-xs text-white/50 mb-4">Puissance illimitée</p>
             <div className="mb-6">
-              <span className="text-4xl font-black text-white">12</span>
+              <span className="text-4xl font-black text-white">5</span>
               <span className="text-sm text-white/50 ml-1">$ / mois</span>
-              <p className="text-[10px] text-white/30 mt-1">≈ 7 440 FCFA via Mobile Money</p>
+              <p className="text-[10px] text-white/30 mt-1">≈ 3 100 FCFA via Mobile Money</p>
             </div>
             <button
               onClick={handleUpgrade}
@@ -168,9 +152,9 @@ export default function AbonnementPage() {
           </div>
         </div>
 
-        {/* COMPARAISON DÉTAILLÉE (ACCORDÉON) */}
+        {/* COMPARAISON */}
         <div className="space-y-4">
-          <h2 className="text-xl font-black text-center">Ce qui est inclus</h2>
+          <h2 className="text-xl font-black text-center">Détails des avantages</h2>
           {FEATURES_COMPARE.map(cat => {
             const Icon = cat.icon;
             const isOpen = openCat === cat.categorie;
@@ -196,19 +180,6 @@ export default function AbonnementPage() {
               </div>
             );
           })}
-        </div>
-
-        {/* FAQ */}
-        <div className="pt-8">
-          <h2 className="text-xl font-black text-center mb-6">Questions fréquentes</h2>
-          <FAQItem 
-            question="Comment payer l'abonnement ?" 
-            reponse="Le paiement s'effectue par Mobile Money (MTN, Moov, Orange, Wave). Une fois le paiement validé sur votre téléphone, votre compte passe Premium instantanément." 
-          />
-          <FAQItem 
-            question="Puis-je annuler mon abonnement ?" 
-            reponse="Oui, Nexora est sans engagement. Vous pouvez arrêter quand vous voulez depuis votre profil." 
-          />
         </div>
       </div>
     </AppLayout>
