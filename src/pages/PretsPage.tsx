@@ -360,8 +360,9 @@ export default function PretsPage() {
   const filteredPrets = prets.filter(p => p.type === activeTab);
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const preteurLabel = activeTab === "pret" ? MOI : form.nom_personne || "...";
-  const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : MOI;
+  const currentUserName = getNexoraUser()?.nom_prenom || "Moi";
+  const preteurLabel = activeTab === "pret" ? currentUserName : form.nom_personne || "...";
+  const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : currentUserName;
 
   return (
     <AppLayout>
