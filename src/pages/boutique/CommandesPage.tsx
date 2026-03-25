@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import BoutiqueLayout from "@/components/BoutiqueLayout";
-import { hasNexoraPremium } from "@/lib/nexora-auth";
+import { getNexoraUser, hasNexoraPremium } from "@/lib/nexora-auth";
 import { useNavigate } from "react-router-dom";
 import {
   ShoppingBag, ChevronDown, ChevronUp, Phone,
@@ -11,11 +11,11 @@ import {
   XCircle, Search, MessageCircle, Crown
 } from "lucide-react";
 
-type StatutCommande = "nouvelle" | "confirmee" | "en_preparation" | "expediee" | "livree" | "annulee";
+type StatutCommande = "en_attente" | "nouvelle" | "confirmee" | "en_preparation" | "expediee" | "livree" | "annulee";
 type StatutPaiement = "en_attente" | "paye" | "echoue" | "rembourse";
 
 interface ArticleCommande {
-  id: string;
+  produit_id?: string | null;
   nom_produit: string;
   prix_unitaire: number;
   quantite: number;
@@ -28,24 +28,20 @@ interface Commande {
   id: string;
   numero: string;
   client_nom: string;
-  client_telephone: string;
+  client_tel: string | null;
   client_email: string | null;
-  client_adresse: string;
-  client_ville: string;
-  client_pays: string;
-  sous_total: number;
-  frais_livraison: number;
+  client_adresse: string | null;
   total: number;
   devise: string;
-  mode_paiement: string;
   statut_paiement: StatutPaiement;
   statut: StatutCommande;
-  note: string | null;
+  items: ArticleCommande[];
   created_at: string;
   articles?: ArticleCommande[];
 }
 
 const STATUTS: Record<StatutCommande, { label: string; color: string; bg: string; icon: any }> = {
+  en_attente:     { label: "En attente",      color: "text-slate-700",  bg: "bg-slate-100",  icon: Clock },
   nouvelle:       { label: "Nouvelle",        color: "text-blue-700",   bg: "bg-blue-100",   icon: ShoppingBag },
   confirmee:      { label: "Confirmée",        color: "text-purple-700", bg: "bg-purple-100", icon: CheckCircle },
   en_preparation: { label: "En préparation",   color: "text-yellow-700", bg: "bg-yellow-100", icon: Package },
@@ -62,7 +58,7 @@ const STATUTS_PAIEMENT: Record<StatutPaiement, { label: string; color: string; b
 };
 
 const ORDRE_STATUTS: StatutCommande[] = [
-  "nouvelle", "confirmee", "en_preparation", "expediee", "livree", "annulee"
+  "en_attente", "nouvelle", "confirmee", "en_preparation", "expediee", "livree", "annulee"
 ];
 
 function formatMontant(amount: number, devise: string = "XOF"): string {
@@ -92,19 +88,27 @@ export default function CommandesPage() {
 
   const load = async () => {
     setLoading(true);
+    const userId = getNexoraUser()?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     const { data: b } = await supabase
-      .from("boutiques" as any).select("*").limit(1).single();
+      .from("boutiques" as any).select("*").eq("user_id", userId).limit(1).maybeSingle();
     if (b) setBoutique(b);
 
     if (b) {
       const { data } = await supabase
         .from("commandes" as any)
-        .select("*, articles_commande(*)")
+        .select("*")
         .eq("boutique_id", (b as any).id)
         .order("created_at", { ascending: false });
 
       setCommandes((data as any[] || []).map(c => ({
-        ...c, articles: c.articles_commande || []
+        ...c,
+        articles: Array.isArray(c.items) ? c.items : [],
+        items: Array.isArray(c.items) ? c.items : [],
       })));
     }
     setLoading(false);
@@ -259,8 +263,7 @@ export default function CommandesPage() {
 
                         <p className="font-semibold text-gray-800 mt-1">{cmd.client_nom}</p>
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400 flex-wrap">
-                          <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{cmd.client_telephone}</span>
-                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{cmd.client_ville}</span>
+                          {cmd.client_tel && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{cmd.client_tel}</span>}
                           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(cmd.created_at)}</span>
                         </div>
 
@@ -268,7 +271,7 @@ export default function CommandesPage() {
                           {formatMontant(cmd.total, cmd.devise)}
                         </div>
                         <p className="text-xs text-gray-400">
-                          {cmd.articles?.length || 0} article{(cmd.articles?.length || 0) > 1 ? "s" : ""} • {cmd.mode_paiement}
+                          {cmd.articles?.length || 0} article{(cmd.articles?.length || 0) > 1 ? "s" : ""}
                         </p>
                       </div>
 
@@ -311,16 +314,6 @@ export default function CommandesPage() {
                           </div>
 
                           <div className="mt-3 space-y-1 text-sm">
-                            <div className="flex justify-between text-gray-400">
-                              <span>Sous-total</span>
-                              <span>{formatMontant(cmd.sous_total, cmd.devise)}</span>
-                            </div>
-                            {cmd.frais_livraison > 0 && (
-                              <div className="flex justify-between text-gray-400">
-                                <span>Livraison</span>
-                                <span>{formatMontant(cmd.frais_livraison, cmd.devise)}</span>
-                              </div>
-                            )}
                             <div className="flex justify-between font-black text-pink-600 border-t border-gray-200 pt-1">
                               <span>Total</span>
                               <span>{formatMontant(cmd.total, cmd.devise)}</span>
@@ -330,18 +323,11 @@ export default function CommandesPage() {
                       )}
 
                       {/* Adresse */}
-                      <div className="bg-white border border-gray-100 rounded-xl p-3">
-                        <p className="text-xs font-semibold text-gray-500 mb-1">Adresse de livraison</p>
-                        <p className="text-sm text-gray-700">{cmd.client_adresse}</p>
-                        <p className="text-sm text-gray-400">{cmd.client_ville}, {cmd.client_pays}</p>
-                        {cmd.client_email && <p className="text-xs text-gray-400 mt-1">{cmd.client_email}</p>}
-                      </div>
-
-                      {/* Note */}
-                      {cmd.note && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                          <p className="text-xs font-semibold text-yellow-700 mb-1">Note client</p>
-                          <p className="text-sm text-yellow-600">{cmd.note}</p>
+                      {(cmd.client_adresse || cmd.client_email) && (
+                        <div className="bg-white border border-gray-100 rounded-xl p-3">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Informations client</p>
+                          {cmd.client_adresse && <p className="text-sm text-gray-700">{cmd.client_adresse}</p>}
+                          {cmd.client_email && <p className="text-xs text-gray-400 mt-1">{cmd.client_email}</p>}
                         </div>
                       )}
 
@@ -374,17 +360,19 @@ export default function CommandesPage() {
                       </div>
 
                       {/* Contact client */}
-                      <div className="flex gap-2">
-                        <a href={`tel:${cmd.client_telephone}`}
+                      {cmd.client_tel && (
+                        <div className="flex gap-2">
+                        <a href={`tel:${cmd.client_tel}`}
                           className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white rounded-xl py-2.5 text-sm font-semibold">
                           <Phone className="w-4 h-4" /> Appeler
                         </a>
-                        <a href={`https://wa.me/${cmd.client_telephone.replace(/[^0-9]/g, "")}?text=Bonjour ${cmd.client_nom}, concernant votre commande #${cmd.numero}`}
+                        <a href={`https://wa.me/${cmd.client_tel.replace(/[^0-9]/g, "")}?text=Bonjour ${cmd.client_nom}, concernant votre commande #${cmd.numero}`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-xl py-2.5 text-sm font-semibold">
                           <MessageCircle className="w-4 h-4" /> WhatsApp
                         </a>
                       </div>
+                      )}
                     </div>
                   )}
                 </div>

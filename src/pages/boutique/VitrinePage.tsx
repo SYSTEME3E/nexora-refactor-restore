@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { addToCart, clearCart, readCart, saveCart, type ShopCartItem } from "@/lib/shop-cart";
 import {
   ShoppingCart, Plus, Minus, X, Phone, MessageCircle,
   Search, Star, Tag, Package
@@ -47,12 +49,6 @@ interface Produit {
   moyens_paiement: PaiementProduit[];
 }
 
-interface PanierItem {
-  produit: Produit;
-  quantite: number;
-  variations_choisies: Record<string, string>;
-}
-
 // ─── Helpers ──────────────────────────────────────────────
 function formatPrix(prix: number, devise: string = "XOF"): string {
   if (devise === "USD") return `$${prix.toFixed(2)}`;
@@ -78,6 +74,8 @@ function fbTrack(boutique: Boutique | null, event: string, params?: any) {
 export default function VitrinePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const [boutique, setBoutique] = useState<Boutique | null>(null);
   const [produits, setProduits] = useState<Produit[]>([]);
@@ -89,7 +87,7 @@ export default function VitrinePage() {
   const [filterType, setFilterType] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
 
-  const [panier, setPanier] = useState<PanierItem[]>([]);
+  const [panier, setPanier] = useState<ShopCartItem[]>([]);
   const [showPanier, setShowPanier] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [commandeSuccess, setCommandeSuccess] = useState(false);
@@ -111,7 +109,7 @@ export default function VitrinePage() {
         .select("*")
         .eq("slug", slug)
         .eq("actif", true)
-        .single();
+        .maybeSingle();
 
       if (!b) { setNotFound(true); setLoading(false); return; }
       setBoutique(b as any);
@@ -152,6 +150,22 @@ export default function VitrinePage() {
     if (slug) load();
   }, [slug]);
 
+  useEffect(() => {
+    if (!slug) return;
+    setPanier(readCart(slug));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    saveCart(slug, panier);
+  }, [slug, panier]);
+
+  useEffect(() => {
+    const open = searchParams.get("open");
+    setShowPanier(open === "cart");
+    setShowCheckout(open === "checkout");
+  }, [searchParams]);
+
   // ── Panier
   const totalPanier = panier.reduce((sum, item) => {
     const prix = item.produit.prix_promo || item.produit.prix;
@@ -166,6 +180,35 @@ export default function VitrinePage() {
       const updated = [...prev];
       updated[idx].quantite = Math.max(1, updated[idx].quantite + delta);
       return updated;
+    });
+  };
+
+  const categoryCounts = useMemo(() => {
+    return produits.reduce<Record<string, number>>((acc, produit) => {
+      if (!produit.categorie) return acc;
+      acc[produit.categorie] = (acc[produit.categorie] || 0) + 1;
+      return acc;
+    }, {});
+  }, [produits]);
+
+  const addProductToCart = (produit: Produit) => {
+    if (!slug) return;
+
+    const nextCart = addToCart(slug, {
+      produit,
+      quantite: 1,
+      variations_choisies: {},
+    });
+
+    setPanier(nextCart);
+    setShowPanier(true);
+    setShowCheckout(false);
+    setSearchParams({ open: "cart" });
+
+    fbTrack(boutique, "AddToCart", {
+      value: produit.prix_promo || produit.prix,
+      currency: boutique?.devise,
+      content_name: produit.nom,
     });
   };
 
@@ -184,39 +227,35 @@ export default function VitrinePage() {
 
     const numero = genNumeroCommande();
 
+    const items = panier.map(item => ({
+      produit_id: item.produit.id,
+      nom_produit: item.produit.nom,
+      categorie: item.produit.categorie || null,
+      type: item.produit.type,
+      prix_unitaire: item.produit.prix_promo || item.produit.prix,
+      quantite: item.quantite,
+      montant: (item.produit.prix_promo || item.produit.prix) * item.quantite,
+      variations_choisies: item.variations_choisies,
+      photo_url: item.produit.photos?.[0] || null,
+    }));
+
     const { data: cmd, error } = await supabase.from("commandes" as any).insert({
       boutique_id: boutique.id,
       numero,
       client_nom: checkoutForm.nom,
-      client_telephone: checkoutForm.telephone,
+      client_tel: checkoutForm.telephone,
       client_email: checkoutForm.email || null,
       client_adresse: checkoutForm.adresse,
-      client_ville: checkoutForm.ville,
-      client_pays: checkoutForm.pays,
-      sous_total: totalPanier,
-      frais_livraison: 0,
+      items,
+      montant: totalPanier,
       total: totalPanier,
       devise: boutique.devise,
-      mode_paiement: "A confirmer",
       statut_paiement: "en_attente",
       statut: "nouvelle",
-      note: checkoutForm.note || null,
+      produit_id: panier.length === 1 ? panier[0].produit.id : null,
     }).select().single();
 
     if (!error && cmd) {
-      await supabase.from("articles_commande" as any).insert(
-        panier.map(item => ({
-          commande_id: (cmd as any).id,
-          produit_id: item.produit.id,
-          nom_produit: item.produit.nom,
-          prix_unitaire: item.produit.prix_promo || item.produit.prix,
-          quantite: item.quantite,
-          montant: (item.produit.prix_promo || item.produit.prix) * item.quantite,
-          variations_choisies: item.variations_choisies,
-          photo_url: item.produit.photos?.[0] || null,
-        }))
-      );
-
       for (const item of panier) {
         if (!item.produit.stock_illimite && item.produit.type === "physique") {
           await supabase.from("produits" as any)
@@ -232,7 +271,11 @@ export default function VitrinePage() {
       setCommandeNumero(numero);
       setCommandeSuccess(true);
       setPanier([]);
+      if (slug) clearCart(slug);
       setShowCheckout(false);
+      setSearchParams({});
+    } else if (error) {
+      toast({ title: "Commande impossible", description: error.message, variant: "destructive" });
     }
     setSubmitting(false);
   };
@@ -351,7 +394,7 @@ export default function VitrinePage() {
 
           {/* Filtres */}
           <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-            <button onClick={() => { setFilterCateg(""); setFilterType(""); }}
+                <button onClick={() => { setFilterCateg(""); setFilterType(""); }}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 !filterCateg && !filterType ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}>Tout</button>
@@ -367,7 +410,7 @@ export default function VitrinePage() {
               <button key={cat} onClick={() => setFilterCateg(filterCateg === cat ? "" : cat)}
                 className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   filterCateg === cat ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600"
-                }`}>{cat}</button>
+                }`}>{cat} ({categoryCounts[cat] || 0})</button>
             ))}
           </div>
         </div>
@@ -441,7 +484,7 @@ export default function VitrinePage() {
                     </div>
                     {!enRupture && (
                       <button
-                        onClick={e => { e.stopPropagation(); navigate(`/shop/${slug}/produit/${produit.id}`); }}
+                        onClick={e => { e.stopPropagation(); addProductToCart(produit); }}
                         className="mt-2 w-full py-2 rounded-xl bg-pink-500 text-white text-xs font-bold flex items-center justify-center gap-1 active:bg-pink-600">
                         <ShoppingCart className="w-3 h-3" /> Ajouter
                       </button>
@@ -460,7 +503,7 @@ export default function VitrinePage() {
           <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-black text-lg text-gray-800">Mon panier ({nbArticles})</h2>
-              <button onClick={() => setShowPanier(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <button onClick={() => { setShowPanier(false); setSearchParams({}); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -511,7 +554,7 @@ export default function VitrinePage() {
                   <span className="text-gray-800">Total</span>
                   <span className="text-pink-600">{formatPrix(totalPanier, boutique?.devise)}</span>
                 </div>
-                <button onClick={() => { setShowPanier(false); setShowCheckout(true); }}
+                <button onClick={() => { setShowPanier(false); setShowCheckout(true); setSearchParams({ open: "checkout" }); }}
                   className="w-full py-4 rounded-2xl bg-pink-500 text-white font-black text-base active:bg-pink-600">
                   Commander maintenant
                 </button>
@@ -527,7 +570,7 @@ export default function VitrinePage() {
           <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-black text-lg text-gray-800">Finaliser la commande</h2>
-              <button onClick={() => setShowCheckout(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <button onClick={() => { setShowCheckout(false); setSearchParams({}); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
             </div>
