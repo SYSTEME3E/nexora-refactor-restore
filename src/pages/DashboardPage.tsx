@@ -177,8 +177,8 @@ export default function DashboardPage() {
                   }}>
                   {getGreeting()}, {displayName} ! 👋
                 </div>
-                {/* ── Badge vert brillant ── */}
-                {isPremium && <PremiumBadge />}
+                {/* ── Badge bleu vérifié ── */}
+                {hasBadge && <VerifiedBadge />}
               </div>
 
               <div
