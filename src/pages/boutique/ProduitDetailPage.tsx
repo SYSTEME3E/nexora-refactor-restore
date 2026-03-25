@@ -77,7 +77,7 @@ export default function ProduitDetailPage() {
         return;
       }
 
-      setBoutique(boutiqueData as BoutiqueInfo);
+      setBoutique(boutiqueData as unknown as BoutiqueInfo);
 
       const { data: produitData } = await supabase
         .from("produits" as any)
