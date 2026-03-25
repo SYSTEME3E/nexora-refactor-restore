@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import BoutiqueLayout from "@/components/BoutiqueLayout";
-import { hasNexoraPremium } from "@/lib/nexora-auth";
+import { getNexoraUser, hasNexoraPremium } from "@/lib/nexora-auth";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Package,
@@ -174,7 +174,19 @@ export default function ProduitsPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data: b } = await supabase.from("boutiques" as any).select("*").limit(1).single();
+    const userId = getNexoraUser()?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: b } = await supabase
+      .from("boutiques" as any)
+      .select("*")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+
     if (b) {
       setBoutique(b);
       const { data: phys } = await supabase
