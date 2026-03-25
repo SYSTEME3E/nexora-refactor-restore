@@ -83,8 +83,8 @@ async function generatePDF(pret: Pret) {
   doc.setFont("helvetica", "normal");
   doc.text(
     pret.type === "pret"
-      ? `Preteur : ${MOI}  |  Emprunteur : ${pret.nom_personne}`
-      : `Preteur : ${pret.nom_personne}  |  Emprunteur : ${MOI}`,
+      ? `Preteur : ${preteur}  |  Emprunteur : ${pret.nom_personne}`
+      : `Preteur : ${pret.nom_personne}  |  Emprunteur : ${emprunteur}`,
     W / 2, 28, { align: "center" }
   );
   doc.text(`Ref: ${pret.id.substring(0, 8).toUpperCase()}`, W / 2, 35, { align: "center" });
