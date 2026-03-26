@@ -81,26 +81,79 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   const noir: [number,number,number] = [15,23,42];
   const grisLight: [number,number,number] = [241,245,249];
 
-  // ── HEADER: Logo N + NEXORA FACTURE ──
-  doc.setFillColor(...bleu); doc.rect(0,0,W,48,"F");
-  // Logo "N" circle
-  doc.setFillColor(255,255,255);
-  doc.circle(margin + 10, 16, 8, "F");
-  doc.setTextColor(...bleu); doc.setFont("helvetica","bold"); doc.setFontSize(14);
-  doc.text("N", margin + 10, 19.5, { align: "center" });
-  // NEXORA FACTURE title
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(16);
-  doc.text("NEXORA FACTURE", margin + 24, 14);
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text(facture.vendeur_nom.toUpperCase(), margin + 24, 21);
-  if (facture.vendeur_ifu) { doc.text(`IFU : ${facture.vendeur_ifu}`, margin + 24, 27); }
-  doc.setFont("helvetica","bold"); doc.setFontSize(10);
-  doc.text(`Facture # ${facture.numero}`, W-margin, 14, { align:"right" });
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text(`Date : ${new Date(facture.date_facture).toLocaleDateString("fr-FR")}`, W-margin, 22, { align:"right" });
-  doc.text(`Heure : ${facture.heure_facture}`, W-margin, 28, { align:"right" });
-  doc.text(`Vendeur : ${facture.vendeur_nom}`, W-margin, 34, { align:"right" });
+  // ── HEADER: Logo Image + NEXORA FACTURE ──
+doc.setFillColor(...bleu);
+doc.rect(0, 0, W, 48, "F");
 
+// ===== LOGO IMAGE =====
+doc.addImage(
+  logo,
+  "PNG",
+  margin,
+  6,
+  30,
+  30,
+  undefined,
+  "FAST"
+);
+
+// ===== TITRE JAUNE =====
+doc.setTextColor(255, 204, 0); // JAUNE NEXORA
+doc.setFont("helvetica", "bold");
+doc.setFontSize(18);
+
+doc.text("NEXORA FACTURE", margin + 36, 16);
+
+// ===== INFOS VENDEUR =====
+doc.setTextColor(255,255,255);
+doc.setFontSize(9);
+doc.setFont("helvetica","normal");
+
+doc.text(
+  facture.vendeur_nom.toUpperCase(),
+  margin + 36,
+  23
+);
+
+if (facture.vendeur_ifu) {
+  doc.text(`IFU : ${facture.vendeur_ifu}`, margin + 36, 29);
+}
+
+// ===== INFOS FACTURE DROITE =====
+doc.setFont("helvetica","bold");
+doc.setFontSize(10);
+
+doc.text(
+  `Facture # ${facture.numero}`,
+  W - margin,
+  14,
+  { align: "right" }
+);
+
+doc.setFont("helvetica","normal");
+doc.setFontSize(9);
+
+doc.text(
+  `Date : ${new Date(facture.date_facture)
+    .toLocaleDateString("fr-FR")}`,
+  W - margin,
+  22,
+  { align: "right" }
+);
+
+doc.text(
+  `Heure : ${facture.heure_facture}`,
+  W - margin,
+  28,
+  { align: "right" }
+);
+
+doc.text(
+  `Vendeur : ${facture.vendeur_nom}`,
+  W - margin,
+  34,
+  { align: "right" }
+);
   let y = 55;
   const colW = (W-margin*2-8)/2;
   doc.setFillColor(...grisLight); doc.roundedRect(margin, y, colW, 44, 2, 2, "F");
@@ -152,7 +205,7 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   doc.text(fmt(facture.total, facture.devise), W-margin-3, y+12, { align:"right" });
   y += 20;
   doc.setTextColor(...gris); doc.setFont("helvetica","italic"); doc.setFontSize(8);
-  doc.text(`Arrêté la présente facture à la somme de ${fmt(facture.total, facture.devise)} TTC`, margin, y);
+  doc.text(`Arrêté la présente facture à la somme de ${montantEnLettres} ${facture.devise} TTC`, margin, y);
   if (facture.note) { y+=8; doc.setTextColor(...noir); doc.setFont("helvetica","normal"); doc.text(`Note : ${facture.note}`, margin, y); }
 
   // ── FOOTER: NEXORA branding + watermark ──
@@ -160,13 +213,17 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
   doc.text("NEXORA", W/2, 288, { align:"center" });
   doc.setFont("helvetica","normal"); doc.setFontSize(7);
-  doc.text(`Document généré le ${new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})} — nexora-app.lovable.app`, W/2, 293, { align:"center" });
+  doc.text(
+  `Document généré le ${new Date().toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  })} — Facture non normalisée`,
+  W / 2,
+  293,
+  { align: "center" }
+);
 
-  // Watermark diagonal
-  doc.setTextColor(200, 210, 230);
-  doc.setFontSize(40);
-  doc.setFont("helvetica","bold");
-  doc.text("NEXORA", W/2, 160, { align:"center", angle: 45 });
 
   doc.save(`facture_${facture.numero}_${facture.client_nom.replace(/\s/g,"_")}.pdf`);
 }
