@@ -41,7 +41,7 @@ interface Boutique {
 interface EpargneAccount {
   id: string;
   user_id: string;
-  status: "en_attente" | "approuve" | "rejete";
+  status: string;
   solde: number;
   created_at: string;
   nexora_users?: { nom_prenom: string; email: string };
@@ -51,7 +51,7 @@ interface Retrait {
   id: string;
   user_id: string;
   montant: number;
-  statut: "en_attente" | "valide" | "rejete";
+  statut: string;
   created_at: string;
   nexora_users?: { nom_prenom: string; email: string };
 }
