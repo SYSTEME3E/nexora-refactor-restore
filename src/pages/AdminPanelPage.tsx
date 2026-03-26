@@ -109,17 +109,15 @@ export default function AdminPanelPage() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [uRes, bRes, accRes, retRes] = await Promise.all([
+      const [uRes, bRes] = await Promise.all([
         supabase.from("nexora_users").select("*").order("created_at", { ascending: false }),
         supabase.from("boutiques").select("*"),
-        supabase.from("epargne_accounts").select("*, nexora_users(nom_prenom, email)").eq("status", "en_attente"),
-        supabase.from("epargnes").select("*, nexora_users(nom_prenom, email)").order("created_at", { ascending: false })
       ]);
 
-      setUsers(uRes.data || []);
+      setUsers((uRes.data || []) as any);
       setBoutiques(bRes.data || []);
-      setDemandesActivation(accRes.data || []);
-      setRetraits(retRes.data || []);
+      setDemandesActivation([]);
+      setRetraits([]);
       
       setStats({
         totalUsers: uRes.data?.length || 0,
