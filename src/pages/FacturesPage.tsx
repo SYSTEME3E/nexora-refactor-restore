@@ -517,7 +517,10 @@ export default function FacturesPage() {
                             <div className="text-lg font-black text-primary mt-1">{fmt(facture.total, facture.devise)}</div>
                           </div>
                           <div className="flex flex-col gap-1 flex-shrink-0">
-                            <button onClick={() => generateFacturePDF(facture, facture.articles||[])} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="PDF"><FileDown className="w-4 h-4" /></button>
+                            <button onClick={async () => {
+                              const { data: arts } = await supabase.from("articles_facture" as any).select("*").eq("facture_id", facture.id).order("ordre");
+                              generateFacturePDF(facture, (arts || []) as unknown as Article[]);
+                            }} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="PDF"><FileDown className="w-4 h-4" /></button>
                             <button onClick={() => setExpandedId(isExpanded ? null : facture.id)} className="p-2 rounded-lg hover:bg-muted transition-colors">{isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
                             <button onClick={() => handleDelete(facture.id)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
