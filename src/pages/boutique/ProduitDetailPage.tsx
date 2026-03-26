@@ -317,6 +317,9 @@ export default function ProduitDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Section Avis */}
+        <SectionAvis produitId={produit.id} nomItem={produit.nom} />
       </div>
     </div>
   );
