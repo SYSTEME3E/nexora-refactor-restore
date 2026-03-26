@@ -97,7 +97,8 @@ function AnnonceCard({ annonce, userId, onFavori, onEdit, onDelete, isOwner }: {
           {typeInfo.emoji} {typeInfo.label}
         </span>
 
-        <div style={{ fontWeight: 700, fontSize: "11px", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontWeight: 700, fontSize: "11px", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+          onClick={() => window.location.href = `/immobilier/annonce/${annonce.id}`}>
           {annonce.titre}
         </div>
 
