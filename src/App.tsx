@@ -128,7 +128,7 @@ const App = () => (
               <NexoraLoginPage />
             </PageLoader>
           } />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           {/* Routes Protégées Standard */}
           <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
