@@ -478,7 +478,10 @@ export default function FacturesPage() {
                         <div className="text-xs text-muted-foreground">{f.heure_facture}</div>
                         <div className="font-bold text-primary">{fmt(f.total, f.devise)}</div>
                       </div>
-                      <button onClick={() => generateFacturePDF(f, f.articles||[])} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors flex-shrink-0"><FileDown className="w-4 h-4" /></button>
+                      <button onClick={async () => {
+                        const { data: arts } = await supabase.from("articles_facture" as any).select("*").eq("facture_id", f.id).order("ordre");
+                        generateFacturePDF(f, (arts || []) as unknown as Article[]);
+                      }} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors flex-shrink-0"><FileDown className="w-4 h-4" /></button>
                     </div>
                   ))}
                 </div>
