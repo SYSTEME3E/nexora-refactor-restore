@@ -39,7 +39,11 @@ import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
+import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
+
+// Landing
+import LandingPage from "@/pages/LandingPage";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
