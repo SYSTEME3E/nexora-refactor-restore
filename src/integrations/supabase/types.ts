@@ -147,6 +147,39 @@ export type Database = {
           },
         ]
       }
+      avis_produits: {
+        Row: {
+          annonce_id: string | null
+          commentaire: string
+          created_at: string
+          id: string
+          note: number
+          produit_id: string | null
+          user_id: string
+          user_nom: string
+        }
+        Insert: {
+          annonce_id?: string | null
+          commentaire?: string
+          created_at?: string
+          id?: string
+          note?: number
+          produit_id?: string | null
+          user_id: string
+          user_nom?: string
+        }
+        Update: {
+          annonce_id?: string | null
+          commentaire?: string
+          created_at?: string
+          id?: string
+          note?: number
+          produit_id?: string | null
+          user_id?: string
+          user_nom?: string
+        }
+        Relationships: []
+      }
       boutiques: {
         Row: {
           actif: boolean
