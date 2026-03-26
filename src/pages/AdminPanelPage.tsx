@@ -22,9 +22,9 @@ interface NexoraUser {
   email: string;
   avatar_url: string | null;
   is_admin: boolean;
-  plan: "gratuit" | "boss" | "roi" | "admin";
+  plan: string;
   badge_premium: boolean;
-  status: "actif" | "suspendu" | "bloque";
+  status: string;
   created_at: string;
   premium_since: string | null;
   premium_expires_at: string | null;
