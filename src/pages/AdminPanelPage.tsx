@@ -134,12 +134,7 @@ export default function AdminPanelPage() {
 
   // ── Actions Épargne
   const handleApproveAccount = async (id: string, userId: string) => {
-    const { error } = await supabase.from("epargne_accounts").update({ status: "approuve" }).eq("id", id);
-    if (!error) {
-      await sendNotification(userId, "Épargne Activée", "Votre compte épargne est maintenant actif.", "success");
-      toast({ title: "Compte approuvé" });
-      loadAll();
-    }
+    toast({ title: "Fonctionnalité en cours de développement" });
   };
 
   const handleApproveRetrait = async (retrait: Retrait) => {
