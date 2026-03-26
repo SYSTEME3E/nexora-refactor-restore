@@ -521,7 +521,13 @@ export default function FacturesPage() {
                               const { data: arts } = await supabase.from("articles_facture" as any).select("*").eq("facture_id", facture.id).order("ordre");
                               generateFacturePDF(facture, (arts || []) as unknown as Article[]);
                             }} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="PDF"><FileDown className="w-4 h-4" /></button>
-                            <button onClick={() => setExpandedId(isExpanded ? null : facture.id)} className="p-2 rounded-lg hover:bg-muted transition-colors">{isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
+                            <button onClick={async () => {
+                              if (!isExpanded) {
+                                const { data: arts } = await supabase.from("articles_facture" as any).select("*").eq("facture_id", facture.id).order("ordre");
+                                setFactures(prev => prev.map(f => f.id === facture.id ? { ...f, articles: (arts || []) as unknown as Article[] } : f));
+                              }
+                              setExpandedId(isExpanded ? null : facture.id);
+                            }} className="p-2 rounded-lg hover:bg-muted transition-colors">{isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
                             <button onClick={() => handleDelete(facture.id)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
