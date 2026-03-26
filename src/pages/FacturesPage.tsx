@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasNexoraPremium, getNexoraUser } from "@/lib/nexora-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, FileDown, Trash2, ChevronDown, ChevronUp, Receipt, History, Crown, Loader2 } from "lucide-react";
+import { Plus, FileDown, Trash2, ChevronDown, ChevronUp, Receipt, History, Crown } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { useNavigate } from "react-router-dom";
 
@@ -55,7 +55,6 @@ const PAYS = ["Bénin","Togo","Côte d'Ivoire","Sénégal","Mali","Burkina Faso"
 const INDICATIFS: Record<string, string> = { "Bénin":"+229","Togo":"+228","Côte d'Ivoire":"+225","Sénégal":"+221","Mali":"+223","Burkina Faso":"+226","Niger":"+227","Guinée":"+224","Cameroun":"+237","Ghana":"+233","Nigeria":"+234","France":"+33","États-Unis":"+1","Canada":"+1","Autre":"" };
 
 const LIMITE_GRATUIT = 10;
-const LOGO_URL = "https://i.postimg.cc/c1QgbZsG/ei_1773937801458_removebg_preview.png";
 
 function fmt(amount: number, devise: Devise): string {
   if (devise === "USD") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(amount);
@@ -82,44 +81,25 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   const noir: [number,number,number] = [15,23,42];
   const grisLight: [number,number,number] = [241,245,249];
 
-  // ── HEADER: Logo NEXORA (Image) + Infos Facture ──
-  doc.setFillColor(...bleu); 
-  doc.rect(0, 0, W, 48, "F");
-
-  // Ajout du logo NEXORA (Image)
-  try {
-    const response = await fetch(LOGO_URL);
-    const blob = await response.blob();
-    const logoDataUrl = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-    // Position et taille du logo
-    doc.addImage(logoDataUrl, "PNG", margin, 12, 18, 18);
-  } catch (e) {
-    // Fallback N circle if logo fails to load
-    doc.setFillColor(255, 255, 255);
-    doc.circle(margin + 10, 21, 8, "F");
-    doc.setTextColor(...bleu); 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text("N", margin + 10, 24.5, { align: "center" });
-  }
-
-  // Texte NEXORA FACTURE
+  // ── HEADER: Logo N + NEXORA FACTURE ──
+  doc.setFillColor(...bleu); doc.rect(0,0,W,48,"F");
+  // Logo "N" circle
+  doc.setFillColor(255,255,255);
+  doc.circle(margin + 10, 16, 8, "F");
+  doc.setTextColor(...bleu); doc.setFont("helvetica","bold"); doc.setFontSize(14);
+  doc.text("N", margin + 10, 19.5, { align: "center" });
+  // NEXORA FACTURE title
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(16);
-  doc.text("NEXORA FACTURE", margin + 24, 19);
+  doc.text("NEXORA FACTURE", margin + 24, 14);
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text(facture.vendeur_nom.toUpperCase(), margin + 24, 26);
-  if (facture.vendeur_ifu) { doc.text(`IFU : ${facture.vendeur_ifu}`, margin + 24, 32); }
-
-  // Infos de date et numéro (Droite)
+  doc.text(facture.vendeur_nom.toUpperCase(), margin + 24, 21);
+  if (facture.vendeur_ifu) { doc.text(`IFU : ${facture.vendeur_ifu}`, margin + 24, 27); }
   doc.setFont("helvetica","bold"); doc.setFontSize(10);
-  doc.text(`Facture # ${facture.numero}`, W-margin, 19, { align:"right" });
+  doc.text(`Facture # ${facture.numero}`, W-margin, 14, { align:"right" });
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text(`Date : ${new Date(facture.date_facture).toLocaleDateString("fr-FR")}`, W-margin, 27, { align:"right" });
-  doc.text(`Heure : ${facture.heure_facture}`, W-margin, 33, { align:"right" });
-  doc.text(`Vendeur : ${facture.vendeur_nom}`, W-margin, 39, { align:"right" });
+  doc.text(`Date : ${new Date(facture.date_facture).toLocaleDateString("fr-FR")}`, W-margin, 22, { align:"right" });
+  doc.text(`Heure : ${facture.heure_facture}`, W-margin, 28, { align:"right" });
+  doc.text(`Vendeur : ${facture.vendeur_nom}`, W-margin, 34, { align:"right" });
 
   let y = 55;
   const colW = (W-margin*2-8)/2;
@@ -138,7 +118,7 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
     .filter(Boolean).forEach((l,i) => doc.text(l, cx+4, y+14+i*6));
   y += 52;
 
-  // ── TABLE DES ARTICLES (Corrections d'affichage appliquées ici) ──
+  // ── TABLE DES ARTICLES ──
   const cw = [8,74,28,18,32]; const cxs: number[] = []; let ox = margin;
   cw.forEach(w => { cxs.push(ox); ox += w; });
   doc.setFillColor(...bleu); doc.rect(margin, y, W-margin*2, 8, "F");
@@ -218,32 +198,16 @@ export default function FacturesPage() {
 
   const total = articles.reduce((sum, a) => sum + (parseFloat(String(a.prix_unitaire))||0) * (parseFloat(String(a.quantite))||0), 0);
 
-  // ── FIX: Chargement des articles en même temps que les factures ──
-  const loadData = async () => {
+  const load = async () => {
     setLoading(true);
     const userId = getNexoraUser()?.id;
     if (!userId) { setLoading(false); return; }
-
-    // On utilise la jointure pour récupérer les articles_facture
-    const { data, error } = await supabase
-      .from("factures" as any)
-      .select(`
-        *,
-        articles:articles_facture(*)
-      `)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast({ title: "Erreur de chargement", description: error.message, variant: "destructive" });
-    } else if (data) {
-      // Les données sont déjà formatées correctement par la jointure Supabase
-      setFactures(data as unknown as Facture[]);
-    }
+    const { data } = await supabase.from("factures" as any).select("*").eq("user_id", userId).order("created_at", { ascending: false });
+    if (data) setFactures((data as any[]).map(f => ({ ...f, articles: [] })));
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { load(); }, []);
 
   const nbFactures = factures.length;
   const limiteAtteinte = !isPremium && nbFactures >= LIMITE_GRATUIT;
@@ -305,13 +269,13 @@ export default function FacturesPage() {
     setForm({ vendeur_nom:"",vendeur_ifu:"",vendeur_adresse:"",vendeur_pays:"",vendeur_contact:"",vendeur_email:"",client_nom:"",client_ifu:"",client_adresse:"",client_pays:"",client_contact:"",mode_paiement:"ESPECES",devise:"XOF",statut:"payee",note:"" });
     setArticles([emptyArt()]);
     setSaving(false);
-    loadData();
+    load();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cette facture ?")) return;
     await supabase.from("factures" as any).delete().eq("id", id);
-    toast({ title: "Supprimée" }); loadData();
+    toast({ title: "Supprimée" }); load();
   };
 
   const facturesParDate = factures.reduce((acc, f) => {
@@ -493,7 +457,7 @@ export default function FacturesPage() {
         {showHistorique && !showForm && (
           <div className="space-y-4">
             <h2 className="font-bold text-lg flex items-center gap-2"><History className="w-5 h-5 text-primary" /> Historique des factures</h2>
-            {loading ? <div className="text-center py-8 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto"/> Chargement...</div>
+            {loading ? <div className="text-center py-8 text-muted-foreground">Chargement...</div>
             : Object.keys(facturesParDate).length === 0 ? <div className="text-center py-10 text-muted-foreground">Aucune facture</div>
             : Object.entries(facturesParDate).map(([date, fList]) => (
               <div key={date}>
@@ -523,10 +487,10 @@ export default function FacturesPage() {
           </div>
         )}
 
-        {/* Liste normale (Flux par défaut) */}
+        {/* Liste normale */}
         {!showHistorique && !showForm && (
           <>
-            {loading ? <div className="text-center py-10 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto"/> Chargement...</div>
+            {loading ? <div className="text-center py-10 text-muted-foreground">Chargement...</div>
             : factures.length === 0 ? (
               <div className="text-center py-14 bg-card border border-border rounded-2xl">
                 <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -536,8 +500,6 @@ export default function FacturesPage() {
               <div className="space-y-3">
                 {factures.map(facture => {
                   const isExpanded = expandedId === facture.id;
-                  // FIX: Les articles sont déjà là si loadData() a fonctionné avec la jointure.
-                  const factureArticles = facture.articles || [];
                   return (
                     <div key={facture.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                       <div className="p-4">
@@ -552,31 +514,29 @@ export default function FacturesPage() {
                             <div className="text-lg font-black text-primary mt-1">{fmt(facture.total, facture.devise)}</div>
                           </div>
                           <div className="flex flex-col gap-1 flex-shrink-0">
-                            {/* Génération PDF avec les articles du chargement */}
-                            <button onClick={() => generateFacturePDF(facture, factureArticles)} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="PDF"><FileDown className="w-4 h-4" /></button>
+                            <button onClick={() => generateFacturePDF(facture, facture.articles||[])} className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="PDF"><FileDown className="w-4 h-4" /></button>
                             <button onClick={() => setExpandedId(isExpanded ? null : facture.id)} className="p-2 rounded-lg hover:bg-muted transition-colors">{isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
                             <button onClick={() => handleDelete(facture.id)} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
                       </div>
                       {isExpanded && (
-                        <div className="border-t border-border bg-muted/30 p-4 space-y-3 animation-fade-in">
+                        <div className="border-t border-border bg-muted/30 p-4 space-y-3">
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div><span className="text-muted-foreground">Vendeur :</span> <span className="font-medium">{facture.vendeur_nom}</span></div>
                             <div><span className="text-muted-foreground">Mode :</span> <span className="font-medium">{facture.mode_paiement}</span></div>
                             <div><span className="text-muted-foreground">Contact :</span> <span className="font-medium">{INDICATIFS[facture.client_pays]||""} {facture.client_contact}</span></div>
                             {facture.client_adresse && <div><span className="text-muted-foreground">Adresse :</span> <span className="font-medium">{facture.client_adresse}</span></div>}
                           </div>
-                          {/* Affichage des articles dans le flux détaillé */}
-                          {factureArticles.length > 0 && (
+                          {facture.articles && facture.articles.length > 0 && (
                             <div>
                               <p className="text-xs font-semibold text-muted-foreground mb-2">Articles</p>
                               <div className="space-y-1">
-                                {factureArticles.map((art,i) => (
+                                {facture.articles.map((art,i) => (
                                   <div key={i} className="flex justify-between items-center text-sm bg-white border border-border rounded-lg px-3 py-2">
-                                    <span className="flex-1 truncate font-medium">{art.nom}</span>
+                                    <span className="flex-1 truncate">{art.nom}</span>
                                     <span className="text-muted-foreground text-xs mx-2">{art.quantite} × {fmt(art.prix_unitaire, facture.devise)}</span>
-                                    <span className="font-bold text-primary">{fmt(art.montant, facture.devise)}</span>
+                                    <span className="font-semibold text-primary">{fmt(art.montant, facture.devise)}</span>
                                   </div>
                                 ))}
                               </div>
