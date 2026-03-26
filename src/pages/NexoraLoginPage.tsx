@@ -1,126 +1,66 @@
-// VERSION AMÉLIORÉE (sans supprimer ton code existant) // Ajouts : forgot password, accessibilité, UX améliorée, auto-login après register, petits détails pro
-
-import { useState, useEffect } from "react"; import { Eye, EyeOff, Lock, User, Mail, AtSign, ChevronRight, CheckCircle2, XCircle } from "lucide-react"; import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { useNavigate } from "react-router-dom"; import { loginUser, registerUser, validatePassword, initAdminUser, isNexoraAuthenticated } from "@/lib/nexora-auth"; import { useToast } from "@/hooks/use-toast"; import nexoraLogo from "@/assets/nexora-logo.png";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, Lock, User, Mail, AtSign, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+import { loginUser, registerUser, validatePassword, initAdminUser, isNexoraAuthenticated } from "@/lib/nexora-auth";
+import { useToast } from "@/hooks/use-toast";
+import nexoraLogo from "@/assets/nexora-logo.png";
 
 type Mode = "login" | "register";
 
-function PasswordStrength({ password }: { password: string }) { const checks = [ { label: "8 caractères minimum",  ok: password.length >= 8 }, { label: "Une lettre",            ok: /[a-zA-Z]/.test(password) }, { label: "Un chiffre",            ok: /[0-9]/.test(password) }, { label: "Un caractère spécial",  ok: /[!@#$%^&*()_+-={};':"\|,.<>/?]/.test(password) }, ]; return ( <div className="mt-1 space-y-1"> {checks.map((c) => ( <div key={c.label} className="flex items-center gap-1.5 text-xs"> {c.ok ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-muted-foreground" />} <span className={c.ok ? "text-green-600" : "text-muted-foreground"}>{c.label}</span> </div> ))} </div> ); }
-
-export default function NexoraLoginPage() { const [mode, setMode]           = useState<Mode>("login"); const [loading, setLoading]     = useState(false); const [pageReady, setPageReady] = useState(false);
-
-const [identifier, setIdentifier]       = useState(""); const [password, setPassword]           = useState(""); const [showPassword, setShowPassword]   = useState(false); const [remember, setRemember]           = useState(false);
-
-const [nomPrenom, setNomPrenom]             = useState(""); const [username, setUsername]               = useState(""); const [email, setEmail]                     = useState(""); const [regPassword, setRegPassword]         = useState(""); const [confirmPassword, setConfirmPassword] = useState(""); const [showRegPassword, setShowRegPassword] = useState(false); const [showConfirm, setShowConfirm]         = useState(false);
-
-const navigate = useNavigate(); const { toast } = useToast();
-
-useEffect(() => { initAdminUser();
-
-if (isNexoraAuthenticated()) {
-  navigate("/dashboard", { replace: true });
-  return;
-}
-
-const ready = setTimeout(() => setPageReady(true), 800);
-return () => clearTimeout(ready);
-
-}, []);
-
-if (!pageReady) return null;
-
-const handleLogin = async (e: React.FormEvent) => { e.preventDefault(); if (!identifier.trim() || !password.trim()) { toast({ title: "Tous les champs sont requis", variant: "destructive" }); return; } setLoading(true); try { const result = await loginUser({ identifier: identifier.trim(), password: password.trim(), remember, }); if (result.success && result.user) { navigate("/dashboard", { replace: true }); } else { toast({ title: "Erreur de connexion", description: result.error, variant: "destructive" }); } } catch { toast({ title: "Erreur réseau", variant: "destructive" }); } finally { setLoading(false); } };
-
-const handleRegister = async (e: React.FormEvent) => { e.preventDefault(); if (!nomPrenom || !username || !email || !regPassword || !confirmPassword) { toast({ title: "Tous les champs sont requis", variant: "destructive" }); return; } if (regPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; } const pwdCheck = validatePassword(regPassword); if (!pwdCheck.valid) { toast({ title: "Mot de passe invalide", description: pwdCheck.error, variant: "destructive" }); return; }
-
-setLoading(true);
-try {
-  const result = await registerUser({
-    nom_prenom: nomPrenom.trim(),
-    username:   username.trim(),
-    email:      email.trim(),
-    password:   regPassword,
-  });
-  if (result.success) {
-    // 🔥 AUTO LOGIN APRÈS REGISTER
-    await loginUser({ identifier: username, password: regPassword });
-    navigate("/dashboard", { replace: true });
-  } else {
-    toast({ title: "Erreur", description: result.error, variant: "destructive" });
-  }
-} catch {
-  toast({ title: "Erreur réseau", variant: "destructive" });
-} finally {
-  setLoading(false);
-}
-
-};
-
-return ( <div className="min-h-screen flex items-center justify-center p-4"> <div className="w-full max-w-sm"> <div className="bg-card border rounded-2xl shadow-lg">
-
-<div className="p-6 text-center">
-        <img src={nexoraLogo} alt="Nexora" className="w-16 mx-auto mb-3" />
-        <h1 className="font-bold text-xl">NEXORA</h1>
-      </div>
-
-      <div className="px-6 pb-6">
-
-        {mode === "login" && (
-          <form onSubmit={handleLogin} className="space-y-4">
-
-            <div>
-              <label htmlFor="identifier" className="text-xs">Username ou Email</label>
-              <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="text-xs">Mot de passe</label>
-              <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button type="button" title="Afficher le mot de passe" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-2">
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
-              </div>
-
-              {/* 🔥 Forgot password ajouté */}
-              <div className="text-right mt-1">
-                <a href="/forgot-password" className="text-xs text-primary hover:underline">
-                  Mot de passe oublié ?
-                </a>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full">
-              {loading ? "Chargement..." : "Se connecter"}
-            </Button>
-          </form>
-        )}
-
-        {mode === "register" && (
-          <form onSubmit={handleRegister} className="space-y-3">
-
-            <Input placeholder="Nom" value={nomPrenom} onChange={(e) => setNomPrenom(e.target.value)} />
-            <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-
-            <Input type="password" placeholder="Mot de passe" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
-            {regPassword && <PasswordStrength password={regPassword} />}
-
-            <Input type="password" placeholder="Confirmer" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-
-            <Button type="submit" className="w-full">
-              {loading ? "Chargement..." : "Créer mon compte"}
-            </Button>
-          </form>
-        )}
-
-      </div>
+function PasswordStrength({ password }: { password: string }) {
+  const checks = [
+    { label: "8 caractères minimum", ok: password.length >= 8 },
+    { label: "Une lettre", ok: /[a-zA-Z]/.test(password) },
+    { label: "Un chiffre", ok: /[0-9]/.test(password) },
+    { label: "Un caractère spécial", ok: /[!@#$%^&*()_+\-={};':"\\|,.<>/?]/.test(password) },
+  ];
+  return (
+    <div className="mt-1 space-y-1">
+      {checks.map((c) => (
+        <div key={c.label} className="flex items-center gap-1.5 text-xs">
+          {c.ok ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-muted-foreground" />}
+          <span className={c.ok ? "text-green-600" : "text-muted-foreground"}>{c.label}</span>
+        </div>
+      ))}
     </div>
-  </div>
-</div>
+  );
+}
 
-); }  }
+export default function NexoraLoginPage() {
+  const [mode, setMode] = useState<Mode>("login");
+  const [loading, setLoading] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
 
-  // ── Login
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
+
+  const [nomPrenom, setNomPrenom] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    initAdminUser();
+    if (isNexoraAuthenticated()) {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    const ready = setTimeout(() => setPageReady(true), 800);
+    return () => clearTimeout(ready);
+  }, []);
+
+  if (!pageReady) return null;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password.trim()) {
@@ -139,7 +79,6 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
           title: `Bienvenue ${result.user.nom_prenom} !`,
           description: result.user.is_admin ? "Connexion administrateur" : "Connexion réussie",
         });
-        // ✅ FIX : navigate direct, pas de setTimeout qui laisse une page blanche
         navigate("/dashboard", { replace: true });
       } else {
         toast({ title: "Erreur de connexion", description: result.error, variant: "destructive" });
@@ -151,7 +90,6 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
     }
   };
 
-  // ── Register
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomPrenom || !username || !email || !regPassword || !confirmPassword) {
@@ -175,9 +113,9 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
     try {
       const result = await registerUser({
         nom_prenom: nomPrenom.trim(),
-        username:   username.trim(),
-        email:      email.trim(),
-        password:   regPassword,
+        username: username.trim(),
+        email: email.trim(),
+        password: regPassword,
       });
       if (result.success) {
         toast({ title: "Compte créé !", description: "Vous pouvez maintenant vous connecter." });
@@ -202,7 +140,7 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
         background: "radial-gradient(ellipse at 60% 40%, hsl(217 89% 96%) 0%, hsl(217 30% 94%) 100%)"
       }}>
 
-      {/* ── Fond décoratif ── */}
+      {/* Fond décoratif */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full opacity-10"
           style={{ background: "hsl(217 89% 40%)" }} />
@@ -215,7 +153,7 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
       <div className="w-full max-w-sm animate-fade-in-up relative z-10">
         <div className="bg-card border border-border rounded-2xl shadow-brand-lg overflow-hidden">
 
-          {/* ── Header logo ── */}
+          {/* Header logo */}
           <div className="bg-primary px-6 py-7 text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border-2 border-white" />
@@ -227,20 +165,18 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
               </div>
               <h1 className="font-display text-2xl font-black text-white tracking-wide">NEXORA</h1>
               <p className="text-white/70 text-xs mt-1">
-                {mode === "login"
-                  ? "Connectez-vous à votre espace"
-                  : "Créez votre compte Nexora"}
+                {mode === "login" ? "Connectez-vous à votre espace" : "Créez votre compte Nexora"}
               </p>
             </div>
           </div>
 
-          {/* ── Onglets ── */}
+          {/* Onglets */}
           <div className="flex border-b border-border">
             <button
               onClick={() => setMode("login")}
               className={`flex-1 py-3 text-sm font-bold transition-colors ${
                 mode === "login"
-                  ? "text-primary border-b-2 border-primary bg-primary-bg"
+                  ? "text-primary border-b-2 border-primary bg-primary/5"
                   : "text-muted-foreground hover:text-foreground"
               }`}>
               Se connecter
@@ -249,7 +185,7 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
               onClick={() => setMode("register")}
               className={`flex-1 py-3 text-sm font-bold transition-colors ${
                 mode === "register"
-                  ? "text-primary border-b-2 border-primary bg-primary-bg"
+                  ? "text-primary border-b-2 border-primary bg-primary/5"
                   : "text-muted-foreground hover:text-foreground"
               }`}>
               S'inscrire
@@ -258,12 +194,9 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
 
           <div className="px-6 py-6">
 
-            {/* ════════════════════════
-                FORMULAIRE CONNEXION
-            ════════════════════════ */}
+            {/* FORMULAIRE CONNEXION */}
             {mode === "login" && (
               <form onSubmit={handleLogin} className="space-y-4">
-
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5" /> Username ou Email
@@ -321,16 +254,12 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
                     <><Lock className="w-4 h-4" /> Se connecter</>
                   )}
                 </Button>
-
               </form>
             )}
 
-            {/* ════════════════════════
-                FORMULAIRE INSCRIPTION
-            ════════════════════════ */}
+            {/* FORMULAIRE INSCRIPTION */}
             {mode === "register" && (
               <form onSubmit={handleRegister} className="space-y-3.5">
-
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5" /> Nom et Prénom *
@@ -433,7 +362,6 @@ return ( <div className="min-h-screen flex items-center justify-center p-4"> <di
                     <><ChevronRight className="w-4 h-4" /> Créer mon compte</>
                   )}
                 </Button>
-
               </form>
             )}
 
