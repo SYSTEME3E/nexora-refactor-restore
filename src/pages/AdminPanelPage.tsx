@@ -22,9 +22,9 @@ interface NexoraUser {
   email: string;
   avatar_url: string | null;
   is_admin: boolean;
-  plan: "gratuit" | "boss" | "roi" | "admin";
+  plan: string;
   badge_premium: boolean;
-  status: "actif" | "suspendu" | "bloque";
+  status: string;
   created_at: string;
   premium_since: string | null;
   premium_expires_at: string | null;
@@ -41,7 +41,7 @@ interface Boutique {
 interface EpargneAccount {
   id: string;
   user_id: string;
-  status: "en_attente" | "approuve" | "rejete";
+  status: string;
   solde: number;
   created_at: string;
   nexora_users?: { nom_prenom: string; email: string };
@@ -51,7 +51,7 @@ interface Retrait {
   id: string;
   user_id: string;
   montant: number;
-  statut: "en_attente" | "valide" | "rejete";
+  statut: string;
   created_at: string;
   nexora_users?: { nom_prenom: string; email: string };
 }
@@ -109,17 +109,15 @@ export default function AdminPanelPage() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [uRes, bRes, accRes, retRes] = await Promise.all([
+      const [uRes, bRes] = await Promise.all([
         supabase.from("nexora_users").select("*").order("created_at", { ascending: false }),
         supabase.from("boutiques").select("*"),
-        supabase.from("epargne_accounts").select("*, nexora_users(nom_prenom, email)").eq("status", "en_attente"),
-        supabase.from("epargnes").select("*, nexora_users(nom_prenom, email)").order("created_at", { ascending: false })
       ]);
 
-      setUsers(uRes.data || []);
+      setUsers((uRes.data || []) as any);
       setBoutiques(bRes.data || []);
-      setDemandesActivation(accRes.data || []);
-      setRetraits(retRes.data || []);
+      setDemandesActivation([]);
+      setRetraits([]);
       
       setStats({
         totalUsers: uRes.data?.length || 0,
@@ -136,31 +134,11 @@ export default function AdminPanelPage() {
 
   // ── Actions Épargne
   const handleApproveAccount = async (id: string, userId: string) => {
-    const { error } = await supabase.from("epargne_accounts").update({ status: "approuve" }).eq("id", id);
-    if (!error) {
-      await sendNotification(userId, "Épargne Activée", "Votre compte épargne est maintenant actif.", "success");
-      toast({ title: "Compte approuvé" });
-      loadAll();
-    }
+    toast({ title: "Fonctionnalité en cours de développement" });
   };
 
   const handleApproveRetrait = async (retrait: Retrait) => {
-    const penalite = retrait.montant * 0.10;
-    const net = retrait.montant - penalite;
-    
-    if (!confirm(`Confirmer le retrait de ${fmtMoney(retrait.montant)} ?\nNet à verser (après -10%) : ${fmtMoney(net)}`)) return;
-
-    const { error } = await supabase.from("epargnes").update({ 
-      statut: "valide", 
-      montant_final: net,
-      frais_retenus: penalite 
-    }).eq("id", retrait.id);
-
-    if (!error) {
-      await sendNotification(retrait.user_id, "Retrait Effectué", `Votre retrait de ${fmtMoney(net)} a été validé.`, "success");
-      toast({ title: "Retrait validé" });
-      loadAll();
-    }
+    toast({ title: "Fonctionnalité en cours de développement" });
   };
 
   const sendNotification = async (userId: string, titre: string, message: string, type = "info") => {

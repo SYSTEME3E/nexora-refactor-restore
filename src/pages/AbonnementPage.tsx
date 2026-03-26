@@ -51,7 +51,7 @@ export default function AbonnementPage() {
   const handlePaymentSuccess = async (plan: string) => {
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("nexora_users")
         .update({ plan: plan.toLowerCase() })
         .eq("id", user?.id);
 

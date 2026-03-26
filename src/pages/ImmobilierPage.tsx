@@ -62,11 +62,8 @@ export default function ImmobilierPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("annonces")
-        .select(`
-          *,
-          profiles:user_id (nom, avatar_url, avg_rating, plan)
-        `);
+        .from("nexora_annonces_immo")
+        .select("*");
 
       if (error) throw error;
 
