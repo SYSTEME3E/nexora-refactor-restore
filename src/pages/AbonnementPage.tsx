@@ -1,15 +1,17 @@
 import { useState } from "react";
-import AppLayout from "@/components/AppLayout";
+import AppLayout from "@/components/AppLayout"; // Corrigé: import au lieu de importer
 import { getNexoraUser } from "@/lib/nexora-auth";
-import { supabase } from "@/integrations/supabase/client";
-import KkiapayPayment from "@/components/KkiapayPayment";
+import { payAndRedirect } from "@/lib/Moneroo";
 import {
   Crown, Check, X, Zap, ShieldCheck, Star, Sparkles,
   TrendingUp, Store, PiggyBank, ArrowLeftRight, Home,
   BadgeCheck, ChevronDown, ChevronUp, Lock, Wallet
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+
+// ─────────────────────────────────────────────
+// DONNÉES DE COMPARAISON
+// ─────────────────────────────────────────────
 
 const FEATURES_COMPARE = [
   {
@@ -18,153 +20,175 @@ const FEATURES_COMPARE = [
     items: [
       { label: "Entrées & Dépenses",     gratuit: "10 / mois",       premium: "Illimité" },
       { label: "Historique financier",   gratuit: "7 jours",        premium: "Illimité" },
-      { label: "Factures",                gratuit: "10 factures",    premium: "Illimité" },
-      { label: "Prêts & Dettes",          gratuit: "10 prêts",        premium: "Illimité" },
+      { label: "Factures",               gratuit: "10 factures",    premium: "Illimité" },
+      { label: "Prêts & Dettes",         gratuit: "10 prêts",        premium: "Illimité" },
+      { label: "Investissements",        gratuit: "Avancé",        premium: "Avancé" },
     ],
   },
   {
-    categorie: "Nexora Shop (Boutique)",
+    categorie: "Épargne NEXORA",
+    icon: Wallet,
+    items: [
+      { label: "Accès à l'épargne",      gratuit: true,              premium: true },
+      { label: "Épargne Libre",          gratuit: true,              premium: true },
+      { label: "Plans bloqués (6m-3ans)", gratuit: true,             premium: true },
+      { label: "Retraits Mobile Money",  gratuit: true,             premium: true },
+      { label: "Historique épargne",     gratuit: true,             premium: true },
+    ],
+  },
+  {
+    categorie: "Nexora Shop",
     icon: Store,
     items: [
-      { label: "Accès boutique",          gratuit: true,              premium: true },
-      { label: "Produits physiques",      gratuit: "5 produits",      premium: "Illimité" },
-      { label: "Visibilité produits",     gratuit: "Normale",         premium: "Prioritaire" },
+      { label: "Accès boutique",         gratuit: true,              premium: true },
+      { label: "Produits physiques",     gratuit: true,      premium: "Illimité" },
+      { label: "Produits digitaux",      gratuit: true,             premium: true },
+      { label: "Gestion commandes",      gratuit: true,             premium: true },
+      { label: "Facebook Pixel",         gratuit: true,             premium: true },
+      { label: "Domaine personnalisé",   gratuit: true,             premium: true },
     ],
   },
   {
-    categorie: "Marché Immobilier",
-    icon: Home,
+    categorie: "Nexora Transfert",
+    icon: ArrowLeftRight,
     items: [
-      { label: "Accès au marché",         gratuit: true,              premium: true },
-      { label: "Annonces immobilières",   gratuit: "2 annonces",      premium: "Illimité" },
-      { label: "Badge Confiance",         gratuit: false,             premium: true },
+      { label: "Transfert inter-pays",   gratuit: false,             premium: true },
+      { label: "24 pays africains",      gratuit: false,             premium: true },
+      { label: "Tous réseaux Mobile Money", gratuit: false,          premium: true },
+      { label: "Factures PDF",           gratuit: false,             premium: true },
     ],
-  }
+  },
 ];
 
+// ─────────────────────────────────────────────
+// COMPOSANTS INTERNES
+// ─────────────────────────────────────────────
+
+function FeatureValue({ value }: { value: boolean | string }) {
+  if (value === true)  return <Check className="w-5 h-5 text-emerald-500 mx-auto" />;
+  if (value === false) return <X className="w-4 h-4 text-muted-foreground/40 mx-auto" />;
+  return <span className="text-xs font-semibold text-foreground">{value}</span>;
+}
+
+function FAQItem({ question, reponse }: { question: string; reponse: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden mb-3">
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-muted/40 transition-colors">
+        <span className="font-semibold text-sm text-foreground">{question}</span>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="px-5 pb-4 border-t border-border pt-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">{reponse}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PAGE PRINCIPALE
+// ─────────────────────────────────────────────
+
 export default function AbonnementPage() {
-  const user = getNexoraUser();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const navigate    = useNavigate();
+  const user        = getNexoraUser();
+  const currentPlan = user?.plan || "gratuit";
+  const isPremium   = currentPlan !== "gratuit";
   const [openCat, setOpenCat] = useState<string | null>("Finance personnelle");
 
-  const handlePaymentSuccess = async (plan: string) => {
+  // Fonction pour gérer l'achat
+  const handleUpgrade = async () => {
     try {
-      const { error } = await supabase
-        .from("nexora_users")
-        .update({ plan: plan.toLowerCase() })
-        .eq("id", user?.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Félicitations !",
-        description: `Vous êtes maintenant membre ${plan}. Redémarrage en cours...`,
+      await payAndRedirect({
+        type: "abonnement_premium",
+        amount: 7440, // 12$ en FCFA (Taux 620)
       });
-      
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (err) {
-      toast({
-        title: "Erreur",
-        description: "Le paiement a réussi mais la mise à jour du profil a échoué. Contactez le support.",
-        variant: "destructive"
-      });
+    } catch (error) {
+      console.error("Erreur d'initialisation du paiement:", error);
     }
-  };
-
-  const FeatureValue = ({ value }: { value: string | boolean }) => {
-    if (typeof value === "boolean") {
-      return value ? <Check className="w-4 h-4 text-green-500 mx-auto" /> : <X className="w-4 h-4 text-red-400 mx-auto" />;
-    }
-    return <span className="text-[11px] font-medium">{value}</span>;
   };
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto pb-24 px-4 pt-6 space-y-8">
-        
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter">Nexora Premium</h1>
-          <p className="text-muted-foreground text-sm font-medium">Débloquez la puissance totale de votre gestion.</p>
+      <div className="max-w-3xl mx-auto space-y-8 pb-20">
+
+        {/* HERO SECTION */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 p-8 text-white text-center shadow-2xl">
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-black uppercase mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+              Nexora Premium
+            </div>
+            <h1 className="text-4xl font-black mb-3">Passez à la vitesse supérieure</h1>
+            <p className="text-white/60 text-sm max-w-sm mx-auto">
+              Un seul abonnement pour débloquer l'immobilier, le transfert et la boutique illimitée.
+            </p>
+          </div>
         </div>
 
-        {/* Plans */}
-        <div className="grid grid-cols-1 gap-4">
-          
-          {/* Plan BOSS */}
-          <div className="bg-white border-2 border-slate-100 rounded-[32px] p-6 shadow-sm hover:border-primary/20 transition-all">
-            <div className="flex justify-between items-start mb-6">
-              <div className="bg-primary/10 p-3 rounded-2xl text-primary">
-                <Zap className="w-6 h-6" />
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mensuel</span>
-                <p className="text-2xl font-black italic">6.000 FCFA</p>
-              </div>
+        {/* CARTES DE PRIX */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Plan Gratuit */}
+          <div className="bg-card border-2 border-border rounded-3xl p-6 flex flex-col opacity-80">
+            <h3 className="text-lg font-black mb-1 text-foreground">Gratuit</h3>
+            <p className="text-xs text-muted-foreground mb-4">Découverte de l'écosystème</p>
+            <div className="mb-6">
+              <span className="text-4xl font-black text-foreground">0</span>
+              <span className="text-sm text-muted-foreground ml-1">FCFA / mois</span>
             </div>
-            <h2 className="text-xl font-black mb-2 uppercase italic">Plan BOSS</h2>
-            <p className="text-xs text-slate-500 mb-6 font-medium">Idéal pour les particuliers qui veulent une gestion sérieuse.</p>
-            
-            <KkiapayPayment 
-              amount={6000} 
-              reason="Abonnement Nexora BOSS" 
-              onSuccess={() => handlePaymentSuccess("BOSS")} 
-            />
+            <button disabled className="w-full py-3 bg-muted text-muted-foreground font-bold rounded-xl text-sm mb-4">
+              {currentPlan === "gratuit" ? "Plan actuel" : "Inclus par défaut"}
+            </button>
           </div>
 
-          {/* Plan ROI */}
-          <div className="bg-slate-900 border-2 border-slate-800 rounded-[32px] p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-amber-400 text-black text-[9px] font-black px-4 py-1 rounded-bl-xl uppercase tracking-tighter">
-              Recommandé
+          {/* Plan Premium */}
+          <div className="relative bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 flex flex-col shadow-xl border-2 border-indigo-500/30">
+            <div className="absolute top-4 right-4 bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-md">HOT</div>
+            <h3 className="text-lg font-black text-white mb-1">Premium</h3>
+            <p className="text-xs text-white/50 mb-4">Puissance & Liberté</p>
+            <div className="mb-6">
+              <span className="text-4xl font-black text-white">12</span>
+              <span className="text-sm text-white/50 ml-1">$ / mois</span>
+              <p className="text-[10px] text-white/30 mt-1">≈ 7 440 FCFA via Mobile Money</p>
             </div>
-            <div className="flex justify-between items-start mb-6">
-              <div className="bg-amber-400 p-3 rounded-2xl text-black">
-                <Crown className="w-6 h-6" />
-              </div>
-              <div className="text-right text-white">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mensuel</span>
-                <p className="text-2xl font-black italic text-amber-400">12.000 FCFA</p>
-              </div>
-            </div>
-            <h2 className="text-xl font-black mb-2 uppercase italic text-white">Plan ROI</h2>
-            <p className="text-xs text-slate-300 mb-6 font-medium">Le contrôle absolu pour les entrepreneurs et investisseurs.</p>
-            
-            <KkiapayPayment 
-              amount={12000} 
-              reason="Abonnement Nexora ROI" 
-              onSuccess={() => handlePaymentSuccess("ROI")} 
-            />
+            <button
+              onClick={handleUpgrade}
+              disabled={isPremium}
+              className={`w-full py-4 font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
+                isPremium 
+                ? "bg-white/10 text-white/40 cursor-default" 
+                : "bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:scale-[1.02] shadow-lg shadow-orange-500/20"
+              }`}
+            >
+              {isPremium ? <><BadgeCheck className="w-4 h-4" /> Plan Actif</> : <><Zap className="w-4 h-4" /> Devenir Premium</>}
+            </button>
           </div>
-
         </div>
 
-        {/* Comparatif */}
+        {/* COMPARAISON DÉTAILLÉE (ACCORDÉON) */}
         <div className="space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-center text-slate-400 py-4">Comparatif des fonctionnalités</h3>
-          {FEATURES_COMPARE.map((cat) => {
+          <h2 className="text-xl font-black text-center">Ce qui est inclus</h2>
+          {FEATURES_COMPARE.map(cat => {
             const Icon = cat.icon;
             const isOpen = openCat === cat.categorie;
             return (
-              <div key={cat.categorie} className="bg-white border border-slate-100 rounded-[24px] overflow-hidden shadow-sm">
+              <div key={cat.categorie} className="bg-card border border-border rounded-2xl overflow-hidden">
                 <button onClick={() => setOpenCat(isOpen ? null : cat.categorie)}
-                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-slate-50 transition-colors">
-                  <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><Icon className="w-4 h-4" /></div>
-                  <span className="font-black text-[13px] uppercase flex-1 text-left tracking-tight">{cat.categorie}</span>
-                  {isOpen ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />}
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors">
+                  <Icon className="w-5 h-5 text-indigo-500" />
+                  <span className="font-bold text-sm flex-1 text-left">{cat.categorie}</span>
+                  {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {isOpen && (
-                  <div className="border-t border-slate-50 bg-slate-50/30">
-                    <div className="grid grid-cols-3 gap-2 px-5 py-2 text-[9px] font-black uppercase text-slate-400">
-                      <span>Fonction</span>
-                      <div className="text-center">Gratuit</div>
-                      <div className="text-center text-primary">ROI / BOSS</div>
-                    </div>
+                  <div className="border-t border-border bg-muted/10">
                     {cat.items.map((item, i) => (
-                      <div key={item.label} className={`grid grid-cols-3 gap-2 px-5 py-3 text-xs items-center ${i % 2 === 0 ? "bg-white/50" : ""}`}>
-                        <span className="text-slate-600 font-medium">{item.label}</span>
+                      <div key={item.label} className={`grid grid-cols-3 gap-2 px-5 py-3 text-xs items-center ${i % 2 === 0 ? "bg-muted/20" : ""}`}>
+                        <span className="text-muted-foreground">{item.label}</span>
                         <div className="text-center"><FeatureValue value={item.gratuit} /></div>
-                        <div className="text-center font-black text-slate-900"><FeatureValue value={item.premium} /></div>
+                        <div className="text-center font-bold text-indigo-600"><FeatureValue value={item.premium} /></div>
                       </div>
                     ))}
                   </div>
@@ -174,6 +198,18 @@ export default function AbonnementPage() {
           })}
         </div>
 
+        {/* FAQ */}
+        <div className="pt-8">
+          <h2 className="text-xl font-black text-center mb-6">Questions fréquentes</h2>
+          <FAQItem 
+            question="Comment payer l'abonnement ?" 
+            reponse="Le paiement s'effectue par Mobile Money (MTN, Moov, Orange, Wave). Une fois le paiement validé sur votre téléphone, votre compte passe Premium instantanément." 
+          />
+          <FAQItem 
+            question="Puis-je annuler mon abonnement ?" 
+            reponse="Oui, Nexora est sans engagement. Vous pouvez arrêter quand vous voulez depuis votre profil." 
+          />
+        </div>
       </div>
     </AppLayout>
   );

@@ -4,6 +4,7 @@ import { ArrowLeft, Package, ShoppingCart, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/lib/shop-cart";
+import SectionAvis from "@/pages/boutique/SectionAvis";
 
 interface Variation {
   nom: string;
@@ -317,6 +318,9 @@ export default function ProduitDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Section Avis */}
+        <SectionAvis produitId={produit.id} nomItem={produit.nom} />
       </div>
     </div>
   );

@@ -39,7 +39,11 @@ import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
+import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
+
+// Landing
+import LandingPage from "@/pages/LandingPage";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
@@ -124,7 +128,7 @@ const App = () => (
               <NexoraLoginPage />
             </PageLoader>
           } />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           {/* Routes Protégées Standard */}
           <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
@@ -158,6 +162,7 @@ const App = () => (
           <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
           <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
+          <Route path="/immobilier/annonce/:annonceId"     element={<AnnonceDetailPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
