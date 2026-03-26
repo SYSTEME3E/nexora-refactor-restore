@@ -72,8 +72,8 @@ export default function ProduitsPage() {
       setBoutique(b);
       const { data: p } = await supabase.from("produits").select("*").eq("boutique_id", b.id).order("created_at", { ascending: false });
       if (p) {
-        setProduitsPhysiques(p.filter(x => x.type === "physique"));
-        setProduitsDigitaux(p.filter(x => x.type === "numerique"));
+        setProduitsPhysiques(p.filter(x => x.type === "physique") as any);
+        setProduitsDigitaux(p.filter(x => x.type === "numerique") as any);
       }
     }
     setLoading(false);

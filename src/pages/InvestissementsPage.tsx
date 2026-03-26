@@ -37,15 +37,8 @@ export default function EpargneNexoraPage() {
 
   const checkUserAccess = async () => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("is_savings_enabled")
-        .eq("id", user?.id)
-        .single();
-
-      if (data?.is_savings_enabled) {
-        setIsAuthorized(true);
-      }
+      // Épargne is always accessible
+      setIsAuthorized(true);
     } catch (err) {
       console.error(err);
     } finally {

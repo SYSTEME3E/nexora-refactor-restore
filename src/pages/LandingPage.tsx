@@ -5,7 +5,7 @@ import {
   ShieldCheck, Zap, Globe, MessageSquare, 
   ArrowRight, Star, Facebook, Twitter, Instagram, 
   Mail, Phone, TrendingUp, Store, Home, Wallet, 
-  Lock, PieChart, ShoppingBag, Landmark, Download
+  Lock, PieChart, ShoppingBag, Landmark, Download, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
