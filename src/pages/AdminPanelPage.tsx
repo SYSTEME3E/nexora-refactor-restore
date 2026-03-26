@@ -22,7 +22,7 @@ interface NexoraUser {
   email: string;
   avatar_url: string | null;
   is_admin: boolean;
-  plan: "gratuit" | "boss" | "roi" | "admin";
+  plan: "gratuit" | "premium" | "admin";
   badge_premium: boolean;
   is_active: boolean;
   status: "actif" | "suspendu" | "bloque";
@@ -71,7 +71,7 @@ interface Commande {
   created_at: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs";
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs" | "messages";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
@@ -93,8 +93,7 @@ const STATUS_CONFIG = {
 
 const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   gratuit: { label: "Gratuit", color: "text-gray-600",   bg: "bg-gray-100"   },
-  boss:    { label: "Boss",    color: "text-blue-700",    bg: "bg-blue-100"   },
-  roi:     { label: "Roi",     color: "text-violet-700",  bg: "bg-violet-100" },
+  premium: { label: "Premium", color: "text-blue-700",   bg: "bg-blue-100"   },
   admin:   { label: "Admin",   color: "text-amber-700",  bg: "bg-amber-100"  },
 };
 
@@ -132,6 +131,7 @@ export default function AdminPanelPage() {
   const [produits,  setProduits]  = useState<Produit[]>([]);
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [logs,      setLogs]      = useState<any[]>([]);
+  const [contactMessages, setContactMessages] = useState<any[]>([]);
 
   // ── Filters
   const [searchUser,       setSearchUser]       = useState("");
@@ -181,12 +181,14 @@ export default function AdminPanelPage() {
         { data: produitsData },
         { data: commandesData },
         { data: logsData },
+        { data: messagesData },
       ] = await Promise.all([
         supabase.from("nexora_users" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("boutiques" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("produits" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("commandes" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("nexora_logs" as any).select("*, nexora_users(nom_prenom, username)").order("created_at", { ascending: false }).limit(100),
+        supabase.from("nexora_contact_messages" as any).select("*").order("created_at", { ascending: false }),
       ]);
 
       const u = (usersData as unknown as NexoraUser[]) || [];
@@ -200,12 +202,13 @@ export default function AdminPanelPage() {
       setProduits(p);
       setCommandes(c);
       setLogs((logsData as any[]) || []);
+      setContactMessages((messagesData as any[]) || []);
 
       const ca = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
 
       setStats({
         totalUsers: u.length,
-        premiumUsers: u.filter(x => x.plan === "boss" || x.plan === "roi").length,
+        premiumUsers: u.filter(x => x.plan === "premium").length,
         gratuitUsers: u.filter(x => x.plan === "gratuit").length,
         adminUsers: u.filter(x => x.is_admin).length,
         activeUsers: u.filter(x => x.status === "actif").length,
@@ -217,7 +220,7 @@ export default function AdminPanelPage() {
         totalCommandes: c.length,
         chiffreAffairesTotal: ca,
         newUsersToday: u.filter(x => new Date(x.created_at).toDateString() === today).length,
-        newPremiumToday: u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
+        newPremiumToday: u.filter(x => x.plan === "premium" && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
       });
     } catch (err) {
       toast({ title: "Erreur de chargement", variant: "destructive" });
@@ -301,7 +304,7 @@ export default function AdminPanelPage() {
           const days = parseInt(premiumDays) || 30;
           const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
           await supabase.from("nexora_users" as any).update({
-            plan: "roi", badge_premium: true,
+            plan: "premium", badge_premium: true,
             premium_since: new Date().toISOString(),
             premium_expires_at: expiresAt,
           }).eq("id", target.id);
@@ -394,6 +397,7 @@ export default function AdminPanelPage() {
     { id: "users",       label: "Utilisateurs",  icon: Users     },
     { id: "boutiques",   label: "Boutiques",     icon: Store     },
     { id: "abonnements", label: "Abonnements",   icon: Crown     },
+    { id: "messages",    label: "Messages",      icon: Bell      },
     { id: "logs",        label: "Logs",          icon: Activity  },
   ];
 
@@ -631,7 +635,7 @@ export default function AdminPanelPage() {
                     </div>
                     {isExpanded && (
                       <div className="border-t border-border bg-muted/30 p-4 space-y-4">
-                        {(user.plan === "boss" || user.plan === "roi") && (
+                        {(user.plan === "premium") && (
                           <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-sm">
                             <p className="font-semibold text-violet-700 mb-1">Premium</p>
                             <p className="text-xs text-violet-600">Depuis : {fmtDate(user.premium_since)}</p>
@@ -674,13 +678,13 @@ export default function AdminPanelPage() {
                           </div>
                         )}
                         <div className="flex flex-wrap gap-2">
-                          {user.plan !== "boss" && user.plan !== "roi" && !user.is_admin && (
+                          {user.plan !== "premium" && !user.is_admin && (
                             <button onClick={() => { setActionModal({ type: "activer_premium", target: user, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
                               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 font-medium transition-colors">
                               <Crown className="w-3.5 h-3.5" /> Activer Premium
                             </button>
                           )}
-                          {(user.plan === "boss" || user.plan === "roi") && (
+                          {(user.plan === "premium") && (
                             <button onClick={() => { setActionModal({ type: "retirer_premium", target: user, targetType: "user" }); setActionReason(""); }}
                               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium transition-colors">
                               <UserX className="w-3.5 h-3.5" /> Retirer Premium
@@ -860,9 +864,9 @@ export default function AdminPanelPage() {
               </div>
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Comptes Premium</p>
-            {users.filter(u => u.plan === "boss" || u.plan === "roi").length === 0 ? (
+            {users.filter(u => u.plan === "premium").length === 0 ? (
               <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl text-sm">Aucun utilisateur premium</div>
-            ) : users.filter(u => u.plan === "boss" || u.plan === "roi").map(user => (
+            ) : users.filter(u => u.plan === "premium").map(user => (
               <div key={user.id} className="bg-card border border-violet-200 rounded-xl p-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-sm flex-shrink-0">
                   {user.nom_prenom.slice(0, 2).toUpperCase()}
@@ -902,6 +906,51 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── LOGS ── */}
+        {/* ── MESSAGES CONTACT ── */}
+        {tab === "messages" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{contactMessages.length} messages reçus</p>
+            {contactMessages.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Aucun message pour le moment</p>
+              </div>
+            ) : contactMessages.map((msg: any) => (
+              <div key={msg.id} className={`bg-card border rounded-xl px-4 py-4 ${msg.lu ? "border-border" : "border-blue-300 bg-blue-50/30"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-bold">{msg.nom}</span>
+                      <span className="text-xs text-muted-foreground">{msg.email}</span>
+                      {!msg.lu && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Nouveau</span>}
+                    </div>
+                    <p className="text-xs font-semibold text-primary mb-1">{msg.sujet}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{msg.message}</p>
+                    <p className="text-[10px] text-muted-foreground mt-2">{fmtDatetime(msg.created_at)}</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {!msg.lu && (
+                      <Button size="sm" variant="outline" className="text-xs h-7" onClick={async () => {
+                        await supabase.from("nexora_contact_messages" as any).update({ lu: true }).eq("id", msg.id);
+                        loadAll();
+                      }}>Lu</Button>
+                    )}
+                    <Button size="sm" variant="outline" className="text-xs h-7 text-red-600 hover:bg-red-50" onClick={async () => {
+                      if (confirm("Supprimer ce message ?")) {
+                        await supabase.from("nexora_contact_messages" as any).delete().eq("id", msg.id);
+                        toast({ title: "Message supprimé" });
+                        loadAll();
+                      }
+                    }}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {tab === "logs" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
