@@ -138,22 +138,7 @@ export default function AdminPanelPage() {
   };
 
   const handleApproveRetrait = async (retrait: Retrait) => {
-    const penalite = retrait.montant * 0.10;
-    const net = retrait.montant - penalite;
-    
-    if (!confirm(`Confirmer le retrait de ${fmtMoney(retrait.montant)} ?\nNet à verser (après -10%) : ${fmtMoney(net)}`)) return;
-
-    const { error } = await supabase.from("epargnes").update({ 
-      statut: "valide", 
-      montant_final: net,
-      frais_retenus: penalite 
-    }).eq("id", retrait.id);
-
-    if (!error) {
-      await sendNotification(retrait.user_id, "Retrait Effectué", `Votre retrait de ${fmtMoney(net)} a été validé.`, "success");
-      toast({ title: "Retrait validé" });
-      loadAll();
-    }
+    toast({ title: "Fonctionnalité en cours de développement" });
   };
 
   const sendNotification = async (userId: string, titre: string, message: string, type = "info") => {
