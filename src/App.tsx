@@ -162,6 +162,7 @@ const App = () => (
           <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
           <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
+          <Route path="/immobilier/annonce/:annonceId"     element={<AnnonceDetailPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
