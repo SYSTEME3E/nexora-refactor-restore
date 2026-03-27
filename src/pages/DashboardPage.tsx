@@ -99,7 +99,7 @@ export default function DashboardPage() {
       nbCoffre: coffreResult.data?.length || 0,
       nbLiens: liensResult.data?.length || 0,
       nbPrets: (pretsResult.data as any)?.length || 0,
-      nbInvest: (investResult.data as any)?.length || 0,
+      nbInvest: 0,
       dernièresDepenses: deps.slice(0, 4),
       dernièresEntrees: ents.slice(0, 4),
     });
