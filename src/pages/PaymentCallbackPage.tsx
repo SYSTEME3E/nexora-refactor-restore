@@ -26,7 +26,7 @@ export default function PaymentCallbackPage() {
         setTimeout(() => {
           if (result.type === "abonnement") navigate("/abonnement");
           else if (result.type === "transfert") navigate("/transfert");
-          else if (result.type === "epargne") navigate("/investissements");
+          else if (result.type === "epargne") navigate("/dashboard");
           else navigate("/dashboard");
         }, 3000);
       } else {

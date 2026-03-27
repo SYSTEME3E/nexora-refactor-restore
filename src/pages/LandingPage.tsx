@@ -849,12 +849,12 @@ export default function LandingPage() {
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-gray-600">© {new Date().getFullYear()} NEXORA. Tous droits réservés.</p>
-            <div className="flex items-center gap-6 text-xs text-gray-600">
-              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors">CGU</button>
-              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors">Confidentialité</button>
-              <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Paiements sécurisés</span>
+            <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center text-xs text-gray-600">
+              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors whitespace-nowrap">CGU</button>
+              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors whitespace-nowrap">Confidentialité</button>
+              <span className="flex items-center gap-1.5 whitespace-nowrap"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Paiements sécurisés</span>
             </div>
           </div>
         </div>

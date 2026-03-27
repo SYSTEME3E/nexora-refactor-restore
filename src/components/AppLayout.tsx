@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
-  Search, ChevronRight, TrendingUp, History,
-  HandCoins, PiggyBank, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight // ✅ Import ajouté
+  Search, ChevronRight, TrendingUp, History, Home,
+  HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
+  ShieldCheck, ArrowLeftRight
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
 import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession, type NexoraPlan } from "@/lib/nexora-auth";
@@ -15,15 +15,12 @@ import NexoraNotifications from "@/components/NexoraNotifications";
 
 const getNavItems = (isAdmin: boolean) => {
   const items = [
+    { path: "/",                 icon: Home,            label: "Accueil",             color: "text-indigo-400",  bg: "bg-indigo-400/10"  },
     { path: "/dashboard",        icon: LayoutDashboard, label: "Tableau de bord",    color: "text-red-400",     bg: "bg-red-400/10"      },
     { path: "/entrees-depenses", icon: TrendingUp,      label: "Entrées & Dépenses", color: "text-green-400",   bg: "bg-green-400/10"   },
     { path: "/historique",       icon: History,          label: "Historique",          color: "text-accent",      bg: "bg-accent/10"      },
-    
-    // ✅ Nouveau : Nexora Transfert ajouté ici
     { path: "/transfert",        icon: ArrowLeftRight,   label: "Nexora Transfert",   color: "text-violet-400",  bg: "bg-violet-400/10"  },
-    
     { path: "/prets",            icon: HandCoins,        label: "Prêts & Dettes",      color: "text-orange-300",  bg: "bg-orange-300/10"  },
-    { path: "/investissements",  icon: PiggyBank,        label: "Épargne",             color: "text-emerald-300", bg: "bg-emerald-300/10" },
     { path: "/factures",         icon: Receipt,          label: "Factures",            color: "text-purple-300",  bg: "bg-purple-300/10"  },
     { path: "/coffre-fort",      icon: Lock,             label: "Coffre-fort",         color: "text-yellow-300",  bg: "bg-yellow-300/10"  },
     { path: "/liens",            icon: Link2,            label: "Liens & Contacts",    color: "text-green-300",   bg: "bg-green-300/10"   },

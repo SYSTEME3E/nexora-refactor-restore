@@ -1,14 +1,7 @@
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Déclaration pour TypeScript car le script est chargé via CDN
-declare global {
-  interface Window {
-    openKkiapayWidget: (config: any) => void;
-    addKkiapayListener: (event: string, callback: (data: any) => void) => void;
-    removeKkiapayListener: (event: string) => void;
-  }
-}
+// Types handled via global declarations elsewhere
 
 interface KkiapayProps {
   amount: number;

@@ -4,7 +4,7 @@ import { formatAmount, convertAmount } from "@/lib/app-utils";
 import AppLayout from "@/components/AppLayout";
 import {
   TrendingUp, TrendingDown, History, Clock,
-  ArrowUpRight, PiggyBank, HandCoins, Lock,
+  ArrowUpRight, HandCoins, Lock, Home,
   Store, BadgeCheck, Zap
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -78,14 +78,13 @@ export default function DashboardPage() {
 
     const userId = nexoraUser?.id;
     if (!userId) { setLoading(false); return; }
-    const [depResult, entResult, coffreResult, liensResult, pretsResult, investResult] =
+    const [depResult, entResult, coffreResult, liensResult, pretsResult] =
       await Promise.all([
         supabase.from("depenses" as any).select("montant, devise, date_depense, titre, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("entrees" as any).select("montant, devise, date_entree, titre, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("coffre_fort" as any).select("id").eq("user_id", userId),
         supabase.from("liens_contacts" as any).select("id").eq("user_id", userId),
         supabase.from("prets" as any).select("id").eq("user_id", userId).eq("statut", "en_attente"),
-        supabase.from("investissements" as any).select("id").eq("user_id", userId).eq("statut", "actif"),
       ]);
 
     const deps = depResult.data || [];
@@ -100,7 +99,7 @@ export default function DashboardPage() {
       nbCoffre: coffreResult.data?.length || 0,
       nbLiens: liensResult.data?.length || 0,
       nbPrets: (pretsResult.data as any)?.length || 0,
-      nbInvest: (investResult.data as any)?.length || 0,
+      nbInvest: 0,
       dernièresDepenses: deps.slice(0, 4),
       dernièresEntrees: ents.slice(0, 4),
     });
@@ -314,15 +313,15 @@ export default function DashboardPage() {
         ══════════════════════════ */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           <Link
-            to="/investissements"
-            className="bg-emerald-50 border border-emerald-200 rounded-xl card-hover flex flex-col items-center justify-center text-center"
+            to="/"
+            className="bg-indigo-50 border border-indigo-200 rounded-xl card-hover flex flex-col items-center justify-center text-center"
             style={{ padding: "10px 6px" }}>
-            <PiggyBank style={{ width: 18, height: 18, color: "#059669" }} />
-            <div className="font-semibold text-emerald-700" style={{ fontSize: "10px", marginTop: "4px" }}>
-              Épargne
+            <Home style={{ width: 18, height: 18, color: "#6366f1" }} />
+            <div className="font-semibold text-indigo-700" style={{ fontSize: "10px", marginTop: "4px" }}>
+              Accueil
             </div>
-            <div className="font-display font-black text-emerald-700" style={{ fontSize: "18px", marginTop: "2px" }}>
-              {loading ? "—" : stats.nbInvest}
+            <div className="font-display font-black text-indigo-700" style={{ fontSize: "18px", marginTop: "2px" }}>
+              →
             </div>
           </Link>
 

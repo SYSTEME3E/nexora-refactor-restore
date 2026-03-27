@@ -256,6 +256,7 @@ export default function VitrinePage() {
     }).select().single();
 
     if (!error && cmd) {
+      const createdCmd = cmd as any;
       for (const item of panier) {
         if (!item.produit.stock_illimite && item.produit.type === "physique") {
           await supabase.from("produits" as any)
@@ -268,12 +269,13 @@ export default function VitrinePage() {
         value: totalPanier, currency: boutique.devise, num_items: nbArticles,
       });
 
-      setCommandeNumero(numero);
-      setCommandeSuccess(true);
       setPanier([]);
       if (slug) clearCart(slug);
       setShowCheckout(false);
       setSearchParams({});
+
+      // Redirect to tracking page
+      navigate(`/commande/${createdCmd.id}`);
     } else if (error) {
       toast({ title: "Commande impossible", description: error.message, variant: "destructive" });
     }

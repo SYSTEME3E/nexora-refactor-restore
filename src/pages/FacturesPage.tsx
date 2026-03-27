@@ -81,21 +81,17 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
   const noir: [number,number,number] = [15,23,42];
   const grisLight: [number,number,number] = [241,245,249];
 
-  // ── HEADER: Logo Image + NEXORA FACTURE ──
+  // ── HEADER: NEXORA FACTURE ──
 doc.setFillColor(...bleu);
 doc.rect(0, 0, W, 48, "F");
 
-// ===== LOGO IMAGE =====
-doc.addImage(
-  logo,
-  "PNG",
-  margin,
-  6,
-  30,
-  30,
-  undefined,
-  "FAST"
-);
+// ===== LOGO TEXTE (N) =====
+doc.setTextColor(255, 255, 255);
+doc.setFont("helvetica", "bold");
+doc.setFontSize(28);
+doc.text("N", margin + 10, 28, { align: "center" });
+doc.setFontSize(8);
+doc.text("NEXORA", margin + 20, 28);
 
 // ===== TITRE JAUNE =====
 doc.setTextColor(255, 204, 0); // JAUNE NEXORA
@@ -205,7 +201,7 @@ doc.text(
   doc.text(fmt(facture.total, facture.devise), W-margin-3, y+12, { align:"right" });
   y += 20;
   doc.setTextColor(...gris); doc.setFont("helvetica","italic"); doc.setFontSize(8);
-  doc.text(`Arrêté la présente facture à la somme de ${montantEnLettres} ${facture.devise} TTC`, margin, y);
+  doc.text(`Arrêté la présente facture à la somme de ${fmt(facture.total, facture.devise)} TTC`, margin, y);
   if (facture.note) { y+=8; doc.setTextColor(...noir); doc.setFont("helvetica","normal"); doc.text(`Note : ${facture.note}`, margin, y); }
 
   // ── FOOTER: NEXORA branding + watermark ──

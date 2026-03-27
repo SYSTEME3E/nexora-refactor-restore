@@ -26,7 +26,7 @@ import MediasPage from "@/pages/MediasPage";
 import LiensPage from "@/pages/LiensPage";
 import ProfilPage from "@/pages/ProfilPage";
 import PretsPage from "@/pages/PretsPage";
-import InvestissementsPage from "@/pages/InvestissementsPage";
+
 import FacturesPage from "@/pages/FacturesPage";
 import EntreesDepensesPage from "@/pages/EntreesDepensesPage";
 import TransfertPage from "@/pages/Transfertpage";
@@ -39,6 +39,7 @@ import BoutiqueParametresPage from "@/pages/boutique/ParametresPage";
 import DigitalFinancePage from "@/pages/boutique/DigitalFinancePage";
 import BoutiqueVitrinePage from "@/pages/boutique/VitrinePage";
 import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
+import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
@@ -142,7 +143,7 @@ const App = () => (
           <Route path="/factures"          element={<ProtectedPage><FacturesPage /></ProtectedPage>} />
           <Route path="/prets"             element={<ProtectedPage><PretsPage /></ProtectedPage>} />
           <Route path="/entrees-depenses"  element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
-          <Route path="/investissements"   element={<ProtectedPage><InvestissementsPage /></ProtectedPage>} />
+          
           
           {/* Callback Paiement Moneroo */}
           <Route path="/payment/callback"  element={<ProtectedPage><PaymentCallbackPage /></ProtectedPage>} />
@@ -163,6 +164,7 @@ const App = () => (
           <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
           <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
+          <Route path="/commande/:commandeId"                element={<CommandeTrackingPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
