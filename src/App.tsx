@@ -12,6 +12,9 @@ import AppLayout from "@/components/AppLayout";
 
 // Auth
 import NexoraLoginPage from "@/pages/NexoraLoginPage";
+import LandingPage from "@/pages/LandingPage";
+import CGUPage from "@/pages/CGUPage";
+import PrivacyPage from "@/pages/PrivacyPage";
 
 // Pages Dashboard / Finance
 import DashboardPage from "@/pages/DashboardPage";
@@ -39,11 +42,7 @@ import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
-import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
-
-// Landing
-import LandingPage from "@/pages/LandingPage";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
@@ -129,6 +128,8 @@ const App = () => (
             </PageLoader>
           } />
           <Route path="/" element={<LandingPage />} />
+          <Route path="/cgu" element={<CGUPage />} />
+          <Route path="/confidentialite" element={<PrivacyPage />} />
 
           {/* Routes Protégées Standard */}
           <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
@@ -162,7 +163,6 @@ const App = () => (
           <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
           <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
-          <Route path="/immobilier/annonce/:annonceId"     element={<AnnonceDetailPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
