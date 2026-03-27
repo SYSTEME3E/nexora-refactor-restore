@@ -78,14 +78,13 @@ export default function DashboardPage() {
 
     const userId = nexoraUser?.id;
     if (!userId) { setLoading(false); return; }
-    const [depResult, entResult, coffreResult, liensResult, pretsResult, investResult] =
+    const [depResult, entResult, coffreResult, liensResult, pretsResult] =
       await Promise.all([
         supabase.from("depenses" as any).select("montant, devise, date_depense, titre, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("entrees" as any).select("montant, devise, date_entree, titre, created_at").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("coffre_fort" as any).select("id").eq("user_id", userId),
         supabase.from("liens_contacts" as any).select("id").eq("user_id", userId),
         supabase.from("prets" as any).select("id").eq("user_id", userId).eq("statut", "en_attente"),
-        supabase.from("investissements" as any).select("id").eq("user_id", userId).eq("statut", "actif"),
       ]);
 
     const deps = depResult.data || [];
