@@ -201,7 +201,7 @@ doc.text(
   doc.text(fmt(facture.total, facture.devise), W-margin-3, y+12, { align:"right" });
   y += 20;
   doc.setTextColor(...gris); doc.setFont("helvetica","italic"); doc.setFontSize(8);
-  doc.text(`Arrêté la présente facture à la somme de ${montantEnLettres} ${facture.devise} TTC`, margin, y);
+  doc.text(`Arrêté la présente facture à la somme de ${fmt(facture.total, facture.devise)} TTC`, margin, y);
   if (facture.note) { y+=8; doc.setTextColor(...noir); doc.setFont("helvetica","normal"); doc.text(`Note : ${facture.note}`, margin, y); }
 
   // ── FOOTER: NEXORA branding + watermark ──
