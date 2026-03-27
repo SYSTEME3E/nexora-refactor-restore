@@ -29,7 +29,7 @@ const FEATURES = [
     icon: Receipt, color: "#10b981", bg: "#ecfdf5",
     title: "Facturation Professionnelle",
     tag: "Disponible",
-    desc: "Créez des factures PDF magnifiques et professionnelles en moins de 2 minutes. Personnalisez avec votre logo, ajoutez vos informations fiscales, et téléchargez ou partagez instantanément. Vos clients seront impressionnés par la qualité de vos documents.",
+    desc: "Créez des factures PDF magnifiques et professionnelles en moins d'une minutes. Ajoutez vos informations fiscales, et téléchargez ou partagez instantanément. Vos clients seront impressionnés par la qualité de vos documents.",
     points: ["PDF haute qualité", "Logo & branding personnalisé", "Numérotation automatique", "Archivage illimité"],
   },
   {
@@ -57,14 +57,14 @@ const FEATURES = [
     icon: Lock, color: "#f59e0b", bg: "#fffbeb",
     title: "Coffre-Fort Digital",
     tag: "Disponible",
-    desc: "Stockez vos mots de passe, documents sensibles, codes secrets et données confidentielles dans un espace ultra-sécurisé. Chiffrement de bout en bout — même NEXORA n'a pas accès à votre coffre. Votre vie privée est notre priorité absolue.",
+    desc: "Stockez vos informations personnelles,codes secrets et données confidentielles dans un espace ultra-sécurisé. Chiffrement de bout en bout — même NEXORA n'a pas accès à votre coffre. Votre vie privée est notre priorité absolue.",
     points: ["Chiffrement bout-en-bout", "Mots de passe & documents", "Accès biométrique", "Sauvegarde cloud sécurisée"],
   },
   {
     icon: CreditCard, color: "#ec4899", bg: "#fdf2f8",
     title: "Prêts entre Particuliers",
     tag: "Disponible",
-    desc: "Formalisez vos prêts entre amis, famille ou partenaires commerciaux. Créez un contrat de prêt signé électroniquement, définissez le taux, le calendrier de remboursement et recevez des rappels automatiques. Fini les malentendus et les dettes oubliées.",
+    desc: "Formalisez vos prêts entre amis, famille ou partenaires commerciaux. Créez un contrat de prêt signé électroniquement,le calendrier de remboursement et recevez des rappels automatiques. Fini les malentendus et les dettes oubliées.",
     points: ["Contrats signés électroniquement", "Calendrier de remboursement", "Rappels automatiques", "Suivi des paiements"],
   },
   {
@@ -191,7 +191,7 @@ export default function LandingPage() {
 
       {/* ── TOP BANNER ── */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 py-2.5 text-center text-white text-xs font-bold tracking-wide">
-        🚀 NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal et Niger &nbsp;·&nbsp;
+        NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal et Niger &nbsp;·&nbsp;
         <button onClick={() => navigate("/login")} className="underline underline-offset-2 hover:no-underline">
           Commencer gratuitement →
         </button>
@@ -494,7 +494,7 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black">Facturation Pro</p>
-                <p className="text-sm text-white/70">PDF professionnels en 2 min</p>
+                <p className="text-sm text-white/70">PDF professionnels en 1 min</p>
               </div>
             </div>
           </div>
