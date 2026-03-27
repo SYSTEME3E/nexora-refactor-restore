@@ -4,7 +4,7 @@ import { formatAmount, convertAmount } from "@/lib/app-utils";
 import AppLayout from "@/components/AppLayout";
 import {
   TrendingUp, TrendingDown, History, Clock,
-  ArrowUpRight, PiggyBank, HandCoins, Lock,
+  ArrowUpRight, HandCoins, Lock, Home,
   Store, BadgeCheck, Zap
 } from "lucide-react";
 import { Link } from "react-router-dom";
