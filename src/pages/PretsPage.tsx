@@ -106,7 +106,7 @@ async function generatePDF(pret: Pret) {
   });
 
   const infos = [
-    ["Preteur :", preteur],
+    ["Preteur Nom complet :", preteur],
     ["Emprunteur :", emprunteur],
     ["Montant du pret :", formatAmount(pret.montant, pret.devise)],
     ["Date du pret :", dateStr],
@@ -239,7 +239,7 @@ async function generatePDF(pret: Pret) {
   doc.text("NEXORA", W / 2, 288, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text(`Document genere le ${today} — nexora-app.lovable.app`, W / 2, 293, { align: "center" });
+  doc.text(`Document  généré le ${today} — nexora-app`, W / 2, 293, { align: "center" });
 
   doc.save(`contrat_pret_${pret.nom_personne.replace(/\s/g, "_")}_${new Date(pret.date_pret).toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
 }
@@ -363,7 +363,7 @@ export default function PretsPage() {
   const filteredPrets = prets.filter(p => p.type === activeTab);
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const currentUserName = getNexoraUser()?.nom_prenom || "Moi";
+  const preteurNom = pret.type === "pret" ? (getNexoraUser()?.nom_prenom || "Utilisateur") : pret.nom_personne;
   const preteurLabel = activeTab === "pret" ? currentUserName : form.nom_personne || "...";
   const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : currentUserName;
 
@@ -444,7 +444,7 @@ export default function PretsPage() {
             </div>
             <button
               onClick={() => navigate("/abonnement")}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
+ `             className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
             >
               <Crown className="w-4 h-4" /> Passer à Premium
             </button>
