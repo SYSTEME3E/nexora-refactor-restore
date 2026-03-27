@@ -8,9 +8,11 @@ import {
   CheckCircle, XCircle, AlertTriangle,
   Trash2, Menu, X, ArrowLeft,
   UserCheck, UserX, Clock, Calendar, DollarSign,
-  Unlock, BadgeCheck, Bell,
+  Unlock, BadgeCheck, Bell, MessageSquare,
   Package, ShoppingCart, AlertOctagon
 } from "lucide-react";
+import AdminMessagesTab from "@/components/AdminMessagesTab";
+import { useAdminChat } from "@/hooks/useChat";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -71,7 +73,7 @@ interface Commande {
   created_at: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs";
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs" | "messages";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
@@ -389,11 +391,13 @@ export default function AdminPanelPage() {
   const getCaByUser = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
   const getCommandesByUser = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
 
+  const { totalUnread: chatUnread } = useAdminChat();
   const TABS = [
     { id: "stats",       label: "Statistiques", icon: BarChart3 },
     { id: "users",       label: "Utilisateurs",  icon: Users     },
     { id: "boutiques",   label: "Boutiques",     icon: Store     },
     { id: "abonnements", label: "Abonnements",   icon: Crown     },
+    { id: "messages",    label: "Messages",      icon: MessageSquare, badge: chatUnread },
     { id: "logs",        label: "Logs",          icon: Activity  },
   ];
 
@@ -453,10 +457,17 @@ export default function AdminPanelPage() {
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {TABS.map(t => {
             const Icon = t.icon;
+            const badge = (t as any).badge;
             return (
               <button key={t.id} onClick={() => { setTab(t.id as AdminTab); setMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${tab === t.id ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                <Icon className="w-4 h-4" />{t.label}
+                <Icon className="w-4 h-4" />
+                <span className="flex-1 text-left">{t.label}</span>
+                {badge > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[10px] font-black text-white" style={{ background: "#ef4444" }}>
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -934,6 +945,11 @@ export default function AdminPanelPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── MESSAGES ── */}
+        {tab === "messages" && (
+          <AdminMessagesTab />
         )}
       </div>
 
