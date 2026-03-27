@@ -135,13 +135,7 @@ doc.text(
   28,
   { align: "right" }
 );
-
-doc.text(
-  `Vendeur : ${facture.vendeur_nom}`,
-  W - margin,
-  34,
-  { align: "right" }
-);
+  
   let y = 55;
   const colW = (W-margin*2-8)/2;
   doc.setFillColor(...grisLight); doc.roundedRect(margin, y, colW, 44, 2, 2, "F");
