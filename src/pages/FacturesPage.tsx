@@ -85,14 +85,6 @@ async function generateFacturePDF(facture: Facture, articles: Article[]) {
 doc.setFillColor(...bleu);
 doc.rect(0, 0, W, 48, "F");
 
-// ===== LOGO TEXTE (N) =====
-doc.setTextColor(255, 255, 255);
-doc.setFont("helvetica", "bold");
-doc.setFontSize(28);
-doc.text("N", margin + 10, 28, { align: "center" });
-doc.setFontSize(8);
-doc.text("NEXORA", margin + 20, 28);
-
 // ===== TITRE JAUNE =====
 doc.setTextColor(255, 204, 0); // JAUNE NEXORA
 doc.setFont("helvetica", "bold");
