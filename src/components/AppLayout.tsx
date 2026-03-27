@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ReactNode } from "react";
 import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
+import ChatWidget from "@/components/ChatWidget";
 
 const getNavItems = (isAdmin: boolean) => {
   const items = [
@@ -252,6 +253,9 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
       </div>
+
+      {/* Chat Widget flottant */}
+      <ChatWidget />
     </div>
   );
 }
