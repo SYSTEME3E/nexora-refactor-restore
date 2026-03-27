@@ -26,7 +26,7 @@ import MediasPage from "@/pages/MediasPage";
 import LiensPage from "@/pages/LiensPage";
 import ProfilPage from "@/pages/ProfilPage";
 import PretsPage from "@/pages/PretsPage";
-import InvestissementsPage from "@/pages/InvestissementsPage";
+
 import FacturesPage from "@/pages/FacturesPage";
 import EntreesDepensesPage from "@/pages/EntreesDepensesPage";
 import TransfertPage from "@/pages/Transfertpage";
