@@ -22,18 +22,6 @@ const FEATURES_COMPARE = [
       { label: "Historique financier",   gratuit: "7 jours",        premium: "Illimité" },
       { label: "Factures",               gratuit: "10 factures",    premium: "Illimité" },
       { label: "Prêts & Dettes",         gratuit: "10 prêts",        premium: "Illimité" },
-      { label: "Investissements",        gratuit: "Avancé",        premium: "Avancé" },
-    ],
-  },
-  {
-    categorie: "Épargne NEXORA",
-    icon: Wallet,
-    items: [
-      { label: "Accès à l'épargne",      gratuit: true,              premium: true },
-      { label: "Épargne Libre",          gratuit: true,              premium: true },
-      { label: "Plans bloqués (6m-3ans)", gratuit: true,             premium: true },
-      { label: "Retraits Mobile Money",  gratuit: true,             premium: true },
-      { label: "Historique épargne",     gratuit: true,             premium: true },
     ],
   },
   {
