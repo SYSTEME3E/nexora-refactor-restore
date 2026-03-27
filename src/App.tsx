@@ -142,7 +142,7 @@ const App = () => (
           <Route path="/factures"          element={<ProtectedPage><FacturesPage /></ProtectedPage>} />
           <Route path="/prets"             element={<ProtectedPage><PretsPage /></ProtectedPage>} />
           <Route path="/entrees-depenses"  element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
-          <Route path="/investissements"   element={<ProtectedPage><InvestissementsPage /></ProtectedPage>} />
+          
           
           {/* Callback Paiement Moneroo */}
           <Route path="/payment/callback"  element={<ProtectedPage><PaymentCallbackPage /></ProtectedPage>} />
