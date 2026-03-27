@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
-  Search, ChevronRight, TrendingUp, History,
-  HandCoins, PiggyBank, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight // ✅ Import ajouté
+  Search, ChevronRight, TrendingUp, History, Home,
+  HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
+  ShieldCheck, ArrowLeftRight
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
 import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession, type NexoraPlan } from "@/lib/nexora-auth";
