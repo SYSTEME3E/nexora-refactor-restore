@@ -313,15 +313,15 @@ export default function DashboardPage() {
         ══════════════════════════ */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           <Link
-            to="/investissements"
-            className="bg-emerald-50 border border-emerald-200 rounded-xl card-hover flex flex-col items-center justify-center text-center"
+            to="/"
+            className="bg-indigo-50 border border-indigo-200 rounded-xl card-hover flex flex-col items-center justify-center text-center"
             style={{ padding: "10px 6px" }}>
-            <PiggyBank style={{ width: 18, height: 18, color: "#059669" }} />
-            <div className="font-semibold text-emerald-700" style={{ fontSize: "10px", marginTop: "4px" }}>
-              Épargne
+            <Home style={{ width: 18, height: 18, color: "#6366f1" }} />
+            <div className="font-semibold text-indigo-700" style={{ fontSize: "10px", marginTop: "4px" }}>
+              Accueil
             </div>
-            <div className="font-display font-black text-emerald-700" style={{ fontSize: "18px", marginTop: "2px" }}>
-              {loading ? "—" : stats.nbInvest}
+            <div className="font-display font-black text-indigo-700" style={{ fontSize: "18px", marginTop: "2px" }}>
+              →
             </div>
           </Link>
 
