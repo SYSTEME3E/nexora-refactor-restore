@@ -209,7 +209,7 @@ export default function LandingPage() {
 
       {/* ── TOP BANNER ── */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 py-2.5 text-center text-white text-xs font-bold tracking-wide">
-        NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal et Niger &nbsp;·&nbsp;
+         NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal et Niger &nbsp;·&nbsp;
         <button onClick={() => navigate("/login")} className="underline underline-offset-2 hover:no-underline">
           Commencer gratuitement →
         </button>
