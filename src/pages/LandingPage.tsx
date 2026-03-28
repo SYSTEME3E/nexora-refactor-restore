@@ -304,27 +304,54 @@ export default function LandingPage() {
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
             <button 
-  onClick={() => setVideoOpen(true)}
-  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
-  
-  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-    <Play className="w-3 h-3 text-white fill-white" />
-  </div>
+  import { useState } from "react";
+import { Play } from "lucide-react"; // Assure-toi que l'icône est importée
 
-  Voir la démo
-</button>
+export default function LandingPage() {
+  const [videoOpen, setVideoOpen] = useState(false);
 
-{videoOpen && (
-  <div className="mt-6 w-full max-w-3xl mx-auto">
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-      <iframe
-        src="https://www.youtube.com/embed/On6T3pVLc_Q"
-        title="Demo Video"
-        className="absolute top-0 left-0 w-full h-full rounded-2xl"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      ></iframe>
+  return (
+    <div className="p-6">
+
+      {/* Bouton Voir la démo */}
+      <button
+        onClick={() => setVideoOpen(true)}
+        className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
+      >
+        <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+          <Play className="w-3 h-3 text-white fill-white" />
+        </div>
+        Voir la démo
+      </button>
+
+      {/* Vidéo intégrée */}
+      {videoOpen && (
+        <div className="mt-6 w-full max-w-3xl mx-auto">
+          <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+            <iframe
+              src="https://www.youtube.com/embed/On6T3pVLc_Q"
+              title="Demo Video"
+              className="absolute top-0 left-0 w-full h-full rounded-2xl"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </div>
+      )}
+
+      {/* Exemple de section suivante */}
+      <div className="anim-fadeup mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto" style={{ animationDelay: ".5s" }}>
+        {/* Ici tu peux mettre tes cartes flottantes */}
+        {[1, 2, 3, 4].map((item) => (
+          <div key={item} className="bg-white p-4 rounded-lg shadow">
+            Carte {item}
+          </div>
+        ))}
+      </div>
+
     </div>
+  );
+}
  
             {/* Trust badges */}
             <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
