@@ -326,7 +326,6 @@ export default function LandingPage() {
       ></iframe>
     </div>
   </div>
-)}
             {/* Trust badges */}
             <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Données chiffrées</span>
