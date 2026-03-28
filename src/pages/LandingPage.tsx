@@ -142,12 +142,25 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ name: "", country: "", text: "" });
-  const [reviews, setReviews] = useState([
+  const [reviewForm, setReviewForm] = useState({ name: "", country: "", text: "", stars: 5 });
+  const [reviews, setReviews] = useState<{name:string;country:string;text:string;stars:number}[]>([
     { name: "Aïcha Koné", country: "🇧🇯 Bénin", text: "NEXORA m'a permis de gérer ma boutique et mes factures depuis mon téléphone. Un vrai gain de temps au quotidien !", stars: 5 },
     { name: "Eric Mensah", country: "🇨🇮 Côte d'Ivoire", text: "L'interface est intuitive, le module immobilier est génial. Je gère tout mon patrimoine depuis une seule appli.", stars: 5 },
     { name: "Fatou Diallo", country: "🇸🇳 Sénégal", text: "Les factures PDF sont magnifiques, mes clients sont impressionnés. Le transfert d'argent fonctionne parfaitement.", stars: 5 },
   ]);
+
+  // Load persistent reviews from DB
+  useEffect(() => {
+    const loadReviews = async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await (supabase as any).from("avis_produits").select("*").is("produit_id", null).is("annonce_id", null).order("created_at", { ascending: false }).limit(50);
+      if (data && data.length > 0) {
+        const dbReviews = data.map((r: any) => ({ name: r.user_nom, country: "", text: r.commentaire, stars: r.note }));
+        setReviews(prev => [...dbReviews, ...prev.slice(0, 3)]);
+      }
+    };
+    loadReviews();
+  }, []);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 30);
@@ -160,10 +173,23 @@ export default function LandingPage() {
     setMenuOpen(false);
   };
 
-  const submitReview = () => {
-    if (!reviewForm.name.trim() || !reviewForm.country.trim() || !reviewForm.text.trim()) return;
-    setReviews(prev => [{ ...reviewForm, stars: 5 }, ...prev]);
-    setReviewForm({ name: "", country: "", text: "" });
+  const submitReview = async () => {
+    if (!reviewForm.name.trim() || !reviewForm.text.trim()) return;
+    const newReview = { name: reviewForm.name, country: reviewForm.country, text: reviewForm.text, stars: reviewForm.stars };
+    setReviews(prev => [newReview, ...prev]);
+    // Persist to DB
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await (supabase as any).from("avis_produits").insert({
+        user_nom: reviewForm.name,
+        commentaire: reviewForm.text,
+        note: reviewForm.stars,
+        user_id: "00000000-0000-0000-0000-000000000000",
+        produit_id: null,
+        annonce_id: null,
+      });
+    } catch (e) { console.error(e); }
+    setReviewForm({ name: "", country: "", text: "", stars: 5 });
   };
 
   return (
