@@ -304,16 +304,17 @@ export default function LandingPage() {
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
              <button 
-  onClick={() => window.open("https://youtu.be/On6T3pVLc_Q?si=3FOOHi4nJKoNFkCK", "_blank")}
-  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
-  
-  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-    <Play className="w-3 h-3 text-white fill-white" />
-  </div>
-
-  Voir la démo
-</button>
- </div>
+ {videoOpen && (
+  <div className="mt-6 w-full max-w-3xl mx-auto">
+    <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+      <iframe
+        src="https://www.youtube.com/embed/On6T3pVLc_Q"
+        title="Demo Video"
+        className="absolute top-0 left-0 w-full h-full rounded-2xl"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      ></iframe>
+    </div>
             {/* Trust badges */}
             <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Données chiffrées</span>
