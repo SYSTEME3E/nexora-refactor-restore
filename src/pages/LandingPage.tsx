@@ -303,7 +303,7 @@ export default function LandingPage() {
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-[15px] px-8 py-4 rounded-2xl shadow-xl shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95">
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
-            <button 
+           
 <button onClick={() => window.open("https://youtu.be/On6T3pVLc_Q?si=3FOOHi4nJKoNFkCK", "_blank")}
   className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
   
