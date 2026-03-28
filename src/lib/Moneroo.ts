@@ -1,7 +1,7 @@
-// src/lib/moneroo.ts
+// src/lib/Moneroo.ts
 // ─────────────────────────────────────────────────────────────────
-// Client Moneroo pour le frontend React
-// Appelle les Supabase Edge Functions (jamais l'API Moneroo directement)
+// Client GeniusPay pour le frontend React
+// Appelle les Supabase Edge Functions (jamais l'API GeniusPay directement)
 // ─────────────────────────────────────────────────────────────────
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,105 +23,99 @@ export type PayoutType =
 
 export interface InitPaymentParams {
   type: PaymentType;
-  amount: number;           // En FCFA
+  amount: number;           // En FCFA (les 100 FCFA de frais sont ajoutés ici)
   currency?: string;
-  methods?: string[];       // Codes Moneroo ex: ["mtn_bj", "moov_bj"]
+  payment_method?: string;  // "wave" | "orange_money" | "mtn_money" | "moov_money"
   metadata?: Record<string, string>;
 }
 
 export interface InitPayoutParams {
   type: PayoutType;
-  amount: number;
+  amount: number;           // Montant brut demandé (les 3% sont calculés ici)
   pays: string;
-  reseau: string;           // Nom du réseau ex: "MTN MoMo" ou code "mtn_bj"
-  numero_mobile: string;   // Ex: "+229 97 00 11 22"
+  reseau: string;           // Code réseau ex: "wave", "orange_money", "mtn_money"
+  numero_mobile: string;    // Ex: "+229 97 00 11 22"
   nom_beneficiaire: string;
   metadata?: Record<string, string>;
 }
 
-export interface MonerooResult {
+export interface GeniusPayResult {
   success: boolean;
   error?: string;
-  checkout_url?: string;   // Pour les paiements → redirection
+  payment_url?: string;     // Pour les paiements → redirection
   payment_id?: string;
   payout_id?: string;
   message?: string;
 }
 
 // ─────────────────────────────────────────────
-// MAPPING RÉSEAU → CODE MONEROO (frontend)
-// Pour affichage et validation côté client
+// MAPPING RÉSEAU → CODE GENIUSPAY
 // ─────────────────────────────────────────────
 
 export const RESEAU_CODES: Record<string, string> = {
-  // Bénin
-  "MTN MoMo":    "mtn_bj",
-  "Moov Money":  "moov_bj",
-  // Côte d'Ivoire
-  "Orange Money CI": "orange_ci",
-  "MTN MoMo CI":     "mtn_ci",
-  "Wave CI":         "wave_ci",
-  "Moov Money CI":   "moov_ci",
-  "Djamo CI":        "djamo_ci",
-  // Sénégal
-  "Orange Money SN": "orange_sn",
-  "Wave":            "wave_sn",
-  "Free Money":      "freemoney_sn",
-  // Togo
-  "Flooz":           "moov_tg",
-  "T-Money":         "togocel",
-  // Cameroun
-  "Orange Money CM": "orange_cm",
-  "MTN MoMo CM":     "mtn_cm",
-  // Mali
-  "Orange Money":    "orange_ml",
-  // Ghana
-  "Vodafone Cash":   "vodafone_gh",
-  "AirtelTigo":      "tigo_gh",
-  "MTN MoMo GH":     "mtn_gh",
-  // Kenya
-  "M-Pesa":          "mpesa_ke",
-  // Nigeria
-  "MTN MoMo NG":     "mtn_ng",
-  "Airtel Money NG": "airtel_ng",
-  // Tanzanie
-  "M-Pesa TZ":       "mpesa_tz",
-  "Tigo Pesa":       "tigo_tz",
-  "Airtel TZ":       "airtel_tz",
-  // Rwanda
-  "MTN MoMo RW":     "mtn_rw",
-  "Airtel RW":       "airtel_rw",
-  // Uganda
-  "MTN MoMo UG":     "mtn_ug",
-  "Airtel UG":       "airtel_ug",
-  // Zambie
-  "MTN MoMo ZM":     "mtn_zm",
-  "Airtel ZM":       "airtel_zm",
-  "Zamtel Money":    "zamtel_zm",
-  // Test
-  "Test":            "moneroo_payout_demo",
+  // Codes directs GeniusPay
+  "wave":         "wave",
+  "orange_money": "orange_money",
+  "mtn_money":    "mtn_money",
+  "moov_money":   "moov_money",
+  // Noms affichés → codes
+  "Wave":         "wave",
+  "Orange Money": "orange_money",
+  "MTN MoMo":     "mtn_money",
+  "Moov Money":   "moov_money",
+  // Variantes régionales
+  "Wave CI":          "wave",
+  "Orange Money CI":  "orange_money",
+  "MTN MoMo CI":      "mtn_money",
+  "Orange Money SN":  "orange_money",
+  "Free Money":       "orange_money",
+  "Flooz":            "moov_money",
+  "T-Money":          "mtn_money",
 };
 
 // ─────────────────────────────────────────────
-// INITIALISER UN PAIEMENT (recharge, abonnement, dépôt)
+// FRAIS APPLIQUÉS
+// Paiement/recharge : +100 FCFA fixes
+// Retrait/transfert : 3% du montant
 // ─────────────────────────────────────────────
 
-export async function initPayment(params: InitPaymentParams): Promise<MonerooResult> {
+export const FRAIS_PAIEMENT = 100; // FCFA fixes
+export const TAUX_RETRAIT   = 0.03; // 3%
+
+export function calcFraisPaiement(_montant: number): number {
+  return FRAIS_PAIEMENT;
+}
+
+export function calcFraisRetrait(montant: number): number {
+  return Math.round(montant * TAUX_RETRAIT);
+}
+
+// ─────────────────────────────────────────────
+// INITIALISER UN PAIEMENT
+// (recharge, abonnement, dépôt)
+// Les 100 FCFA de frais sont ajoutés au montant envoyé à GeniusPay
+// ─────────────────────────────────────────────
+
+export async function initPayment(params: InitPaymentParams): Promise<GeniusPayResult> {
   const user = getNexoraUser();
   if (!user) return { success: false, error: "Utilisateur non connecté" };
 
+  // Montant final = montant + 100 FCFA de frais
+  const montantAvecFrais = params.amount + FRAIS_PAIEMENT;
+
   try {
-    const { data, error } = await supabase.functions.invoke("moneroo-payment", {
+    const { data, error } = await supabase.functions.invoke("geniuspay-payment", {
       body: {
-        type:        params.type,
-        amount:      params.amount,
-        currency:    params.currency ?? "XOF",
-        user_id:     user.id,
-        user_email:  user.email ?? "",
-        user_first_name: user.nom_prenom?.split(" ")[0] ?? "Client",
-        user_last_name:  user.nom_prenom?.split(" ").slice(1).join(" ") ?? "NEXORA",
-        methods:     params.methods,
-        metadata:    params.metadata ?? {},
+        type:           params.type,
+        amount:         montantAvecFrais,
+        amount_net:     params.amount,
+        currency:       params.currency ?? "XOF",
+        payment_method: params.payment_method,
+        user_id:        user.id,
+        user_email:     user.email ?? "",
+        user_name:      user.nom_prenom ?? "Client NEXORA",
+        user_phone:     user.telephone ?? "",
+        metadata:       params.metadata ?? {},
       },
     });
 
@@ -129,9 +123,9 @@ export async function initPayment(params: InitPaymentParams): Promise<MonerooRes
     if (!data?.success) return { success: false, error: data?.error ?? "Erreur paiement" };
 
     return {
-      success:      true,
-      checkout_url: data.checkout_url,
-      payment_id:   data.payment_id,
+      success:     true,
+      payment_url: data.payment_url,
+      payment_id:  data.payment_id,
     };
   } catch (err: any) {
     console.error("initPayment error:", err);
@@ -141,29 +135,34 @@ export async function initPayment(params: InitPaymentParams): Promise<MonerooRes
 
 // ─────────────────────────────────────────────
 // INITIER UN RETRAIT (payout)
+// Les 3% de frais sont calculés et déduits du montant reçu
 // ─────────────────────────────────────────────
 
-export async function initPayout(params: InitPayoutParams): Promise<MonerooResult> {
+export async function initPayout(params: InitPayoutParams): Promise<GeniusPayResult> {
   const user = getNexoraUser();
   if (!user) return { success: false, error: "Utilisateur non connecté" };
 
-  // Séparer nom/prénom depuis nom_beneficiaire
-  const parts = params.nom_beneficiaire.trim().split(" ");
+  const frais       = calcFraisRetrait(params.amount);
+  const montantNet  = params.amount - frais;
+
+  const parts     = params.nom_beneficiaire.trim().split(" ");
   const firstName = parts[0] ?? "Client";
   const lastName  = parts.slice(1).join(" ") || "NEXORA";
 
   try {
-    const { data, error } = await supabase.functions.invoke("moneroo-payout", {
+    const { data, error } = await supabase.functions.invoke("geniuspay-payout", {
       body: {
         type:            params.type,
         amount:          params.amount,
+        amount_net:      montantNet,
+        frais:           frais,
         user_id:         user.id,
         user_email:      user.email ?? "",
         user_first_name: firstName,
         user_last_name:  lastName,
         pays:            params.pays,
         reseau:          params.reseau,
-        numero_mobile:   params.numero_mobile.replace(/[\s\-()]/g, ""),
+        numero_mobile:   params.numero_mobile.replace(/[\s\-()+]/g, ""),
         metadata:        params.metadata ?? {},
       },
     });
@@ -183,21 +182,21 @@ export async function initPayout(params: InitPayoutParams): Promise<MonerooResul
 }
 
 // ─────────────────────────────────────────────
-// REDIRIGER VERS MONEROO CHECKOUT
+// REDIRIGER VERS GENIUSPAY CHECKOUT
 // ─────────────────────────────────────────────
 
-export function redirectToCheckout(checkout_url: string): void {
-  window.location.href = checkout_url;
+export function redirectToCheckout(payment_url: string): void {
+  window.location.href = payment_url;
 }
 
 // ─────────────────────────────────────────────
-// PAIEMENT COMPLET (init + redirect en une fonction)
+// PAIEMENT COMPLET (init + redirect)
 // ─────────────────────────────────────────────
 
 export async function payAndRedirect(params: InitPaymentParams): Promise<void> {
   const result = await initPayment(params);
-  if (result.success && result.checkout_url) {
-    redirectToCheckout(result.checkout_url);
+  if (result.success && result.payment_url) {
+    redirectToCheckout(result.payment_url);
   } else {
     throw new Error(result.error ?? "Impossible d'initialiser le paiement");
   }
@@ -206,6 +205,7 @@ export async function payAndRedirect(params: InitPaymentParams): Promise<void> {
 // ─────────────────────────────────────────────
 // VÉRIFIER UN PAIEMENT APRÈS RETOUR
 // Appelé sur la page /payment/callback
+// GeniusPay redirige vers success_url ou error_url
 // ─────────────────────────────────────────────
 
 export async function verifyPaymentFromCallback(): Promise<{
@@ -214,9 +214,17 @@ export async function verifyPaymentFromCallback(): Promise<{
   type: string | null;
 }> {
   const params    = new URLSearchParams(window.location.search);
-  const paymentId = params.get("paymentId");
-  const status    = params.get("paymentStatus") ?? params.get("status") ?? "unknown";
+  const reference = params.get("reference") ?? params.get("paymentId") ?? null;
   const type      = params.get("type");
+  // GeniusPay redirige vers success_url en cas de succès
+  // On détecte le succès via la présence du paramètre "reference" dans l'URL
+  const isSuccess = params.get("status") === "success"
+    || params.get("paymentStatus") === "completed"
+    || (reference !== null && !params.has("error"));
 
-  return { status, paymentId, type };
+  return {
+    status:    isSuccess ? "success" : "failed",
+    paymentId: reference,
+    type,
+  };
 }
