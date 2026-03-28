@@ -284,12 +284,15 @@ function ModalRecharge({ onClose, onConfirm }: {
       amount: montantNum,
       position: "center",
       theme: "#10b981",
-      key: import.meta.env.VITE_KKIAPAY_API_KEY || "",
+      window.openKkiapayWidget({
+      amount: montantNum,
+      position: "center",
+      theme: "#10b981",
+      key: import.meta.env.VITE_KKIAPAY_PUBLIC_KEY || "",  // ← changé ici
       sandbox: false,
       data: `Recharge NEXORA — ${reseau} — ${telephone}`,
       phone: telephone.replace(/\s/g, ""),
     });
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
