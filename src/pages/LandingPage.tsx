@@ -816,17 +816,16 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer className="bg-gray-950 text-gray-400">
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-14 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-10 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             {/* Brand */}
-            <div className="md:col-span-2">
+            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 <img src={LOGO} alt="NEXORA" className="w-10 h-10 object-contain" />
                 <span className="font-display text-xl font-black text-white tracking-tight">NEXORA</span>
               </div>
-              <p className="text-sm leading-relaxed mb-6 max-w-xs text-gray-500">
-                La plateforme financière tout-en-un pour les entrepreneurs et particuliers africains. Gestion, facturation, commerce, transferts et bien plus.
+              <p className="text-sm leading-relaxed mb-4 text-gray-500">
+                Plateforme financière tout-en-un pour l'Afrique.
               </p>
-              {/* Réseaux sociaux */}
               <div className="flex items-center gap-3">
                 <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#1877F2] flex items-center justify-center transition-all hover:scale-110">
@@ -836,18 +835,14 @@ export default function LandingPage() {
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-black flex items-center justify-center transition-all hover:scale-110">
                   <Twitter className="w-4 h-4 text-white" />
                 </a>
-                <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#ff0050] flex items-center justify-center transition-all hover:scale-110">
-                  <svg className="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.52V6.76a4.85 4.85 0 01-1.02-.07z"/></svg>
-                </a>
               </div>
             </div>
 
-            {/* Produit */}
+            {/* Modules */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Modules</p>
-              <div className="flex flex-col gap-3">
-                {["Gestion Financière","Facturation","Boutique E-commerce","Transfert d'Argent","Immobilier","Coffre-Fort","Prêts","Abonnements"].map(l => (
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Modules</p>
+              <div className="flex flex-col gap-2">
+                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Prêts","Liens"].map(l => (
                   <button key={l} onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">{l}</button>
                 ))}
               </div>
@@ -855,28 +850,24 @@ export default function LandingPage() {
 
             {/* Ressources */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Ressources</p>
-              <div className="flex flex-col gap-3">
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Ressources</p>
+              <div className="flex flex-col gap-2">
                 <button onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Connexion</button>
                 <button onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Créer un compte</button>
                 <button onClick={() => scrollTo("avis")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Témoignages</button>
-                <button onClick={() => scrollTo("roadmap")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Roadmap</button>
                 <a href="mailto:support@nexora.africa" className="text-sm text-gray-500 hover:text-white text-left transition-colors">Support</a>
               </div>
             </div>
 
             {/* Légal */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Légal</p>
-              <div className="flex flex-col gap-3">
-                <button onClick={() => navigate("/cgu")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Conditions d'utilisation</button>
-                <button onClick={() => navigate("/confidentialite")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Politique de confidentialité</button>
-                <span className="text-sm text-gray-600">support@nexora.africa</span>
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Légal</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => navigate("/cgu")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">CGU</button>
+                <button onClick={() => navigate("/confidentialite")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Confidentialité</button>
               </div>
-
-              {/* Pays actifs */}
-              <div className="mt-6">
-                <p className="text-white font-black text-xs mb-3 uppercase tracking-wider">Pays actifs</p>
+              <div className="mt-4">
+                <p className="text-white font-black text-xs mb-2 uppercase tracking-wider">Pays actifs</p>
                 <div className="flex flex-wrap gap-1.5">
                   {["🇧🇯","🇨🇮","🇹🇬","🇸🇳","🇳🇪"].map((f,i) => (
                     <span key={i} className="text-lg">{f}</span>
@@ -887,12 +878,12 @@ export default function LandingPage() {
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-sm text-gray-600">© {new Date().getFullYear()} NEXORA. Tous droits réservés.</p>
-            <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center text-xs text-gray-600">
-              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors whitespace-nowrap">CGU</button>
-              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors whitespace-nowrap">Confidentialité</button>
-              <span className="flex items-center gap-1.5 whitespace-nowrap"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Paiements sécurisés</span>
+            <div className="flex items-center gap-4 text-xs text-gray-600">
+              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors">CGU</button>
+              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors">Confidentialité</button>
+              <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Sécurisé</span>
             </div>
           </div>
         </div>
