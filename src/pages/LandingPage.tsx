@@ -20,7 +20,7 @@ const OPERATORS = [
 const FEATURES = [
   {
     icon: BarChart3, color: "#6366f1", bg: "#eef2ff",
-    title: "Gestion Financière", tag: "Disponible", route: "/entrees-depenses",
+    title: "Gestion Financière", tag: "Disponible",
     desc: "Pilotez vos finances avec précision. Enregistrez vos entrées d'argent, suivez vos dépenses par catégorie, consultez votre historique complet et visualisez votre évolution financière grâce à des graphiques clairs et interactifs.",
     points: ["Tableau de bord en temps réel", "Catégorisation automatique", "Export PDF & Excel", "Rapports mensuels"],
   },
