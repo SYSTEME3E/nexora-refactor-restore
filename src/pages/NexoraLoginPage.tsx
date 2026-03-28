@@ -287,7 +287,7 @@ export default function NexoraLoginPage() {
                     className="rounded"
                   />
                   <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
-                    Se souvenir de moi (30 jours)
+                   Restez connecté
                   </label>
                 </div>
 
