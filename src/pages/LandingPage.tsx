@@ -426,7 +426,7 @@ export default function LandingPage() {
             const Icon = f.icon;
             return (
               <div key={i} className={`card-lift group rounded-3xl border border-gray-100 overflow-hidden cursor-pointer ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
-                onClick={() => navigate("/login")}>
+                onClick={() => navigate(f.route)}>
                 <div className="flex flex-col md:flex-row">
                   {/* Left */}
                   <div className="md:w-2/5 p-8 md:p-10 flex flex-col justify-center">
