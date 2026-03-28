@@ -5,7 +5,7 @@ import { getNexoraUser } from "@/lib/nexora-auth";
 
 // Photo d'assistante féminine via URL publique (Unsplash)
 const ASSISTANT_PHOTO =
-  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&h=80&fit=crop&face";
+  "https://i.postimg.cc/y8ZYR0gq/file-00000000b90c7246ab59b08eaba09eb0.png";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", {
