@@ -444,7 +444,7 @@ export default function PretsPage() {
             </div>
             <button
               onClick={() => navigate("/abonnement")}
- `             className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
+ className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
             >
               <Crown className="w-4 h-4" /> Passer à Premium
             </button>
