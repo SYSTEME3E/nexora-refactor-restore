@@ -209,7 +209,7 @@ export default function LandingPage() {
 
       {/* ── TOP BANNER ── */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 py-2.5 text-center text-white text-xs font-bold tracking-wide">
-         🛩️NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal, Niger... &nbsp;·&nbsp;
+         🛩️ NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal, Niger... &nbsp;·&nbsp;
         <button onClick={() => navigate("/login")} className="underline underline-offset-2 hover:no-underline">
           Commencer gratuitement →
         </button>
@@ -303,8 +303,18 @@ export default function LandingPage() {
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-[15px] px-8 py-4 rounded-2xl shadow-xl shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95">
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
-             <button 
- {videoOpen && (
+            <button 
+  onClick={() => setVideoOpen(true)}
+  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
+  
+  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+    <Play className="w-3 h-3 text-white fill-white" />
+  </div>
+
+  Voir la démo
+</button>
+
+{videoOpen && (
   <div className="mt-6 w-full max-w-3xl mx-auto">
     <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
       <iframe
@@ -315,6 +325,8 @@ export default function LandingPage() {
         allowFullScreen
       ></iframe>
     </div>
+  </div>
+)}
             {/* Trust badges */}
             <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Données chiffrées</span>
