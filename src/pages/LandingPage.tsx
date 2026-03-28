@@ -718,6 +718,18 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
+            {/* Star selector */}
+            <div>
+              <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Note *</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(s => (
+                  <button key={s} type="button" onClick={() => setReviewForm(p => ({...p, stars: s}))}>
+                    <Star className={`w-6 h-6 ${s <= reviewForm.stars ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Nom complet *</label>
@@ -730,7 +742,7 @@ export default function LandingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Pays *</label>
+                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Pays</label>
                 <input
                   type="text"
                   value={reviewForm.country}
@@ -754,7 +766,7 @@ export default function LandingPage() {
 
             <button
               onClick={submitReview}
-              disabled={!reviewForm.name || !reviewForm.country || !reviewForm.text}
+              disabled={!reviewForm.name || !reviewForm.text}
               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
               <Star className="w-4 h-4 fill-white" /> Publier mon avis
             </button>
