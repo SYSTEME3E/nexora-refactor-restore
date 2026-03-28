@@ -264,20 +264,20 @@ export default function DashboardPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
           {[
             {
-              to: "/coffre-fort",
-              icon: <Lock style={{ width: 18, height: 18, color: "var(--primary)" }} />,
-              label: "Coffre-fort",
-              value: stats.nbCoffre,
+              to: "/factures",
+              icon: <TrendingUp style={{ width: 18, height: 18, color: "#6366f1" }} />,
+              label: "Factures",
+              value: "→",
               cls: "bg-primary-bg border-primary/20",
               textCls: "text-primary",
             },
             {
-              to: "/prets",
-              icon: <HandCoins style={{ width: 18, height: 18, color: "#f97316" }} />,
-              label: "Prêts",
-              value: stats.nbPrets,
-              cls: "bg-orange-50 border-orange-200",
-              textCls: "text-orange-600",
+              to: "/transfert",
+              icon: <ArrowUpRight style={{ width: 18, height: 18, color: "#0ea5e9" }} />,
+              label: "Transfert",
+              value: "→",
+              cls: "bg-sky-50 border-sky-200",
+              textCls: "text-sky-600",
             },
             {
               to: "/boutique",
@@ -302,7 +302,7 @@ export default function DashboardPage() {
               <div
                 className={`font-display font-black ${item.textCls}`}
                 style={{ fontSize: "18px", marginTop: "2px", lineHeight: 1 }}>
-                {loading && item.value !== "→" ? "—" : item.value}
+                {item.value}
               </div>
             </Link>
           ))}

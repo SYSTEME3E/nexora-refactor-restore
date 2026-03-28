@@ -20,59 +20,51 @@ const OPERATORS = [
 const FEATURES = [
   {
     icon: BarChart3, color: "#6366f1", bg: "#eef2ff",
-    title: "Gestion Financière",
-    tag: "Disponible",
-    desc: "Pilotez vos finances avec précision. Enregistrez vos entrées d'argent, suivez vos dépenses par catégorie, consultez votre historique complet et visualisez votre évolution financière grâce à des graphiques clairs et interactifs. Exportez vos données en PDF ou Excel à tout moment.",
+    title: "Gestion Financière", tag: "Disponible", route: "/entrees-depenses",
+    desc: "Pilotez vos finances avec précision. Enregistrez vos entrées d'argent, suivez vos dépenses par catégorie, consultez votre historique complet et visualisez votre évolution financière grâce à des graphiques clairs et interactifs.",
     points: ["Tableau de bord en temps réel", "Catégorisation automatique", "Export PDF & Excel", "Rapports mensuels"],
   },
   {
     icon: Receipt, color: "#10b981", bg: "#ecfdf5",
-    title: "Facturation Professionnelle",
-    tag: "Disponible",
-    desc: "Créez des factures PDF magnifiques et professionnelles en moins d'une minutes. Ajoutez vos informations fiscales, et téléchargez ou partagez instantanément. Vos clients seront impressionnés par la qualité de vos documents.",
+    title: "Facturation Professionnelle", tag: "Disponible", route: "/factures",
+    desc: "Créez des factures PDF magnifiques et professionnelles en moins d'une minute. Ajoutez vos informations fiscales, et téléchargez ou partagez instantanément.",
     points: ["PDF haute qualité", "Logo & branding personnalisé", "Numérotation automatique", "Archivage illimité"],
   },
   {
     icon: Store, color: "#f43f5e", bg: "#fff1f2",
-    title: "Boutique E-commerce",
-    tag: "Disponible",
-    desc: "Lancez votre boutique en ligne en quelques clics. Publiez vos produits physiques ou digitaux, gérez votre catalogue, suivez vos commandes et encaissez vos paiements. Une vitrine professionnelle accessible 24h/24 depuis n'importe quel appareil.",
+    title: "Boutique E-commerce", tag: "Disponible", route: "/boutique",
+    desc: "Lancez votre boutique en ligne en quelques clics. Publiez vos produits physiques ou digitaux, gérez votre catalogue, suivez vos commandes et encaissez vos paiements.",
     points: ["Vitrine publique personnalisée", "Gestion des stocks", "Suivi des commandes", "Produits digitaux & physiques"],
   },
   {
     icon: Send, color: "#0ea5e9", bg: "#f0f9ff",
-    title: "Transfert d'Argent Africa",
-    tag: "Disponible",
-    desc: "Envoyez de l'argent partout en Afrique via Mobile Money en quelques secondes. Rechargez votre compte gratuitement, transférez vers 5 pays actifs avec seulement 3% de frais. Des dizaines de réseaux supportés : MTN, Orange, Wave, Moov et bien d'autres.",
+    title: "Transfert d'Argent Africa", tag: "Disponible", route: "/transfert",
+    desc: "Envoyez de l'argent partout en Afrique via Mobile Money en quelques secondes. Rechargez votre compte gratuitement, transférez vers 5 pays actifs avec seulement 3% de frais.",
     points: ["Recharge 100% gratuite", "5 pays actifs", "3% de frais seulement", "Facture PDF automatique"],
   },
   {
     icon: Home, color: "#8b5cf6", bg: "#f5f3ff",
-    title: "Marché Immobilier",
-    tag: "Disponible",
-    desc: "Publiez et découvrez des biens immobiliers dans toute l'Afrique. Maisons, appartements, terrains, bureaux — achat ou location. Contactez directement les propriétaires, consultez les profils vendeurs vérifiés et négociez en toute sécurité.",
+    title: "Marché Immobilier", tag: "Disponible", route: "/immobilier",
+    desc: "Publiez et découvrez des biens immobiliers dans toute l'Afrique. Maisons, appartements, terrains, bureaux — achat ou location.",
     points: ["Annonces illimitées", "Profil vendeur vérifié", "Photos HD", "Contact direct sécurisé"],
   },
   {
     icon: Lock, color: "#f59e0b", bg: "#fffbeb",
-    title: "Coffre-Fort Digital",
-    tag: "Disponible",
-    desc: "Stockez vos informations personnelles,codes secrets et données confidentielles dans un espace ultra-sécurisé. Chiffrement de bout en bout — même NEXORA n'a pas accès à votre coffre. Votre vie privée est notre priorité absolue.",
-    points: ["Chiffrement bout-en-bout", "Mots de passe & documents", "Accès biométrique", "Sauvegarde cloud sécurisée"],
+    title: "Coffre-Fort Digital", tag: "Disponible", route: "/coffre-fort",
+    desc: "Stockez vos informations personnelles, codes secrets et données confidentielles dans un espace ultra-sécurisé.",
+    points: ["Chiffrement bout-en-bout", "Mots de passe & documents", "Accès sécurisé", "Sauvegarde cloud"],
   },
   {
     icon: CreditCard, color: "#ec4899", bg: "#fdf2f8",
-    title: "Prêts entre Particuliers",
-    tag: "Disponible",
-    desc: "Formalisez vos prêts entre amis, famille ou partenaires commerciaux. Créez un contrat de prêt signé électroniquement,le calendrier de remboursement et recevez des rappels automatiques. Fini les malentendus et les dettes oubliées.",
+    title: "Prêts entre Particuliers", tag: "Disponible", route: "/prets",
+    desc: "Formalisez vos prêts entre amis, famille ou partenaires commerciaux. Créez un contrat de prêt signé électroniquement.",
     points: ["Contrats signés électroniquement", "Calendrier de remboursement", "Rappels automatiques", "Suivi des paiements"],
   },
   {
     icon: Wallet, color: "#14b8a6", bg: "#f0fdfa",
-    title: "Abonnements & Liens",
-    tag: "Disponible",
-    desc: "Gérez tous vos abonnements en un seul endroit et ne payez plus jamais pour quelque chose que vous n'utilisez plus. Créez également des liens courts personnalisés pour partager vos réseaux, boutiques et contacts professionnels facilement.",
-    points: ["Suivi de tous vos abonnements", "Alertes renouvellement", "Liens courts personnalisés", "Tableau de bord dépenses récurrentes"],
+    title: "Abonnements & Liens", tag: "Disponible", route: "/liens",
+    desc: "Gérez tous vos abonnements en un seul endroit. Créez des liens courts personnalisés pour partager vos réseaux et contacts.",
+    points: ["Suivi de tous vos abonnements", "Alertes renouvellement", "Liens courts personnalisés", "Partage facile"],
   },
 ];
 
@@ -142,12 +134,25 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ name: "", country: "", text: "" });
-  const [reviews, setReviews] = useState([
+  const [reviewForm, setReviewForm] = useState({ name: "", country: "", text: "", stars: 5 });
+  const [reviews, setReviews] = useState<{name:string;country:string;text:string;stars:number}[]>([
     { name: "Aïcha Koné", country: "🇧🇯 Bénin", text: "NEXORA m'a permis de gérer ma boutique et mes factures depuis mon téléphone. Un vrai gain de temps au quotidien !", stars: 5 },
     { name: "Eric Mensah", country: "🇨🇮 Côte d'Ivoire", text: "L'interface est intuitive, le module immobilier est génial. Je gère tout mon patrimoine depuis une seule appli.", stars: 5 },
     { name: "Fatou Diallo", country: "🇸🇳 Sénégal", text: "Les factures PDF sont magnifiques, mes clients sont impressionnés. Le transfert d'argent fonctionne parfaitement.", stars: 5 },
   ]);
+
+  // Load persistent reviews from DB
+  useEffect(() => {
+    const loadReviews = async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await (supabase as any).from("avis_produits").select("*").is("produit_id", null).is("annonce_id", null).order("created_at", { ascending: false }).limit(50);
+      if (data && data.length > 0) {
+        const dbReviews = data.map((r: any) => ({ name: r.user_nom, country: "", text: r.commentaire, stars: r.note }));
+        setReviews(prev => [...dbReviews, ...prev.slice(0, 3)]);
+      }
+    };
+    loadReviews();
+  }, []);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 30);
@@ -160,10 +165,23 @@ export default function LandingPage() {
     setMenuOpen(false);
   };
 
-  const submitReview = () => {
-    if (!reviewForm.name.trim() || !reviewForm.country.trim() || !reviewForm.text.trim()) return;
-    setReviews(prev => [{ ...reviewForm, stars: 5 }, ...prev]);
-    setReviewForm({ name: "", country: "", text: "" });
+  const submitReview = async () => {
+    if (!reviewForm.name.trim() || !reviewForm.text.trim()) return;
+    const newReview = { name: reviewForm.name, country: reviewForm.country, text: reviewForm.text, stars: reviewForm.stars };
+    setReviews(prev => [newReview, ...prev]);
+    // Persist to DB
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await (supabase as any).from("avis_produits").insert({
+        user_nom: reviewForm.name,
+        commentaire: reviewForm.text,
+        note: reviewForm.stars,
+        user_id: "00000000-0000-0000-0000-000000000000",
+        produit_id: null,
+        annonce_id: null,
+      });
+    } catch (e) { console.error(e); }
+    setReviewForm({ name: "", country: "", text: "", stars: 5 });
   };
 
   return (
@@ -408,7 +426,7 @@ export default function LandingPage() {
             const Icon = f.icon;
             return (
               <div key={i} className={`card-lift group rounded-3xl border border-gray-100 overflow-hidden cursor-pointer ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
-                onClick={() => navigate("/login")}>
+                onClick={() => navigate(f.route)}>
                 <div className="flex flex-col md:flex-row">
                   {/* Left */}
                   <div className="md:w-2/5 p-8 md:p-10 flex flex-col justify-center">
@@ -692,6 +710,18 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
+            {/* Star selector */}
+            <div>
+              <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Note *</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(s => (
+                  <button key={s} type="button" onClick={() => setReviewForm(p => ({...p, stars: s}))}>
+                    <Star className={`w-6 h-6 ${s <= reviewForm.stars ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Nom complet *</label>
@@ -704,7 +734,7 @@ export default function LandingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Pays *</label>
+                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Pays</label>
                 <input
                   type="text"
                   value={reviewForm.country}
@@ -728,7 +758,7 @@ export default function LandingPage() {
 
             <button
               onClick={submitReview}
-              disabled={!reviewForm.name || !reviewForm.country || !reviewForm.text}
+              disabled={!reviewForm.name || !reviewForm.text}
               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
               <Star className="w-4 h-4 fill-white" /> Publier mon avis
             </button>
@@ -778,17 +808,16 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer className="bg-gray-950 text-gray-400">
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-14 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-10 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             {/* Brand */}
-            <div className="md:col-span-2">
+            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 <img src={LOGO} alt="NEXORA" className="w-10 h-10 object-contain" />
                 <span className="font-display text-xl font-black text-white tracking-tight">NEXORA</span>
               </div>
-              <p className="text-sm leading-relaxed mb-6 max-w-xs text-gray-500">
-                La plateforme financière tout-en-un pour les entrepreneurs et particuliers africains. Gestion, facturation, commerce, transferts et bien plus.
+              <p className="text-sm leading-relaxed mb-4 text-gray-500">
+                Plateforme financière tout-en-un pour l'Afrique.
               </p>
-              {/* Réseaux sociaux */}
               <div className="flex items-center gap-3">
                 <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#1877F2] flex items-center justify-center transition-all hover:scale-110">
@@ -798,18 +827,14 @@ export default function LandingPage() {
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-black flex items-center justify-center transition-all hover:scale-110">
                   <Twitter className="w-4 h-4 text-white" />
                 </a>
-                <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#ff0050] flex items-center justify-center transition-all hover:scale-110">
-                  <svg className="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.52V6.76a4.85 4.85 0 01-1.02-.07z"/></svg>
-                </a>
               </div>
             </div>
 
-            {/* Produit */}
+            {/* Modules */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Modules</p>
-              <div className="flex flex-col gap-3">
-                {["Gestion Financière","Facturation","Boutique E-commerce","Transfert d'Argent","Immobilier","Coffre-Fort","Prêts","Abonnements"].map(l => (
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Modules</p>
+              <div className="flex flex-col gap-2">
+                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Prêts","Liens"].map(l => (
                   <button key={l} onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">{l}</button>
                 ))}
               </div>
@@ -817,28 +842,24 @@ export default function LandingPage() {
 
             {/* Ressources */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Ressources</p>
-              <div className="flex flex-col gap-3">
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Ressources</p>
+              <div className="flex flex-col gap-2">
                 <button onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Connexion</button>
                 <button onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Créer un compte</button>
                 <button onClick={() => scrollTo("avis")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Témoignages</button>
-                <button onClick={() => scrollTo("roadmap")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Roadmap</button>
                 <a href="mailto:support@nexora.africa" className="text-sm text-gray-500 hover:text-white text-left transition-colors">Support</a>
               </div>
             </div>
 
             {/* Légal */}
             <div>
-              <p className="text-white font-black text-sm mb-5 uppercase tracking-wider">Légal</p>
-              <div className="flex flex-col gap-3">
-                <button onClick={() => navigate("/cgu")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Conditions d'utilisation</button>
-                <button onClick={() => navigate("/confidentialite")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Politique de confidentialité</button>
-                <span className="text-sm text-gray-600">support@nexora.africa</span>
+              <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Légal</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => navigate("/cgu")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">CGU</button>
+                <button onClick={() => navigate("/confidentialite")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">Confidentialité</button>
               </div>
-
-              {/* Pays actifs */}
-              <div className="mt-6">
-                <p className="text-white font-black text-xs mb-3 uppercase tracking-wider">Pays actifs</p>
+              <div className="mt-4">
+                <p className="text-white font-black text-xs mb-2 uppercase tracking-wider">Pays actifs</p>
                 <div className="flex flex-wrap gap-1.5">
                   {["🇧🇯","🇨🇮","🇹🇬","🇸🇳","🇳🇪"].map((f,i) => (
                     <span key={i} className="text-lg">{f}</span>
@@ -849,12 +870,12 @@ export default function LandingPage() {
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-sm text-gray-600">© {new Date().getFullYear()} NEXORA. Tous droits réservés.</p>
-            <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center text-xs text-gray-600">
-              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors whitespace-nowrap">CGU</button>
-              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors whitespace-nowrap">Confidentialité</button>
-              <span className="flex items-center gap-1.5 whitespace-nowrap"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Paiements sécurisés</span>
+            <div className="flex items-center gap-4 text-xs text-gray-600">
+              <button onClick={() => navigate("/cgu")} className="hover:text-white transition-colors">CGU</button>
+              <button onClick={() => navigate("/confidentialite")} className="hover:text-white transition-colors">Confidentialité</button>
+              <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Sécurisé</span>
             </div>
           </div>
         </div>

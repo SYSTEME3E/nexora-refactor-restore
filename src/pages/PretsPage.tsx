@@ -363,7 +363,7 @@ export default function PretsPage() {
   const filteredPrets = prets.filter(p => p.type === activeTab);
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const preteurNom = pret.type === "pret" ? (getNexoraUser()?.nom_prenom || "Utilisateur") : pret.nom_personne;
+  const currentUserName = getNexoraUser()?.nom_prenom || "Utilisateur";
   const preteurLabel = activeTab === "pret" ? currentUserName : form.nom_personne || "...";
   const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : currentUserName;
 
@@ -444,7 +444,7 @@ export default function PretsPage() {
             </div>
             <button
               onClick={() => navigate("/abonnement")}
- `             className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
+ className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
             >
               <Crown className="w-4 h-4" /> Passer à Premium
             </button>

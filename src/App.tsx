@@ -43,11 +43,12 @@ import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
+import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
-import PaymentCallbackPage from "@/pages/PaymentCallbackPage"; // Ajouté ici
+import PaymentCallbackPage from "@/pages/PaymentCallbackPage";
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
@@ -58,35 +59,6 @@ const queryClient = new QueryClient();
 
 const LOADER_LOGIN = 800;
 const LOADER_PAGE = 800;
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import TransfertPage from "./pages/TransfertPage.tsx";
-import NotFound from "./pages/NotFound.tsx";
-
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<TransfertPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
 
 // --- Composants de Garde (Guards) ---
 
@@ -173,7 +145,6 @@ const App = () => (
           <Route path="/prets"             element={<ProtectedPage><PretsPage /></ProtectedPage>} />
           <Route path="/entrees-depenses"  element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
           
-          
           {/* Callback Paiement Moneroo */}
           <Route path="/payment/callback"  element={<ProtectedPage><PaymentCallbackPage /></ProtectedPage>} />
 
@@ -183,6 +154,7 @@ const App = () => (
 
           {/* Routes Premium */}
           <Route path="/immobilier"             element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
+          <Route path="/immobilier/annonce/:id" element={<PremiumPage><AnnonceDetailPage /></PremiumPage>} />
           <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
           <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
           <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
@@ -193,7 +165,7 @@ const App = () => (
           <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
           <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
-          <Route path="/commande/:commandeId"                element={<CommandeTrackingPage />} />
+          <Route path="/commande/:commandeId"              element={<CommandeTrackingPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
