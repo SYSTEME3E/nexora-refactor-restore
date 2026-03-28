@@ -6,7 +6,7 @@ import {
   Download, Phone, Search, ChevronDown, Loader2,
   BadgeCheck, Lock, ExternalLink
 } from "lucide-react";
-import { initPayment, initPayout, RESEAU_CODES } from "@/lib/Moneroo";
+import { initPayment, initPayout } from "@/lib/Moneroo";
 import { getNexoraUser } from "@/lib/nexora-auth";
 
 const LOGO_URL = "https://i.postimg.cc/c1QgbZsG/ei_1773937801458_removebg_preview.png";
@@ -128,7 +128,7 @@ body{font-family:'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;}
     <div class="row"><span class="label">Réseau</span><span class="value">${tx.reseau}</span></div>
     <div class="row"><span class="label">Numéro</span><span class="value">${tx.telephone}</span></div>
     ` : `
-    <div class="row"><span class="label">Frais de service</span><span class="value">100 FCFA</span></div>
+    <div class="row"><span class="label">Frais de recharge</span><span class="value">100 FCFA</span></div>
     `}
     <div class="total-box">
       <span>Total débité</span>
@@ -221,39 +221,35 @@ function CountrySelector({ selected, onSelect, label }: {
 }
 
 // ─────────────────────────────────────────────
-// MODAL RECHARGE — GENIUSPAY (redirection)
-// Frais : +100 FCFA sur le montant total payé
+// MODAL RECHARGE — GENIUSPAY (remplace KKIAPAY)
+// Frais fixes : 100 FCFA — redirection vers page GeniusPay
 // ─────────────────────────────────────────────
 function ModalRecharge({ onClose }: { onClose: () => void }) {
   const [montant, setMontant] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const montantNum  = parseFloat(montant) || 0;
-  const fraisFixe   = 100; // 100 FCFA de frais NEXORA
-  const totalPaye   = montantNum + fraisFixe;
-  const valid       = montantNum >= 100;
+  const montantNum = parseFloat(montant) || 0;
+  const fraisFixe  = 100;
+  const totalPaye  = montantNum + fraisFixe;
+  const valid      = montantNum >= 100;
 
   const handleSubmit = async () => {
     if (!valid) return;
     setError(null);
     setLoading(true);
-
     try {
       const result = await initPayment({
         type:   "recharge_transfert",
-        amount: montantNum, // La lib ajoute les 100 FCFA automatiquement
+        amount: montantNum,
       });
-
       if (!result.success || !result.payment_url) {
-        setError(result.error ?? "Erreur lors de l'initialisation du paiement");
+        setError(result.error ?? "Erreur lors de l'initialisation du paiement.");
         setLoading(false);
         return;
       }
-
-      // Rediriger vers GeniusPay — l'utilisateur reviendra sur /payment/callback
+      // Redirection vers GeniusPay — retour automatique sur /payment/callback
       window.location.href = result.payment_url;
-      // On ne remet pas setLoading(false) car la page va naviguer
     } catch (err: any) {
       setError(err.message ?? "Erreur réseau. Veuillez réessayer.");
       setLoading(false);
@@ -305,15 +301,15 @@ function ModalRecharge({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Récapitulatif frais */}
+          {/* Récap frais */}
           {montantNum >= 100 && (
             <div className="bg-muted/60 border border-border rounded-xl p-4 space-y-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Montant crédité</span>
+                <span>Montant crédité sur votre compte</span>
                 <span className="font-bold text-foreground">{fmt(montantNum)} FCFA</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>Frais de service</span>
+                <span>Frais de service NEXORA</span>
                 <span>+ {fmt(fraisFixe)} FCFA</span>
               </div>
               <div className="h-px bg-border" />
@@ -355,8 +351,8 @@ function ModalRecharge({ onClose }: { onClose: () => void }) {
 }
 
 // ─────────────────────────────────────────────
-// MODAL TRANSFERT — GENIUSPAY PAYOUT (pay.genius.ci)
-// Frais : 3% du montant envoyé
+// MODAL TRANSFERT — GENIUSPAY PAYOUT
+// Frais : 3% — appel Edge Function
 // ─────────────────────────────────────────────
 function ModalTransfert({ onClose, onConfirm, balance }: {
   onClose: () => void;
@@ -374,20 +370,12 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
   const frais            = calcFrais(montantNum);
   const netRecu          = montantNum - frais;
   const soldeInsuffisant = montantNum > balance;
-  const reseauValide     = reseau !== "" && (RESEAU_CODES[reseau] !== undefined);
-  const valid = (
-    montantNum >= 100 &&
-    !soldeInsuffisant &&
-    pays !== null &&
-    reseauValide &&
-    telephone.length >= 8
-  );
+  const valid = montantNum >= 100 && !soldeInsuffisant && pays !== null && reseau !== "" && telephone.length >= 8;
 
   const handleSubmit = async () => {
     if (!valid || !pays) return;
     setError(null);
     setLoading(true);
-
     try {
       const user = getNexoraUser();
       const result = await initPayout({
@@ -397,19 +385,13 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
         reseau:           reseau,
         numero_mobile:    telephone,
         nom_beneficiaire: user?.nom_prenom ?? "Client NEXORA",
-        metadata: {
-          pays_code: pays.code,
-          pays_flag: pays.flag,
-        },
+        metadata: { pays_code: pays.code, pays_flag: pays.flag },
       });
-
       if (!result.success) {
         setError(result.error ?? "Erreur lors du transfert. Veuillez réessayer.");
         setLoading(false);
         return;
       }
-
-      // Succès — on notifie le parent pour mettre à jour l'UI
       onConfirm(montantNum, frais, reseau, telephone, pays);
     } catch (err: any) {
       setError(err.message ?? "Erreur réseau. Veuillez réessayer.");
@@ -427,7 +409,7 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-black text-white">Envoyer de l'argent</h2>
-            <p className="text-xs text-violet-100">Frais : 3% · Via GeniusPay Payout</p>
+            <p className="text-xs text-violet-100">Frais : 3% · 5 pays disponibles</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors">
             <X className="w-4 h-4 text-white" />
@@ -458,7 +440,7 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
             {montantNum > 0 && (
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Frais NEXORA (3%)</span>
+                  <span>Frais (3%)</span>
                   <span>− {fmt(frais)} FCFA</span>
                 </div>
                 <div className="flex justify-between font-bold text-foreground">
@@ -483,25 +465,15 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
             <div className="space-y-2">
               <label className="text-sm font-semibold text-muted-foreground">Réseau Mobile Money</label>
               <div className="grid grid-cols-2 gap-2">
-                {pays.networks.map(n => {
-                  const supported = RESEAU_CODES[n] !== undefined;
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => supported && setReseau(n)}
-                      disabled={!supported}
-                      className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${
-                        reseau === n
-                          ? "border-violet-400 bg-violet-400/10 text-violet-500"
-                          : supported
-                            ? "border-border bg-muted/60 text-foreground hover:border-accent"
-                            : "border-border bg-muted/30 text-muted-foreground opacity-50 cursor-not-allowed"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
+                {pays.networks.map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setReseau(n)}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${reseau === n ? "border-violet-400 bg-violet-400/10 text-violet-500" : "border-border bg-muted/60 text-foreground hover:border-accent"}`}
+                  >
+                    {n}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -536,7 +508,7 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
             className="w-full py-3.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {loading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Transfert en cours...</>
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Traitement en cours...</>
               : <><Send className="w-4 h-4" /> Envoyer {montantNum > 0 ? fmt(montantNum) + " FCFA" : ""}</>}
           </button>
         </div>
@@ -554,22 +526,19 @@ export default function TransfertPage() {
   const [showRecharge, setShowRecharge] = useState(false);
   const [showTransfert, setShowTransfert] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "depot" | "transfert">("all");
 
-  // ── Détecter le retour de GeniusPay (callback après recharge)
+  // ── Détecter le retour GeniusPay après paiement recharge
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const type   = params.get("type");
     const status = params.get("status");
-
     if (type === "transfert" && status === "success") {
-      // La recharge a été confirmée — on recharge depuis Supabase
-      // (le webhook GeniusPay a déjà crédité le compte côté DB)
-      showSuccess("Recharge confirmée ! Votre solde a été mis à jour.");
-      // Nettoyer l'URL sans rechargement
+      showSuccessMsg("Recharge confirmée ! Votre solde sera mis à jour dans quelques instants.");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (type === "transfert" && status === "failed") {
-      showError("Le paiement a été annulé ou a échoué. Veuillez réessayer.");
+      showErrorMsg("Le paiement a été annulé ou a échoué. Veuillez réessayer.");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -578,18 +547,15 @@ export default function TransfertPage() {
   const totalTransferts = transactions.filter(t => t.type === "transfert" && t.status === "success").reduce((s, t) => s + t.montant, 0);
   const filtered        = transactions.filter(t => filterType === "all" || t.type === filterType);
 
-  const showSuccess = (msg: string) => {
+  const showSuccessMsg = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
-
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const showError = (msg: string) => {
+  const showErrorMsg = (msg: string) => {
     setErrorMsg(msg);
     setTimeout(() => setErrorMsg(null), 5000);
   };
 
-  // ── Après un transfert réussi (payout confirmé par l'Edge Function)
   const handleTransfert = (montant: number, frais: number, reseau: string, tel: string, pays: ActiveCountry) => {
     const tx: Transaction = {
       id: Date.now().toString(), type: "transfert", montant, frais,
@@ -599,7 +565,7 @@ export default function TransfertPage() {
     setTransactions(prev => [tx, ...prev]);
     setBalance(prev => prev - montant);
     setShowTransfert(false);
-    showSuccess(`${fmt(montant)} FCFA envoyés vers ${pays.flag} ${pays.name} — Traitement en cours`);
+    showSuccessMsg(`${fmt(montant)} FCFA envoyés vers ${pays.flag} ${pays.name} — Traitement en cours`);
   };
 
   return (
@@ -684,7 +650,7 @@ export default function TransfertPage() {
               <span className="text-xs font-semibold">Total rechargé</span>
             </div>
             <p className="text-lg font-black text-foreground">{fmt(totalDepots)}</p>
-            <p className="text-[10px] text-muted-foreground">FCFA · +100 FCFA/recharge</p>
+            <p className="text-[10px] text-muted-foreground">FCFA · Sans frais</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -694,7 +660,7 @@ export default function TransfertPage() {
               <span className="text-xs font-semibold">Total envoyé</span>
             </div>
             <p className="text-lg font-black text-foreground">{fmt(totalTransferts)}</p>
-            <p className="text-[10px] text-muted-foreground">FCFA · 3% de frais</p>
+            <p className="text-[10px] text-muted-foreground">FCFA · Frais inclus</p>
           </div>
         </div>
 
@@ -704,6 +670,7 @@ export default function TransfertPage() {
             <Globe className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-sm font-black text-foreground">Pays disponibles</h2>
           </div>
+
           <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">✓ Disponibles maintenant</p>
           <div className="flex flex-wrap gap-2">
             {ACTIVE_COUNTRIES.map(c => (
@@ -713,6 +680,7 @@ export default function TransfertPage() {
               </span>
             ))}
           </div>
+
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-2">
             <Lock className="w-3 h-3" /> Bientôt disponibles
           </div>
@@ -813,7 +781,7 @@ export default function TransfertPage() {
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <div className="space-y-1">
             <p>NEXORA TRANSFERT — Recharge via GeniusPay (Wave, Orange Money, MTN, Moov).</p>
-            <p>Frais de recharge : 100 FCFA fixes. Frais de transfert : 3% déduits du montant envoyé.</p>
+            <p>Frais de recharge : 100 FCFA. Frais de transfert : 3% déduits du montant envoyé.</p>
             <p>Disponible au Bénin, Côte d'Ivoire, Togo, Sénégal et Niger. D'autres pays arrivent bientôt.</p>
           </div>
         </div>
