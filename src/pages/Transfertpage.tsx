@@ -221,18 +221,28 @@ function CountrySelector({ selected, onSelect, label }: {
 }
 
 // ─────────────────────────────────────────────
-// MODAL RECHARGE — GENIUSPAY (remplace KKIAPAY)
-// Frais fixes : 100 FCFA — redirection vers page GeniusPay
+// MODAL RECHARGE — GENIUSPAY
+// Pays + réseau (auto selon pays) + téléphone + montant
+// Frais fixes : 100 FCFA — redirection GeniusPay
 // ─────────────────────────────────────────────
 function ModalRecharge({ onClose }: { onClose: () => void }) {
   const [montant, setMontant] = useState("");
+  const [pays, setPays] = useState<ActiveCountry | null>(null);
+  const [reseau, setReseau] = useState("");
+  const [telephone, setTelephone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const montantNum = parseFloat(montant) || 0;
   const fraisFixe  = 100;
   const totalPaye  = montantNum + fraisFixe;
-  const valid      = montantNum >= 100;
+  const valid      = montantNum >= 100 && pays !== null && reseau !== "" && telephone.length >= 8;
+
+  // Quand le pays change, sélectionner automatiquement le premier réseau
+  const handlePaysSelect = (p: ActiveCountry) => {
+    setPays(p);
+    setReseau(p.networks[0]); // Auto-sélection du premier réseau
+  };
 
   const handleSubmit = async () => {
     if (!valid) return;
@@ -242,13 +252,17 @@ function ModalRecharge({ onClose }: { onClose: () => void }) {
       const result = await initPayment({
         type:   "recharge_transfert",
         amount: montantNum,
+        metadata: {
+          reseau:    reseau,
+          telephone: telephone,
+          pays:      pays?.name ?? "",
+        },
       });
       if (!result.success || !result.payment_url) {
         setError(result.error ?? "Erreur lors de l'initialisation du paiement.");
         setLoading(false);
         return;
       }
-      // Redirection vers GeniusPay — retour automatique sur /payment/callback
       window.location.href = result.payment_url;
     } catch (err: any) {
       setError(err.message ?? "Erreur réseau. Veuillez réessayer.");
@@ -298,6 +312,42 @@ function ModalRecharge({ onClose }: { onClose: () => void }) {
                   {fmt(v)}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Pays */}
+          <CountrySelector selected={pays} onSelect={handlePaysSelect} label="Pays de votre réseau" />
+
+          {/* Réseau — s'affiche automatiquement selon le pays */}
+          {pays && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-muted-foreground">Réseau Mobile Money</label>
+              <div className="grid grid-cols-2 gap-2">
+                {pays.networks.map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setReseau(n)}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${reseau === n ? "border-emerald-400 bg-emerald-400/10 text-emerald-500" : "border-border bg-muted/60 text-foreground hover:border-accent"}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Téléphone */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-muted-foreground">Votre numéro Mobile Money</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="tel"
+                value={telephone}
+                onChange={e => setTelephone(e.target.value)}
+                placeholder="+229 97 00 00 00"
+                className="w-full pl-10 pr-4 py-3 bg-muted/60 border border-border rounded-xl outline-none focus:border-emerald-400 transition-colors"
+              />
             </div>
           </div>
 
@@ -352,7 +402,6 @@ function ModalRecharge({ onClose }: { onClose: () => void }) {
 
 // ─────────────────────────────────────────────
 // MODAL TRANSFERT — GENIUSPAY PAYOUT
-// Frais : 3% — appel Edge Function
 // ─────────────────────────────────────────────
 function ModalTransfert({ onClose, onConfirm, balance }: {
   onClose: () => void;
@@ -371,6 +420,12 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
   const netRecu          = montantNum - frais;
   const soldeInsuffisant = montantNum > balance;
   const valid = montantNum >= 100 && !soldeInsuffisant && pays !== null && reseau !== "" && telephone.length >= 8;
+
+  // Auto-sélection du premier réseau quand pays change
+  const handlePaysSelect = (p: ActiveCountry) => {
+    setPays(p);
+    setReseau(p.networks[0]);
+  };
 
   const handleSubmit = async () => {
     if (!valid || !pays) return;
@@ -458,9 +513,9 @@ function ModalTransfert({ onClose, onConfirm, balance }: {
           </div>
 
           {/* Pays */}
-          <CountrySelector selected={pays} onSelect={p => { setPays(p); setReseau(""); }} label="Pays destinataire" />
+          <CountrySelector selected={pays} onSelect={handlePaysSelect} label="Pays destinataire" />
 
-          {/* Réseau */}
+          {/* Réseau — s'affiche automatiquement selon le pays */}
           {pays && (
             <div className="space-y-2">
               <label className="text-sm font-semibold text-muted-foreground">Réseau Mobile Money</label>
@@ -529,7 +584,7 @@ export default function TransfertPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "depot" | "transfert">("all");
 
-  // ── Détecter le retour GeniusPay après paiement recharge
+  // Détecter retour GeniusPay après paiement
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const type   = params.get("type");
@@ -547,14 +602,8 @@ export default function TransfertPage() {
   const totalTransferts = transactions.filter(t => t.type === "transfert" && t.status === "success").reduce((s, t) => s + t.montant, 0);
   const filtered        = transactions.filter(t => filterType === "all" || t.type === filterType);
 
-  const showSuccessMsg = (msg: string) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(null), 4000);
-  };
-  const showErrorMsg = (msg: string) => {
-    setErrorMsg(msg);
-    setTimeout(() => setErrorMsg(null), 5000);
-  };
+  const showSuccessMsg = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 4000); };
+  const showErrorMsg   = (msg: string) => { setErrorMsg(msg);   setTimeout(() => setErrorMsg(null),   5000); };
 
   const handleTransfert = (montant: number, frais: number, reseau: string, tel: string, pays: ActiveCountry) => {
     const tx: Transaction = {
@@ -572,14 +621,11 @@ export default function TransfertPage() {
     <AppLayout>
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
 
-        {/* Toast succès */}
         {successMsg && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-5 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
             <Check className="w-4 h-4" /> {successMsg}
           </div>
         )}
-
-        {/* Toast erreur */}
         {errorMsg && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-red-500 text-white px-5 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
             <AlertCircle className="w-4 h-4" /> {errorMsg}
@@ -591,7 +637,6 @@ export default function TransfertPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(99,102,241,0.15),transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.1),transparent_50%)]" />
           <div className="relative z-10 space-y-5">
-            {/* Logo */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img src={LOGO_URL} alt="Nexora" className="w-10 h-10 object-contain" />
@@ -608,32 +653,19 @@ export default function TransfertPage() {
                 </div>
               </div>
             </div>
-
-            {/* Solde */}
             <div className="space-y-1">
               <p className="text-slate-400 text-xs font-semibold">Solde disponible</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-black text-white tracking-tight">{fmt(balance)}</span>
                 <span className="text-sm font-bold text-slate-500">FCFA</span>
               </div>
-              {balance === 0 && (
-                <p className="text-xs text-slate-500">Rechargez votre compte pour commencer</p>
-              )}
+              {balance === 0 && <p className="text-xs text-slate-500">Rechargez votre compte pour commencer</p>}
             </div>
-
-            {/* Actions */}
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowRecharge(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black rounded-xl transition-all shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95"
-              >
+              <button onClick={() => setShowRecharge(true)} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black rounded-xl transition-all shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95">
                 <ArrowDownLeft className="w-4 h-4" /> Recharger
               </button>
-              <button
-                onClick={() => setShowTransfert(true)}
-                disabled={balance === 0}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 hover:border-white/40 text-white font-black rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
+              <button onClick={() => setShowTransfert(true)} disabled={balance === 0} className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 hover:border-white/40 text-white font-black rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100">
                 <ArrowUpRight className="w-4 h-4" /> Envoyer
               </button>
             </div>
@@ -644,19 +676,15 @@ export default function TransfertPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
-              </div>
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" /></div>
               <span className="text-xs font-semibold">Total rechargé</span>
             </div>
             <p className="text-lg font-black text-foreground">{fmt(totalDepots)}</p>
-            <p className="text-[10px] text-muted-foreground">FCFA · Sans frais</p>
+            <p className="text-[10px] text-muted-foreground">FCFA · +100 FCFA/recharge</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-4 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                <ArrowUpRight className="w-3.5 h-3.5 text-violet-500" />
-              </div>
+              <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center"><ArrowUpRight className="w-3.5 h-3.5 text-violet-500" /></div>
               <span className="text-xs font-semibold">Total envoyé</span>
             </div>
             <p className="text-lg font-black text-foreground">{fmt(totalTransferts)}</p>
@@ -670,25 +698,21 @@ export default function TransfertPage() {
             <Globe className="w-4 h-4 text-muted-foreground" />
             <h2 className="text-sm font-black text-foreground">Pays disponibles</h2>
           </div>
-
           <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">✓ Disponibles maintenant</p>
           <div className="flex flex-wrap gap-2">
             {ACTIVE_COUNTRIES.map(c => (
               <span key={c.code} className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground">
-                <span className="text-base">{c.flag}</span>
-                <span>{c.name}</span>
+                <span className="text-base">{c.flag}</span><span>{c.name}</span>
               </span>
             ))}
           </div>
-
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-2">
             <Lock className="w-3 h-3" /> Bientôt disponibles
           </div>
           <div className="flex flex-wrap gap-1.5">
             {COMING_SOON.map(c => (
               <span key={c.code} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/50 rounded-full text-[11px] text-muted-foreground">
-                <span className="text-sm">{c.flag}</span>
-                <span>{c.name}</span>
+                <span className="text-sm">{c.flag}</span><span>{c.name}</span>
               </span>
             ))}
           </div>
@@ -701,11 +725,7 @@ export default function TransfertPage() {
             <h2 className="text-sm font-black text-foreground">Historique des transactions</h2>
             <div className="flex gap-1 ml-auto">
               {(["all", "depot", "transfert"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilterType(f)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${filterType === f ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
-                >
+                <button key={f} onClick={() => setFilterType(f)} className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${filterType === f ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
                   {f === "all" ? "Tout" : f === "depot" ? "Recharges" : "Transferts"}
                 </button>
               ))}
@@ -714,17 +734,12 @@ export default function TransfertPage() {
 
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center py-12 space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-                <History className="w-7 h-7 text-muted-foreground" />
-              </div>
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center"><History className="w-7 h-7 text-muted-foreground" /></div>
               <div className="text-center">
                 <p className="font-bold text-foreground text-sm">Aucune transaction</p>
                 <p className="text-xs text-muted-foreground">Vos transactions apparaîtront ici</p>
               </div>
-              <button
-                onClick={() => setShowRecharge(true)}
-                className="mt-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
-              >
+              <button onClick={() => setShowRecharge(true)} className="mt-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
                 <Plus className="w-3 h-3" /> Faire ma première recharge
               </button>
             </div>
@@ -733,15 +748,11 @@ export default function TransfertPage() {
               {filtered.map(tx => (
                 <div key={tx.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === "depot" ? "bg-emerald-500/10" : "bg-violet-500/10"}`}>
-                    {tx.type === "depot"
-                      ? <ArrowDownLeft className="w-4 h-4 text-emerald-500" />
-                      : <ArrowUpRight className="w-4 h-4 text-violet-500" />}
+                    {tx.type === "depot" ? <ArrowDownLeft className="w-4 h-4 text-emerald-500" /> : <ArrowUpRight className="w-4 h-4 text-violet-500" />}
                   </div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-foreground truncate">
-                        {tx.type === "depot" ? "Recharge" : `${tx.flag} ${tx.pays}`}
-                      </span>
+                      <span className="font-bold text-sm text-foreground truncate">{tx.type === "depot" ? "Recharge" : `${tx.flag} ${tx.pays}`}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tx.status === "success" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : tx.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
                         {tx.status === "success" ? "Réussi" : tx.status === "pending" ? "En cours" : "Échoué"}
                       </span>
@@ -751,9 +762,7 @@ export default function TransfertPage() {
                       {tx.telephone && <span>{tx.telephone}</span>}
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <span>{tx.reference}</span>
-                      <span>·</span>
-                      <span>{tx.date}</span>
+                      <span>{tx.reference}</span><span>·</span><span>{tx.date}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -761,12 +770,9 @@ export default function TransfertPage() {
                       <p className={`font-black text-sm ${tx.type === "depot" ? "text-emerald-500" : "text-violet-500"}`}>
                         {tx.type === "depot" ? "+" : "−"}{fmt(tx.montant)}
                       </p>
-                      {tx.frais > 0 && (
-                        <p className="text-[10px] text-muted-foreground">frais {fmt(tx.frais)}</p>
-                      )}
+                      {tx.frais > 0 && <p className="text-[10px] text-muted-foreground">frais {fmt(tx.frais)}</p>}
                     </div>
-                    <button onClick={() => generateInvoicePDF(tx)} title="Télécharger la facture PDF"
-                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                    <button onClick={() => generateInvoicePDF(tx)} title="Télécharger la facture PDF" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                       <Download className="w-4 h-4" />
                     </button>
                   </div>
