@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
   Search, ChevronRight, TrendingUp, History, Home,
   HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight, Sun, Moon
+  ShieldCheck, ArrowLeftRight
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
 import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession, type NexoraPlan } from "@/lib/nexora-auth";
@@ -40,27 +40,30 @@ interface AppLayoutProps {
   children: ReactNode;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  isDark?: boolean;
 }
 
-export default function AppLayout({ children, searchQuery = "", onSearchChange }: AppLayoutProps) {
+export default function AppLayout({ children, searchQuery = "", onSearchChange, isDark }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen]             = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode]                   = useState(() => {
-    return localStorage.getItem("nexora-theme") === "dark" ||
-      (!localStorage.getItem("nexora-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  });
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Synchronise le thème avec la prop isDark venant du Dashboard (ou localStorage par défaut)
   useEffect(() => {
-    if (darkMode) {
+    const useDark = isDark !== undefined
+      ? isDark
+      : (localStorage.getItem("nexora-theme") === "dark" ||
+          (!localStorage.getItem("nexora-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches));
+
+    if (useDark) {
       document.documentElement.classList.add("dark");
       localStorage.setItem("nexora-theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("nexora-theme", "light");
     }
-  }, [darkMode]);
+  }, [isDark]);
 
   // ── Refresh session au montage ──
   useEffect(() => {
@@ -199,24 +202,8 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           })}
         </nav>
 
-        {/* Dark mode toggle + Logout */}
-        <div className="p-2.5 border-t border-sidebar-border space-y-1">
-          {/* Toggle Lumière / Sombre */}
-          <button onClick={() => setDarkMode(!darkMode)} title={darkMode ? "Mode Lumière" : "Mode Sombre"}
-            className={`
-              w-full flex items-center gap-3 rounded-xl text-sidebar-foreground/70
-              hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors
-              ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
-            `}>
-            <div className={`flex items-center justify-center rounded-lg flex-shrink-0 ${darkMode ? "bg-amber-400/15" : "bg-indigo-400/15"} ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}`}>
-              {darkMode
-                ? <Sun className={`text-amber-300 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
-                : <Moon className={`text-indigo-300 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
-              }
-            </div>
-            {sidebarOpen && <span className="text-sm">{darkMode ? "Mode Lumière" : "Mode Sombre"}</span>}
-          </button>
-
+        {/* Logout uniquement (thème retiré du menu) */}
+        <div className="p-2.5 border-t border-sidebar-border">
           <button onClick={handleLogout} title="Déconnexion"
             className={`
               w-full flex items-center gap-3 rounded-xl text-sidebar-foreground/70
@@ -279,7 +266,6 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           {children}
         </main>
 
-      
         <footer className="py-2.5 px-6 border-t border-border text-center text-xs text-muted-foreground">
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
