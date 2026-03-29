@@ -294,7 +294,7 @@ export default function VitrinePage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center px-4">
         <p className="text-6xl mb-4">🏪</p>
-        <h1 className="text-2xl font-bold text-gray-800">Boutique introuvable</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Boutique introuvable</h1>
         <p className="text-gray-500 mt-2">Cette boutique n'existe pas ou n'est plus active.</p>
       </div>
     </div>
@@ -311,7 +311,7 @@ export default function VitrinePage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
         <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-black text-gray-800">Commande envoyée !</h2>
+        <h2 className="text-2xl font-black text-gray-800 dark:text-gray-100">Commande envoyée !</h2>
         <p className="text-gray-500 mt-2">
           Votre commande <strong className="text-pink-600">{commandeNumero}</strong> a été reçue.
         </p>
@@ -332,10 +332,10 @@ export default function VitrinePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
 
       {/* ── Header boutique ── */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-white border-b border-gray-100 dark:border-gray-700">
         {boutique?.banniere_url && (
           <div className="w-full h-32 overflow-hidden">
             <img src={boutique.banniere_url} alt="" className="w-full h-full object-cover" />
@@ -378,7 +378,7 @@ export default function VitrinePage() {
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
                 placeholder="Rechercher un produit..."
                 className="w-full pl-9 pr-4 h-10 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-pink-300 focus:bg-white transition-colors" />
@@ -402,16 +402,16 @@ export default function VitrinePage() {
               }`}>Tout</button>
             <button onClick={() => setFilterType(filterType === "physique" ? "" : "physique")}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filterType === "physique" ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600"
+                filterType === "physique" ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600 dark:text-gray-300"
               }`}>📦 Physique</button>
             <button onClick={() => setFilterType(filterType === "numerique" ? "" : "numerique")}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filterType === "numerique" ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600"
+                filterType === "numerique" ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600 dark:text-gray-300"
               }`}>💻 Numérique</button>
             {categories.map(cat => (
               <button key={cat} onClick={() => setFilterCateg(filterCateg === cat ? "" : cat)}
                 className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  filterCateg === cat ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600"
+                  filterCateg === cat ? "bg-pink-500 text-white" : "bg-gray-100 text-gray-600 dark:text-gray-300"
                 }`}>{cat} ({categoryCounts[cat] || 0})</button>
             ))}
           </div>
@@ -440,7 +440,7 @@ export default function VitrinePage() {
                     enRupture ? "opacity-60" : "cursor-pointer active:scale-95"
                   }`}>
 
-                  <div className="relative w-full h-40 bg-gray-100">
+                  <div className="relative w-full h-40 bg-gray-100 dark:bg-gray-700">
                     {photo ? (
                       <img src={photo} alt={produit.nom} className="w-full h-full object-cover" />
                     ) : (
@@ -474,8 +474,8 @@ export default function VitrinePage() {
                     <p className="font-semibold text-gray-800 text-sm line-clamp-2">{produit.nom}</p>
                     {produit.categorie && (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <Tag className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-400">{produit.categorie}</span>
+                        <Tag className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{produit.categorie}</span>
                       </div>
                     )}
                     <div className="mt-1">
@@ -504,7 +504,7 @@ export default function VitrinePage() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center">
           <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-black text-lg text-gray-800">Mon panier ({nbArticles})</h2>
+              <h2 className="font-black text-lg text-gray-800 dark:text-gray-100">Mon panier ({nbArticles})</h2>
               <button onClick={() => { setShowPanier(false); setSearchParams({}); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
@@ -513,7 +513,7 @@ export default function VitrinePage() {
               {panier.length === 0 ? (
                 <div className="text-center py-10">
                   <ShoppingCart className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-400">Votre panier est vide</p>
+                  <p className="text-gray-400 dark:text-gray-500">Votre panier est vide</p>
                 </div>
               ) : (
                 panier.map((item, i) => (
@@ -524,7 +524,7 @@ export default function VitrinePage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-gray-800 truncate">{item.produit.nom}</p>
                       {Object.keys(item.variations_choisies).length > 0 && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
                           {Object.entries(item.variations_choisies).map(([k, v]) => `${k}: ${v}`).join(", ")}
                         </p>
                       )}
@@ -553,7 +553,7 @@ export default function VitrinePage() {
             {panier.length > 0 && (
               <div className="p-4 border-t border-gray-100 space-y-3">
                 <div className="flex justify-between font-black text-lg">
-                  <span className="text-gray-800">Total</span>
+                  <span className="text-gray-800 dark:text-gray-100">Total</span>
                   <span className="text-pink-600">{formatPrix(totalPanier, boutique?.devise)}</span>
                 </div>
                 <button onClick={() => { setShowPanier(false); setShowCheckout(true); setSearchParams({ open: "checkout" }); }}
@@ -571,7 +571,7 @@ export default function VitrinePage() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center">
           <div className="bg-white w-full max-w-lg rounded-t-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-black text-lg text-gray-800">Finaliser la commande</h2>
+              <h2 className="font-black text-lg text-gray-800 dark:text-gray-100">Finaliser la commande</h2>
               <button onClick={() => { setShowCheckout(false); setSearchParams({}); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
@@ -579,50 +579,50 @@ export default function VitrinePage() {
             <form onSubmit={handleCheckout} className="p-4 space-y-4">
               <p className="font-semibold text-sm text-pink-600">Vos informations</p>
               <div>
-                <label className="text-sm font-medium text-gray-700">Nom complet *</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Nom complet *</label>
                 <input value={checkoutForm.nom} onChange={e => setCheckoutForm({ ...checkoutForm, nom: e.target.value })}
                   placeholder="Votre nom" required className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Téléphone *</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Téléphone *</label>
                 <input value={checkoutForm.telephone} onChange={e => setCheckoutForm({ ...checkoutForm, telephone: e.target.value })}
                   placeholder="+229..." required className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Email (optionnel)</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Email (optionnel)</label>
                 <input type="email" value={checkoutForm.email} onChange={e => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                   placeholder="email@exemple.com" className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Adresse de livraison *</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Adresse de livraison *</label>
                 <input value={checkoutForm.adresse} onChange={e => setCheckoutForm({ ...checkoutForm, adresse: e.target.value })}
                   placeholder="Adresse complète" required className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Ville *</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Ville *</label>
                   <input value={checkoutForm.ville} onChange={e => setCheckoutForm({ ...checkoutForm, ville: e.target.value })}
                     placeholder="Cotonou" required className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Pays</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Pays</label>
                   <input value={checkoutForm.pays} onChange={e => setCheckoutForm({ ...checkoutForm, pays: e.target.value })}
                     className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-pink-300" />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Note (optionnel)</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Note (optionnel)</label>
                 <textarea value={checkoutForm.note} onChange={e => setCheckoutForm({ ...checkoutForm, note: e.target.value })}
                   placeholder="Instructions spéciales..."
                   className="mt-1 w-full h-20 px-3 py-2 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-pink-300" />
               </div>
               <div className="bg-gray-50 rounded-xl p-3 space-y-1 text-sm">
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   <span>{nbArticles} article{nbArticles > 1 ? "s" : ""}</span>
                   <span>{formatPrix(totalPanier, boutique?.devise)}</span>
                 </div>
                 <div className="flex justify-between font-black text-base border-t border-gray-200 pt-1">
-                  <span className="text-gray-800">Total</span>
+                  <span className="text-gray-800 dark:text-gray-100">Total</span>
                   <span className="text-pink-600">{formatPrix(totalPanier, boutique?.devise)}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">💡 Le vendeur vous contactera pour confirmer le mode de paiement</p>
@@ -639,11 +639,11 @@ export default function VitrinePage() {
       {/* ── Footer ── */}
       <div className="text-center py-8 px-4 border-t border-gray-100 mt-6">
         {boutique?.telephone && (
-          <a href={`tel:${boutique.telephone}`} className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-3 hover:text-gray-700">
+          <a href={`tel:${boutique.telephone}`} className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-3 hover:text-gray-700 dark:text-gray-200">
             <Phone className="w-4 h-4" /> {boutique.telephone}
           </a>
         )}
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-400 dark:text-gray-500">
           Boutique créée avec <span className="text-pink-500 font-semibold">MES SECRETS</span>
         </p>
       </div>
