@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+
 interface ProduitInfo {
   id: string;
   nom: string;
