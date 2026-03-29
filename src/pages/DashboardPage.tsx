@@ -4,7 +4,7 @@ import { formatAmount, convertAmount } from "@/lib/app-utils";
 import AppLayout from "@/components/AppLayout";
 import {
   TrendingUp, TrendingDown, History, Clock,
-  ArrowUpRight, Store, BadgeCheck, Zap, 
+  ArrowUpRight, Store, Zap,
   Wallet, Sun, Moon, Bell, RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -26,22 +26,10 @@ function getDateStr() {
   });
 }
 
-function VerifiedBadge() {
-  return (
-    <span style={{
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: "18px", height: "18px", borderRadius: "999px",
-        background: "#3b82f6", flexShrink: 0, border: "2px solid rgba(255,255,255,0.4)",
-      }}>
-      <BadgeCheck style={{ width: 11, height: 11, color: "#fff" }} />
-    </span>
-  );
-}
-
 export default function DashboardPage() {
   const [devise, setDevise] = useState<"XOF" | "USD">("XOF");
   const [time, setTime] = useState(new Date());
-  const [isDark, setIsDark] = useState(true); 
+  const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalEntrees: 0,
@@ -52,9 +40,8 @@ export default function DashboardPage() {
 
   const nexoraUser = getNexoraUser();
   const displayName = nexoraUser?.nom_prenom?.split(" ")[0] || "Eric";
-  const hasBadge = nexoraUser?.badge_premium || nexoraUser?.is_admin;
 
-  // --- Logique de récupération des données (Rétablie à 100%) ---
+  // --- Logique de récupération des données ---
   useEffect(() => {
     loadStats();
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -96,27 +83,27 @@ export default function DashboardPage() {
   const toggleTheme = () => setIsDark(!isDark);
 
   return (
-    <AppLayout>
+    <AppLayout isDark={isDark}>
       <div className={`w-full min-h-screen flex flex-col gap-4 p-3 transition-colors duration-300 ${isDark ? 'bg-[#0B1120]' : 'bg-gray-50'}`}>
-        
-        {/* --- TOP BAR : Switch Thème & Notifs --- */}
+
+        {/* --- TOP BAR : Tableau de bord + actions (Refresh, Thème, Notif) --- */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
               <Zap size={18} className="text-white" />
             </div>
             <h2 className={`font-black text-lg tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Statistiques
+              Tableau de bord
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={loadStats}
               className={`p-2 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-gray-200 text-slate-500 shadow-sm'}`}
             >
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </button>
-            <button 
+            <button
               onClick={toggleTheme}
               className={`p-2 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700 text-yellow-400' : 'bg-white border-gray-200 text-indigo-600 shadow-sm'}`}
             >
@@ -130,8 +117,8 @@ export default function DashboardPage() {
 
         {/* --- 1. HEADER HERO : Bordure Violette Lumineuse --- */}
         <div className={`relative overflow-hidden rounded-3xl p-6 border-2 transition-all ${
-          isDark 
-          ? 'bg-slate-900 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.15)]' 
+          isDark
+          ? 'bg-slate-900 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
           : 'bg-white border-purple-400 shadow-md'
         }`}>
           <div className="relative z-10 flex flex-col gap-4">
@@ -141,7 +128,6 @@ export default function DashboardPage() {
                   <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {getGreeting()}, {displayName} ! 👋
                   </h1>
-                  {hasBadge && <VerifiedBadge />}
                 </div>
                 <p className={`text-sm font-medium capitalize ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {getDateStr()}
@@ -158,7 +144,7 @@ export default function DashboardPage() {
                 <option value="USD">USD</option>
               </select>
             </div>
-            
+
             <div className="flex items-center gap-2 bg-purple-500/10 w-fit px-4 py-1.5 rounded-2xl border border-purple-500/20">
               <Clock className="w-4 h-4 text-purple-500" />
               <span className="text-purple-500 font-mono font-bold text-xs">
@@ -185,10 +171,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* --- 3. GRILLE DE CARTES : Couleurs Adaptées de l'Image --- */}
+        {/* --- 3. GRILLE DE CARTES --- */}
         <div className="grid grid-cols-2 gap-4">
-          
-          {/* Entrées : Style "Gratuit" (Blanc Pur / Gris) */}
+
+          {/* Entrées */}
           <Link to="/entrees-depenses" className={`p-4 rounded-3xl shadow-sm border transition-all hover:scale-[1.02] ${
             isDark ? 'bg-white border-gray-200' : 'bg-white border-gray-200'
           }`}>
@@ -201,7 +187,7 @@ export default function DashboardPage() {
             </p>
           </Link>
 
-          {/* Dépenses : Style "Bloqués" (Rosé) */}
+          {/* Dépenses */}
           <Link to="/entrees-depenses" className="bg-[#FFF1F2] border border-[#FECDD3] p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
             <div className="bg-white p-2.5 w-fit rounded-xl mb-3 shadow-sm">
                <TrendingDown className="w-6 h-6 text-[#E11D48]" />
@@ -212,7 +198,7 @@ export default function DashboardPage() {
             </p>
           </Link>
 
-          {/* Transfert : Style "Actifs" (Vert Menthe) */}
+          {/* Transfert */}
           <Link to="/transfert" className="bg-[#F0FDF4] border border-[#DCFCE7] p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
             <div className="bg-white p-2.5 w-fit rounded-xl mb-3 shadow-sm">
                <ArrowUpRight className="w-6 h-6 text-[#16A34A]" />
@@ -221,7 +207,7 @@ export default function DashboardPage() {
             <p className="text-[#166534] font-black text-xl">Suivi →</p>
           </Link>
 
-          {/* Boutique : Style "Boutique" (Bleu Nuit / Sombre) */}
+          {/* Boutique */}
           <Link to="/boutique" className="bg-[#0F172A] border border-slate-700 p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
             <div className="bg-slate-800 p-2.5 w-fit rounded-xl mb-3 border border-slate-700">
                <Store className="w-6 h-6 text-pink-400" />
@@ -239,7 +225,7 @@ export default function DashboardPage() {
              </h3>
              <Link to="/historique" className="text-purple-500 text-xs font-black hover:underline tracking-tight">VOIR TOUT</Link>
           </div>
-          
+
           <div className={`rounded-3xl overflow-hidden border transition-all ${
             isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200 shadow-sm'
           }`}>
