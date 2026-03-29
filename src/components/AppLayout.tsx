@@ -14,6 +14,7 @@ import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
 import ChatWidget from "@/components/ChatWidget";
 
+
 const getNavItems = (isAdmin: boolean) => {
   const items = [
     { path: "/",                 icon: Home,            label: "Accueil",             color: "text-indigo-400",  bg: "bg-indigo-400/10"  },
