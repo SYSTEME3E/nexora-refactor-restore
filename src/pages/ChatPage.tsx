@@ -43,7 +43,7 @@ export default function ChatPage() {
   const user = getNexoraUser();
   const {
     messages, loading, sendMessage, uploadFile,
-    markAdminMessagesRead, requestOperator
+    markAdminMessagesRead, requestOperator, setMessages
   } = useChat();
 
   const [text, setText] = useState("");
@@ -70,11 +70,33 @@ export default function ChatPage() {
   }, [text]);
 
   const handleSend = async () => {
-    if ((!text.trim() && !sending) || sending) return;
-    setSending(true);
-    await sendMessage(text.trim());
+    const trimmedText = text.trim();
+    if ((!trimmedText && !sending) || sending) return;
+
+    // --- AFFICHAGE AUTOMATIQUE (Optimistic Update) ---
+    const newMessage = {
+      id: Date.now().toString(), // ID temporaire
+      content: trimmedText,
+      sender: "user",
+      created_at: new Date().toISOString(),
+      status: "sending"
+    };
+    
+    // Ajout local immédiat pour l'utilisateur
+    if (setMessages) {
+      setMessages((prev: any) => [...prev, newMessage]);
+    }
+
     setText("");
-    setSending(false);
+    setSending(true);
+    
+    try {
+      await sendMessage(trimmedText);
+    } catch (error) {
+      console.error("Erreur d'envoi", error);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,11 +159,9 @@ export default function ChatPage() {
             <p className="text-xs text-emerald-500 font-semibold">En ligne</p>
           </div>
         </div>
-        {/* ── FIN En-tête ── */}
 
         {/* ── Zone de messages ── */}
         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scroll-smooth">
-
           {loading && (
             <div className="flex justify-center py-8">
               <div className="w-7 h-7 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
@@ -159,14 +179,6 @@ export default function ChatPage() {
               <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
                 Je suis Sophia, votre assistante virtuelle. Posez-moi toutes vos questions sur NEXORA !
               </p>
-              <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                {["Comment transférer de l'argent ?", "Aide boutique", "Problème de connexion", "Immobilier"].map(q => (
-                  <button key={q} onClick={() => { setText(q); textAreaRef.current?.focus(); }}
-                    className="px-3 py-1.5 rounded-xl bg-muted hover:bg-violet-100 dark:hover:bg-violet-900/30 text-xs font-semibold text-muted-foreground hover:text-violet-700 dark:hover:text-violet-300 transition-colors border border-border">
-                    {q}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -180,15 +192,13 @@ export default function ChatPage() {
 
               <div className="space-y-2">
                 {msgs.map(msg => {
-                  const isUser  = msg.sender === "user";
-                  const isBot   = msg.sender === "bot";
+                  const isUser = msg.sender === "user";
+                  const isBot = msg.sender === "bot";
                   const isAdmin = msg.sender === "admin";
                   const isExpired = msg.file_expires_at && new Date(msg.file_expires_at) < new Date();
 
                   return (
                     <div key={msg.id} className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-
-                      {/* Avatar */}
                       {!isUser && (
                         isAdmin ? (
                           <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center bg-blue-600">
@@ -203,9 +213,7 @@ export default function ChatPage() {
                         )
                       )}
 
-                      {/* Bulle */}
                       <div className={`max-w-[80%] space-y-1 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
-
                         {!isUser && (
                           <span className="text-[10px] font-bold text-muted-foreground ml-1">
                             {isAdmin ? "Agent NEXORA" : "Sophia"}
@@ -219,7 +227,6 @@ export default function ChatPage() {
                             ? "bg-blue-600 text-white rounded-bl-sm"
                             : "bg-card border border-border text-foreground rounded-bl-sm"
                         }`}>
-
                           {msg.file_url && !isExpired && (
                             <div className="mb-2">
                               {msg.file_type === "image" && (
@@ -242,12 +249,6 @@ export default function ChatPage() {
                             </div>
                           )}
 
-                          {isExpired && msg.file_url && (
-                            <div className="flex items-center gap-2 text-xs opacity-60 italic mb-2">
-                              <Clock className="w-3 h-3" /> Fichier expiré (72h)
-                            </div>
-                          )}
-
                           {msg.content && (
                             isBot
                               ? <RenderBotMessage content={msg.content} />
@@ -265,10 +266,8 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-
           <div ref={messagesEndRef} />
         </div>
-        {/* ── FIN Zone de messages ── */}
 
         {/* ── Bouton opérateur ── */}
         <div className="flex-shrink-0 px-2 mb-2">
@@ -284,12 +283,10 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-        {/* ── FIN Bouton opérateur ── */}
 
         {/* ── Zone de saisie ── */}
         <div className="flex-shrink-0 bg-card border border-border rounded-2xl shadow-sm p-3">
           <div className="flex items-end gap-2">
-
             <input
               ref={fileInputRef}
               type="file"
@@ -328,16 +325,11 @@ export default function ChatPage() {
               }
             </button>
           </div>
-
-          <div className="flex items-center gap-3 mt-2 px-1">
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Image className="w-3 h-3" /> Photos</span>
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Film className="w-3 h-3" /> Vidéos</span>
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><FileText className="w-3 h-3" /> Docs</span>
-            <span className="text-[10px] text-muted-foreground ml-auto">Entrée pour envoyer</span>
+          
+          <div className="flex items-center mt-1 px-1">
+             <span className="text-[10px] text-muted-foreground ml-auto uppercase tracking-wider font-bold opacity-50">Entrée pour envoyer</span>
           </div>
         </div>
-        {/* ── FIN Zone de saisie ── */}
-
       </div>
     </AppLayout>
   );
