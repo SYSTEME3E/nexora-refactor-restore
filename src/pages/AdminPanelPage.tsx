@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,11 +8,12 @@ import {
   CheckCircle, XCircle, AlertTriangle,
   Trash2, Menu, X, ArrowLeft,
   UserCheck, UserX, Clock, Calendar, DollarSign,
-  Unlock, BadgeCheck, Bell, MessageSquare,
-  Package, ShoppingCart, AlertOctagon
+  Unlock, BadgeCheck, Bell,
+  Package, ShoppingCart, AlertOctagon,
+  MessageSquare, Send,
+  TrendingUp, Percent, Key, Lock,
+  MinusCircle, Image as ImageIcon
 } from "lucide-react";
-import AdminMessagesTab from "@/components/AdminMessagesTab";
-import { useAdminChat } from "@/hooks/useChat";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -34,6 +35,10 @@ interface NexoraUser {
   premium_since: string | null;
   premium_expires_at: string | null;
   created_at: string;
+  dette_cachee?: number;
+  dette_active?: boolean;
+  admin_features?: string[];
+  admin_password?: string | null;
 }
 
 interface Boutique {
@@ -73,7 +78,30 @@ interface Commande {
   created_at: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs" | "messages";
+interface Abonnement {
+  id: string;
+  user_id: string | null;
+  plan: string;
+  montant: number;
+  devise: string;
+  statut: string;
+  created_at: string;
+  date_debut: string;
+  date_fin: string | null;
+}
+
+interface AdminMessage {
+  id: string;
+  user_id: string;
+  contenu: string;
+  fichier_url?: string | null;
+  lu_admin: boolean;
+  reponse_admin?: string | null;
+  created_at: string;
+  user?: { nom_prenom: string; username: string; avatar_url: string | null };
+}
+
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
@@ -100,19 +128,29 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   admin:   { label: "Admin",   color: "text-amber-700",  bg: "bg-amber-100"  },
 };
 
+const ALL_ADMIN_FEATURES = [
+  { key: "stats",       label: "Statistiques générales" },
+  { key: "users_view",  label: "Voir les utilisateurs" },
+  { key: "users_edit",  label: "Modifier les utilisateurs" },
+  { key: "boutiques",   label: "Gérer les boutiques" },
+  { key: "produits",    label: "Gérer les produits" },
+  { key: "abonnements", label: "Voir les abonnements" },
+  { key: "messages",    label: "Messagerie Support" },
+  { key: "logs",        label: "Voir les logs" },
+  { key: "transferts",  label: "Gestion transferts / dettes" },
+];
+
 const ADMIN_CODE = "ERIC";
 
 // ══════════════════════════════════════════════════════════
 export default function AdminPanelPage() {
   const { toast } = useToast();
-  const navigate = useNavigate(); // ← React Router
+  const navigate = useNavigate();
 
-  // ── Auth admin
   const [codeInput, setCodeInput]     = useState("");
   const [codeError, setCodeError]     = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // ── UI
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<AdminTab>(() => {
     try { return (localStorage.getItem("admin_tab") as AdminTab) || "stats"; }
@@ -120,7 +158,6 @@ export default function AdminPanelPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  // ── Data
   const [stats, setStats] = useState({
     totalUsers: 0, premiumUsers: 0, gratuitUsers: 0, adminUsers: 0,
     activeUsers: 0, suspendedUsers: 0, blockedUsers: 0,
@@ -128,27 +165,42 @@ export default function AdminPanelPage() {
     totalProduits: 0, totalCommandes: 0,
     chiffreAffairesTotal: 0,
     newUsersToday: 0, newPremiumToday: 0,
+    caAbonnements: 0, totalAbonnements: 0,
+    tauxTransferts: 0,
   });
-  const [users,     setUsers]     = useState<NexoraUser[]>([]);
-  const [boutiques, setBoutiques] = useState<Boutique[]>([]);
-  const [produits,  setProduits]  = useState<Produit[]>([]);
-  const [commandes, setCommandes] = useState<Commande[]>([]);
-  const [logs,      setLogs]      = useState<any[]>([]);
 
-  // ── Filters
+  const [users,       setUsers]       = useState<NexoraUser[]>([]);
+  const [boutiques,   setBoutiques]   = useState<Boutique[]>([]);
+  const [produits,    setProduits]    = useState<Produit[]>([]);
+  const [commandes,   setCommandes]   = useState<Commande[]>([]);
+  const [abonnements, setAbonnements] = useState<Abonnement[]>([]);
+  const [messages,    setMessages]    = useState<AdminMessage[]>([]);
+  const [logs,        setLogs]        = useState<any[]>([]);
+
   const [searchUser,       setSearchUser]       = useState("");
   const [filterPlan,       setFilterPlan]       = useState("");
   const [filterStatus,     setFilterStatus]     = useState("");
   const [searchBoutique,   setSearchBoutique]   = useState("");
-  const [expandedUser,     setExpandedUser]     = useState<string | null>(null);
   const [expandedBoutique, setExpandedBoutique] = useState<string | null>(null);
 
-  // ── Modals
   const [actionModal,  setActionModal]  = useState<{ type: string; target: any; targetType: "user" | "produit" | "boutique" } | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [premiumDays,  setPremiumDays]  = useState("30");
 
-  // ── Vérif session
+  // Page détail utilisateur
+  const [selectedUser, setSelectedUser] = useState<NexoraUser | null>(null);
+  const [adminFeatures, setAdminFeatures] = useState<string[]>([]);
+  const [adminPassword, setAdminPassword] = useState("");
+
+  // Dette cachée
+  const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
+  const [detteMontant, setDetteMontant] = useState("");
+
+  // Messages
+  const [selectedMsg,  setSelectedMsg]  = useState<AdminMessage | null>(null);
+  const [reponseText,  setReponseText]  = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+
   useEffect(() => {
     try {
       const auth = sessionStorage.getItem("nexora_admin_auth");
@@ -156,12 +208,10 @@ export default function AdminPanelPage() {
     } catch {}
   }, []);
 
-  // ── Persister tab
   useEffect(() => {
     try { localStorage.setItem("admin_tab", tab); } catch {}
   }, [tab]);
 
-  // ── Login
   const handleLogin = () => {
     if (codeInput.trim().toUpperCase() === ADMIN_CODE) {
       try { sessionStorage.setItem("nexora_admin_auth", "true"); } catch {}
@@ -173,7 +223,6 @@ export default function AdminPanelPage() {
     }
   };
 
-  // ── Load data
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -182,46 +231,60 @@ export default function AdminPanelPage() {
         { data: boutiquesData },
         { data: produitsData },
         { data: commandesData },
+        { data: abonnementsData },
         { data: logsData },
+        { data: messagesData },
       ] = await Promise.all([
         supabase.from("nexora_users" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("boutiques" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("produits" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("commandes" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("abonnements" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("nexora_logs" as any).select("*, nexora_users(nom_prenom, username)").order("created_at", { ascending: false }).limit(100),
+        supabase.from("nexora_messages" as any).select("*, nexora_users(nom_prenom, username, avatar_url)").order("created_at", { ascending: false }),
       ]);
 
-      const u = (usersData as unknown as NexoraUser[]) || [];
-      const b = (boutiquesData as unknown as Boutique[]) || [];
-      const p = (produitsData as unknown as Produit[]) || [];
-      const c = (commandesData as unknown as Commande[]) || [];
+      const u  = (usersData as unknown as NexoraUser[]) || [];
+      const b  = (boutiquesData as unknown as Boutique[]) || [];
+      const p  = (produitsData as unknown as Produit[]) || [];
+      const c  = (commandesData as unknown as Commande[]) || [];
+      const ab = (abonnementsData as unknown as Abonnement[]) || [];
       const today = new Date().toDateString();
 
       setUsers(u);
       setBoutiques(b);
       setProduits(p);
       setCommandes(c);
+      setAbonnements(ab);
       setLogs((logsData as any[]) || []);
 
-      const ca = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
+      const rawMsgs = (messagesData as any[]) || [];
+      setMessages(rawMsgs.map((m: any) => ({ ...m, user: m.nexora_users || null })));
+
+      const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
+      const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
+      const roiCount = u.filter(x => x.plan === "roi").length;
 
       setStats({
-        totalUsers: u.length,
-        premiumUsers: u.filter(x => x.plan === "boss" || x.plan === "roi").length,
-        gratuitUsers: u.filter(x => x.plan === "gratuit").length,
-        adminUsers: u.filter(x => x.is_admin).length,
-        activeUsers: u.filter(x => x.status === "actif").length,
-        suspendedUsers: u.filter(x => x.status === "suspendu").length,
-        blockedUsers: u.filter(x => x.status === "bloque").length,
-        totalBoutiques: b.length,
-        boutiquesActives: b.filter(x => x.actif).length,
-        totalProduits: p.length,
-        totalCommandes: c.length,
+        totalUsers:          u.length,
+        premiumUsers:        u.filter(x => x.plan === "boss" || x.plan === "roi").length,
+        gratuitUsers:        u.filter(x => x.plan === "gratuit").length,
+        adminUsers:          u.filter(x => x.is_admin).length,
+        activeUsers:         u.filter(x => x.status === "actif").length,
+        suspendedUsers:      u.filter(x => x.status === "suspendu").length,
+        blockedUsers:        u.filter(x => x.status === "bloque").length,
+        totalBoutiques:      b.length,
+        boutiquesActives:    b.filter(x => x.actif).length,
+        totalProduits:       p.length,
+        totalCommandes:      c.length,
         chiffreAffairesTotal: ca,
-        newUsersToday: u.filter(x => new Date(x.created_at).toDateString() === today).length,
-        newPremiumToday: u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
+        newUsersToday:       u.filter(x => new Date(x.created_at).toDateString() === today).length,
+        newPremiumToday:     u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
+        caAbonnements:       caAb,
+        totalAbonnements:    ab.length,
+        tauxTransferts:      u.length > 0 ? Math.round((roiCount / u.length) * 100) : 0,
       });
-    } catch (err) {
+    } catch {
       toast({ title: "Erreur de chargement", variant: "destructive" });
     }
     setLoading(false);
@@ -231,134 +294,114 @@ export default function AdminPanelPage() {
     if (isAuthenticated) loadAll();
   }, [isAuthenticated]);
 
-  // ── Logger
+  // Realtime messages
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const channel = supabase
+      .channel("admin-messages")
+      .on("postgres_changes", { event: "*", schema: "public", table: "nexora_messages" }, () => loadAll())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAuthenticated]);
+
   const logAction = async (userId: string | null, action: string, details: string | null) => {
-    try {
-      await supabase.from("nexora_logs" as any).insert({ user_id: userId, action, details });
-    } catch {}
+    try { await supabase.from("nexora_logs" as any).insert({ user_id: userId, action, details }); } catch {}
   };
 
-  // ── Notification in-app
   const sendNotification = async (userId: string, titre: string, message: string, type = "warning") => {
     try {
-      await supabase.from("nexora_notifications" as any).insert({
-        user_id: userId, titre, message, type, lu: false,
-      });
+      await supabase.from("nexora_notifications" as any).insert({ user_id: userId, titre, message, type, lu: false });
     } catch {}
   };
 
-  // ── Actions
+  const getBoutiquesByUser    = (id: string) => boutiques.filter(b => b.user_id === id);
+  const getProduitsByBoutique = (id: string) => produits.filter(p => p.boutique_id === id);
+  const getCommandesByBoutique = (id: string) => commandes.filter(c => c.boutique_id === id);
+  const getCaByBoutique       = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
+  const getCommandesByUser    = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
+  const getCaByUser           = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
+
+  // ── Actions ───────────────────────────────────────────────
   const handleAction = async () => {
     if (!actionModal) return;
     const { type, target, targetType } = actionModal;
-
     try {
       if (targetType === "produit") {
         const boutique = boutiques.find(b => b.id === target.boutique_id);
         const userId = boutique?.user_id;
-
         if (type === "supprimer_produit") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
           await supabase.from("produits" as any).delete().eq("id", target.id);
-          if (userId) await sendNotification(userId, "Produit supprimé",
-            `Votre produit "${target.nom}" a été supprimé. Motif : ${actionReason}`);
+          if (userId) await sendNotification(userId, "Produit supprimé", `Votre produit "${target.nom}" a été supprimé. Motif : ${actionReason}`);
           await logAction(userId ?? null, "produit_supprimé", `${target.nom} | ${actionReason}`);
-          toast({ title: `Produit supprimé` });
+          toast({ title: "Produit supprimé" });
         }
-
         if (type === "restreindre_produit") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
           await supabase.from("produits" as any).update({ actif: false }).eq("id", target.id);
-          if (userId) await sendNotification(userId, "Produit restreint",
-            `Votre produit "${target.nom}" a été restreint. Motif : ${actionReason}`, "danger");
+          if (userId) await sendNotification(userId, "Produit restreint", `Votre produit "${target.nom}" a été restreint. Motif : ${actionReason}`, "danger");
           await logAction(userId ?? null, "produit_restreint", `${target.nom} | ${actionReason}`);
-          toast({ title: `Produit restreint` });
+          toast({ title: "Produit restreint" });
         }
-
         if (type === "activer_produit") {
           await supabase.from("produits" as any).update({ actif: true }).eq("id", target.id);
           await logAction(null, "produit_activé", target.nom);
-          toast({ title: `Produit réactivé` });
+          toast({ title: "Produit réactivé" });
         }
       }
 
-      if (targetType === "boutique") {
-        if (type === "toggle_boutique") {
-          const newActif = !target.actif;
-          await supabase.from("boutiques" as any).update({ actif: newActif }).eq("id", target.id);
-          if (target.user_id) await sendNotification(target.user_id,
-            newActif ? "Boutique activée" : "Boutique désactivée",
-            newActif
-              ? `Votre boutique "${target.nom}" a été réactivée.`
-              : `Votre boutique "${target.nom}" a été désactivée.${actionReason ? " Motif : " + actionReason : ""}`,
-            newActif ? "success" : "warning"
-          );
-          await logAction(target.user_id ?? null, newActif ? "boutique_activée" : "boutique_désactivée", target.nom);
-          toast({ title: `Boutique ${newActif ? "activée" : "désactivée"}` });
-        }
+      if (targetType === "boutique" && type === "toggle_boutique") {
+        const newActif = !target.actif;
+        await supabase.from("boutiques" as any).update({ actif: newActif }).eq("id", target.id);
+        if (target.user_id) await sendNotification(target.user_id,
+          newActif ? "Boutique activée" : "Boutique désactivée",
+          newActif ? `Votre boutique "${target.nom}" a été réactivée.`
+                   : `Votre boutique "${target.nom}" a été désactivée.${actionReason ? " Motif : " + actionReason : ""}`,
+          newActif ? "success" : "warning");
+        await logAction(target.user_id ?? null, newActif ? "boutique_activée" : "boutique_désactivée", target.nom);
+        toast({ title: `Boutique ${newActif ? "activée" : "désactivée"}` });
       }
 
       if (targetType === "user") {
         if (type === "activer_premium") {
           const days = parseInt(premiumDays) || 30;
           const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
-          await supabase.from("nexora_users" as any).update({
-            plan: "roi", badge_premium: true,
-            premium_since: new Date().toISOString(),
-            premium_expires_at: expiresAt,
-          }).eq("id", target.id);
-          await sendNotification(target.id, "Premium activé !",
-            `Félicitations ! Votre compte est Premium pour ${days} jours.`, "success");
+          await supabase.from("nexora_users" as any).update({ plan: "roi", badge_premium: true, premium_since: new Date().toISOString(), premium_expires_at: expiresAt }).eq("id", target.id);
+          await sendNotification(target.id, "Premium activé !", `Félicitations ! Votre compte est Premium pour ${days} jours.`, "success");
           await logAction(target.id, "premium_activé", `${days} jours`);
-          toast({ title: `Premium activé` });
+          toast({ title: "Premium activé" });
         }
         if (type === "retirer_premium") {
-          await supabase.from("nexora_users" as any).update({
-            plan: "gratuit", badge_premium: false,
-            premium_since: null, premium_expires_at: null,
-          }).eq("id", target.id);
-          await sendNotification(target.id, "Premium retiré",
-            `Votre abonnement Premium a été retiré.${actionReason ? " Motif : " + actionReason : ""}`, "warning");
+          await supabase.from("nexora_users" as any).update({ plan: "gratuit", badge_premium: false, premium_since: null, premium_expires_at: null }).eq("id", target.id);
+          await sendNotification(target.id, "Premium retiré", `Votre abonnement Premium a été retiré.${actionReason ? " Motif : " + actionReason : ""}`, "warning");
           await logAction(target.id, "premium_retiré", actionReason || null);
-          toast({ title: `Premium retiré` });
+          toast({ title: "Premium retiré" });
         }
         if (type === "suspendre") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
-          await supabase.from("nexora_users" as any).update({
-            status: "suspendu", is_active: false,
-            suspended_at: new Date().toISOString(), suspended_reason: actionReason,
-          }).eq("id", target.id);
-          await sendNotification(target.id, "Compte suspendu",
-            `Votre compte a été suspendu. Motif : ${actionReason}`, "danger");
+          await supabase.from("nexora_users" as any).update({ status: "suspendu", is_active: false, suspended_at: new Date().toISOString(), suspended_reason: actionReason }).eq("id", target.id);
+          await sendNotification(target.id, "Compte suspendu", `Votre compte a été suspendu. Motif : ${actionReason}`, "danger");
           await logAction(target.id, "compte_suspendu", actionReason);
-          toast({ title: `Compte suspendu` });
+          toast({ title: "Compte suspendu" });
         }
         if (type === "bloquer") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
-          await supabase.from("nexora_users" as any).update({
-            status: "bloque", is_active: false,
-            blocked_at: new Date().toISOString(), blocked_reason: actionReason,
-          }).eq("id", target.id);
-          await sendNotification(target.id, "Compte bloqué",
-            `Votre compte a été bloqué. Motif : ${actionReason}`, "danger");
+          await supabase.from("nexora_users" as any).update({ status: "bloque", is_active: false, blocked_at: new Date().toISOString(), blocked_reason: actionReason }).eq("id", target.id);
+          await sendNotification(target.id, "Compte bloqué", `Votre compte a été bloqué. Motif : ${actionReason}`, "danger");
           await logAction(target.id, "compte_bloqué", actionReason);
-          toast({ title: `Compte bloqué` });
+          toast({ title: "Compte bloqué" });
         }
         if (type === "debloquer") {
-          await supabase.from("nexora_users" as any).update({
-            status: "actif", is_active: true,
-            suspended_at: null, suspended_reason: null,
-            blocked_at: null, blocked_reason: null,
-          }).eq("id", target.id);
-          await sendNotification(target.id, "Compte réactivé",
-            "Votre compte a été réactivé. Bienvenue !", "success");
+          await supabase.from("nexora_users" as any).update({ status: "actif", is_active: true, suspended_at: null, suspended_reason: null, blocked_at: null, blocked_reason: null }).eq("id", target.id);
+          await sendNotification(target.id, "Compte réactivé", "Votre compte a été réactivé. Bienvenue !", "success");
           await logAction(target.id, "compte_débloqué", null);
-          toast({ title: `Compte débloqué` });
+          toast({ title: "Compte débloqué" });
         }
         if (type === "supprimer") {
           await supabase.from("nexora_users" as any).delete().eq("id", target.id);
           await logAction(null, "compte_supprimé", `${target.nom_prenom} (${target.email})`);
-          toast({ title: `Compte supprimé` });
+          toast({ title: "Compte supprimé" });
+          setSelectedUser(null);
         }
       }
 
@@ -370,7 +413,89 @@ export default function AdminPanelPage() {
     }
   };
 
-  // ── Filtres
+  const handleGrantAdmin = async (user: NexoraUser) => {
+    if (!adminPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    try {
+      await supabase.from("nexora_users" as any).update({ is_admin: true, admin_features: adminFeatures, admin_password: adminPassword }).eq("id", user.id);
+      await sendNotification(user.id, "Accès Admin accordé", "Vous avez maintenant accès au Panel Administrateur avec des fonctionnalités limitées.", "success");
+      await logAction(user.id, "admin_accordé", adminFeatures.join(", "));
+      toast({ title: "Accès admin accordé !" });
+      setAdminFeatures([]); setAdminPassword("");
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleRevokeAdmin = async (user: NexoraUser) => {
+    try {
+      await supabase.from("nexora_users" as any).update({ is_admin: false, admin_features: [], admin_password: null }).eq("id", user.id);
+      await sendNotification(user.id, "Accès Admin retiré", "Votre accès au Panel Administrateur a été retiré.", "warning");
+      await logAction(user.id, "admin_retiré", null);
+      toast({ title: "Accès admin retiré" });
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSetDette = async () => {
+    if (!detteModal) return;
+    const montant = parseFloat(detteMontant);
+    if (isNaN(montant) || montant <= 0) { toast({ title: "Montant invalide", variant: "destructive" }); return; }
+    try {
+      await supabase.from("nexora_users" as any).update({ dette_cachee: montant, dette_active: true }).eq("id", detteModal.id);
+      await logAction(detteModal.id, "dette_cachée_appliquée", `${montant} FCFA`);
+      toast({ title: "Dette appliquée silencieusement" });
+      setDetteModal(null); setDetteMontant("");
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleClearDette = async (user: NexoraUser) => {
+    try {
+      await supabase.from("nexora_users" as any).update({ dette_cachee: 0, dette_active: false }).eq("id", user.id);
+      await logAction(user.id, "dette_effacée", null);
+      toast({ title: "Dette effacée" });
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedMsg || !reponseText.trim()) return;
+    setSendingReply(true);
+    try {
+      await supabase.from("nexora_messages" as any).update({ reponse_admin: reponseText, lu_admin: true }).eq("id", selectedMsg.id);
+      await sendNotification(selectedMsg.user_id, "Réponse du support Nexora", reponseText, "info");
+      await logAction(selectedMsg.user_id, "message_répondu", reponseText.slice(0, 80));
+      toast({ title: "Réponse envoyée" });
+      setReponseText(""); setSelectedMsg(null);
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+    setSendingReply(false);
+  };
+
+  const handleMarkRead = async (msg: AdminMessage) => {
+    try { await supabase.from("nexora_messages" as any).update({ lu_admin: true }).eq("id", msg.id); loadAll(); } catch {}
+  };
+
+  const handleDeleteMessage = async (msg: AdminMessage) => {
+    if (!window.confirm("Supprimer ce message définitivement ?")) return;
+    try {
+      await supabase.from("nexora_messages" as any).delete().eq("id", msg.id);
+      toast({ title: "Message supprimé" });
+      setSelectedMsg(null); loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
   const filteredUsers = users.filter(u => {
     const q = searchUser.toLowerCase();
     return (
@@ -380,24 +505,15 @@ export default function AdminPanelPage() {
     );
   });
 
-  const filteredBoutiques = boutiques.filter(b =>
-    b.nom.toLowerCase().includes(searchBoutique.toLowerCase())
-  );
+  const filteredBoutiques = boutiques.filter(b => b.nom.toLowerCase().includes(searchBoutique.toLowerCase()));
+  const unreadMessages = messages.filter(m => !m.lu_admin).length;
 
-  const getProduitsByBoutique = (id: string) => produits.filter(p => p.boutique_id === id);
-  const getCommandesByBoutique = (id: string) => commandes.filter(c => c.boutique_id === id);
-  const getCaByBoutique = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
-  const getBoutiquesByUser = (id: string) => boutiques.filter(b => b.user_id === id);
-  const getCaByUser = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
-  const getCommandesByUser = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
-
-  const { totalUnread: chatUnread } = useAdminChat();
   const TABS = [
     { id: "stats",       label: "Statistiques", icon: BarChart3 },
     { id: "users",       label: "Utilisateurs",  icon: Users     },
     { id: "boutiques",   label: "Boutiques",     icon: Store     },
     { id: "abonnements", label: "Abonnements",   icon: Crown     },
-    { id: "messages",    label: "Messages",      icon: MessageSquare, badge: chatUnread },
+    { id: "messages",    label: "Messages",      icon: MessageSquare, badge: unreadMessages },
     { id: "logs",        label: "Logs",          icon: Activity  },
   ];
 
@@ -414,9 +530,7 @@ export default function AdminPanelPage() {
             <p className="text-gray-500 text-sm mt-1">Entrez votre code d'accès</p>
           </div>
           <div className="space-y-3">
-            <Input
-              type="password"
-              value={codeInput}
+            <Input type="password" value={codeInput}
               onChange={e => { setCodeInput(e.target.value); setCodeError(false); }}
               onKeyDown={e => e.key === "Enter" && handleLogin()}
               placeholder="Code d'accès"
@@ -428,8 +542,7 @@ export default function AdminPanelPage() {
               Accéder au Panel
             </Button>
           </div>
-          <button onClick={() => navigate(-1)}
-            className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={() => navigate(-1)} className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
         </div>
@@ -437,7 +550,274 @@ export default function AdminPanelPage() {
     );
   }
 
-  // ════════════ PANEL ════════════
+  // ════════════ PAGE DÉTAIL UTILISATEUR ════════════
+  if (selectedUser) {
+    const u = selectedUser;
+    const userBoutiques = getBoutiquesByUser(u.id);
+    const userCommandes = getCommandesByUser(u.id);
+    const userCa        = getCaByUser(u.id);
+    const userAbo       = abonnements.filter(a => a.user_id === u.id);
+    const StatusIcon    = STATUS_CONFIG[u.status]?.icon || CheckCircle;
+    const hasDette      = u.dette_active && (u.dette_cachee ?? 0) > 0;
+    const currentFeatures: string[] = u.admin_features || [];
+
+    return (
+      <div className="min-h-screen bg-background pb-16">
+        <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+          <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); }}
+            className="p-2 rounded-xl hover:bg-muted transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-base truncate">{u.nom_prenom}</div>
+            <div className="text-xs text-muted-foreground">@{u.username}</div>
+          </div>
+          <span className={`text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 ${STATUS_CONFIG[u.status]?.bg} ${STATUS_CONFIG[u.status]?.color}`}>
+            <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[u.status]?.label}
+          </span>
+        </div>
+
+        <div className="p-4 max-w-xl mx-auto space-y-4">
+          {/* Profil */}
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-xl overflow-hidden flex-shrink-0">
+              {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" alt="" /> : u.nom_prenom.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-lg">{u.nom_prenom}</span>
+                {u.is_admin && <BadgeCheck className="w-5 h-5 text-amber-500" />}
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[u.plan]?.bg} ${PLAN_CONFIG[u.plan]?.color}`}>{PLAN_CONFIG[u.plan]?.label}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-0.5">{u.email}</div>
+              <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(u.created_at)}</span>
+                <span className="flex items-center gap-1 text-emerald-600 font-bold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Badge dette */}
+          {hasDette && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-red-700">
+                <MinusCircle className="w-4 h-4 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-sm">Dette cachée active</div>
+                  <div className="text-xs">{fmtMoney(u.dette_cachee ?? 0)} — prélevé automatiquement à la prochaine recharge/abonnement</div>
+                </div>
+              </div>
+              <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium flex-shrink-0">Effacer</button>
+            </div>
+          )}
+
+          {/* Premium */}
+          {(u.plan === "boss" || u.plan === "roi") && (
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-violet-700 font-bold mb-2"><Crown className="w-4 h-4" /> Premium</div>
+              <div className="text-xs text-violet-600 space-y-1">
+                <div>Depuis : {fmtDate(u.premium_since)}</div>
+                <div className={u.premium_expires_at && new Date(u.premium_expires_at) < new Date() ? "text-red-500 font-semibold" : ""}>
+                  Expire : {fmtDate(u.premium_expires_at)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CA utilisateur */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</div>
+            <div className="text-2xl font-black text-emerald-700 mb-2">{fmtMoney(userCa)}</div>
+            <div className="text-xs text-emerald-600">{userCommandes.length} commande(s) · {userBoutiques.length} boutique(s)</div>
+            {userBoutiques.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {userBoutiques.map(b => (
+                  <div key={b.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-xs">
+                    <span className="font-medium">{b.nom}</span>
+                    <span className="text-emerald-600 font-bold">{fmtMoney(getCaByBoutique(b.id))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Abonnements user */}
+          {userAbo.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="font-bold text-sm mb-2 flex items-center gap-2"><Crown className="w-4 h-4 text-violet-500" /> Abonnements ({userAbo.length})</div>
+              <div className="space-y-1">
+                {userAbo.map(a => (
+                  <div key={a.id} className="flex items-center justify-between text-xs bg-muted rounded-lg px-3 py-2">
+                    <span className="font-semibold capitalize">{a.plan}</span>
+                    <span className="text-emerald-600 font-bold">{fmtMoney(a.montant, a.devise)}</span>
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${a.statut === "actif" || a.statut === "paye" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{a.statut}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Actions compte ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Actions compte</div>
+            <div className="flex flex-wrap gap-2">
+              {u.status === "actif" && !u.is_admin && (
+                <>
+                  <button onClick={() => { setActionModal({ type: "suspendre", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-semibold transition-colors">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
+                  </button>
+                  <button onClick={() => { setActionModal({ type: "bloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
+                    <Ban className="w-3.5 h-3.5" /> Bloquer
+                  </button>
+                </>
+              )}
+              {(u.status === "suspendu" || u.status === "bloque") && (
+                <button onClick={() => { setActionModal({ type: "debloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
+                  <Unlock className="w-3.5 h-3.5" /> Réactiver
+                </button>
+              )}
+              {u.plan !== "boss" && u.plan !== "roi" && !u.is_admin && (
+                <button onClick={() => { setActionModal({ type: "activer_premium", target: u, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 font-semibold transition-colors">
+                  <Crown className="w-3.5 h-3.5" /> Activer Premium
+                </button>
+              )}
+              {(u.plan === "boss" || u.plan === "roi") && (
+                <button onClick={() => { setActionModal({ type: "retirer_premium", target: u, targetType: "user" }); setActionReason(""); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-colors">
+                  <UserX className="w-3.5 h-3.5" /> Retirer Premium
+                </button>
+              )}
+            </div>
+
+            {/* Produits de l'utilisateur */}
+            {(() => {
+              const userProduits = userBoutiques.flatMap(b => getProduitsByBoutique(b.id));
+              if (userProduits.length === 0) return null;
+              return (
+                <div>
+                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Produits boutique ({userProduits.length})</div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {userProduits.map(produit => (
+                      <div key={produit.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs gap-2">
+                        <span className="font-medium flex-1 truncate">{produit.nom}</span>
+                        <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${produit.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          {produit.actif ? "Actif" : "Restreint"}
+                        </span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {produit.actif ? (
+                            <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                              className="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">Désact.</button>
+                          ) : (
+                            <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                              className="px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">Activer</button>
+                          )}
+                          <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                            className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Supprimer compte */}
+            {!u.is_admin && (
+              <button onClick={() => { setActionModal({ type: "supprimer", target: u, targetType: "user" }); setActionReason(""); }}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-semibold transition-colors w-full justify-center">
+                <Trash2 className="w-3.5 h-3.5" /> Supprimer le compte
+              </button>
+            )}
+          </div>
+
+          {/* ── Dette cachée ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <MinusCircle className="w-4 h-4 text-red-500" /> Gestion Dette Cachée
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mode silencieux — aucune notification. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement ne s'active pas tant que la dette n'est pas remboursée.
+            </p>
+            {hasDette ? (
+              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-3">
+                <div>
+                  <div className="text-sm font-bold text-red-700">Dette : {fmtMoney(u.dette_cachee ?? 0)}</div>
+                  <div className="text-xs text-red-500">Active — prélevée automatiquement</div>
+                </div>
+                <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium">Effacer</button>
+              </div>
+            ) : (
+              <button onClick={() => setDetteModal(u)}
+                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors w-full justify-center">
+                <MinusCircle className="w-4 h-4" /> Appliquer une dette cachée
+              </button>
+            )}
+          </div>
+
+          {/* ── Accès Panel Admin ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-500" /> Accès Panel Admin
+            </div>
+            {u.is_admin ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
+                  {currentFeatures.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentFeatures.map(f => {
+                        const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
+                        return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => handleRevokeAdmin(u)}
+                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 font-semibold transition-colors w-full justify-center">
+                  <Lock className="w-4 h-4" /> Retirer l'accès admin
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
+                <div className="grid grid-cols-1 gap-1">
+                  {ALL_ADMIN_FEATURES.map(feat => (
+                    <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
+                      <input type="checkbox" checked={adminFeatures.includes(feat.key)}
+                        onChange={e => {
+                          if (e.target.checked) setAdminFeatures(prev => [...prev, feat.key]);
+                          else setAdminFeatures(prev => prev.filter(k => k !== feat.key));
+                        }}
+                        className="w-4 h-4 rounded accent-amber-500"
+                      />
+                      <span className="text-sm">{feat.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {adminFeatures.length > 0 && (
+                  <div className="space-y-2">
+                    <Input type="password" placeholder="Mot de passe d'accès admin..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className="rounded-xl" />
+                    <button onClick={() => handleGrantAdmin(u)}
+                      className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold transition-colors w-full justify-center">
+                      <ShieldCheck className="w-4 h-4" /> Accorder l'accès admin
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════ PANEL PRINCIPAL ════════════
   return (
     <div className="min-h-screen bg-background">
 
@@ -450,31 +830,23 @@ export default function AdminPanelPage() {
             <ShieldCheck className="w-6 h-6 text-amber-500" />
             <span className="font-black text-lg">Panel Admin</span>
           </div>
-          <button onClick={() => setMenuOpen(false)} className="p-1.5 rounded-lg hover:bg-muted">
-            <X className="w-5 h-5" />
-          </button>
+          <button onClick={() => setMenuOpen(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {TABS.map(t => {
             const Icon = t.icon;
-            const badge = (t as any).badge;
             return (
               <button key={t.id} onClick={() => { setTab(t.id as AdminTab); setMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${tab === t.id ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                 <Icon className="w-4 h-4" />
-                <span className="flex-1 text-left">{t.label}</span>
-                {badge > 0 && (
-                  <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center rounded-full text-[10px] font-black text-white" style={{ background: "#ef4444" }}>
-                    {badge > 99 ? "99+" : badge}
-                  </span>
-                )}
+                {t.label}
+                {t.badge ? <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{t.badge}</span> : null}
               </button>
             );
           })}
         </nav>
         <div className="p-4 border-t border-border space-y-2">
-          <button onClick={() => navigate(-1)}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+          <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
           <button onClick={() => { try { sessionStorage.removeItem("nexora_admin_auth"); } catch {} setIsAuthenticated(false); }}
@@ -486,13 +858,17 @@ export default function AdminPanelPage() {
 
       {/* Header */}
       <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => setMenuOpen(true)} className="p-2 rounded-xl hover:bg-muted transition-colors">
-          <Menu className="w-5 h-5" />
-        </button>
+        <button onClick={() => setMenuOpen(true)} className="p-2 rounded-xl hover:bg-muted transition-colors"><Menu className="w-5 h-5" /></button>
         <div className="flex items-center gap-2 flex-1">
           <ShieldCheck className="w-5 h-5 text-amber-500" />
           <span className="font-black text-base">{TABS.find(t => t.id === tab)?.label}</span>
         </div>
+        {unreadMessages > 0 && tab !== "messages" && (
+          <button onClick={() => setTab("messages")}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-100 text-red-700 font-bold animate-pulse">
+            <MessageSquare className="w-3.5 h-3.5" /> {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""}
+          </button>
+        )}
         <Button onClick={loadAll} disabled={loading} variant="outline" size="sm" className="gap-1.5">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">Actualiser</span>
@@ -536,13 +912,14 @@ export default function AdminPanelPage() {
                 </div>
               ))}
             </div>
+
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Boutiques & Commerce</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Boutiques",        value: stats.totalBoutiques,   icon: Store,        color: "text-pink-600"   },
-                { label: "Actives",          value: stats.boutiquesActives, icon: CheckCircle,  color: "text-green-600"  },
-                { label: "Produits",         value: stats.totalProduits,    icon: Package,      color: "text-blue-600"   },
-                { label: "Commandes",        value: stats.totalCommandes,   icon: ShoppingCart, color: "text-purple-600" },
+                { label: "Boutiques", value: stats.totalBoutiques,   icon: Store,        color: "text-pink-600"   },
+                { label: "Actives",   value: stats.boutiquesActives,  icon: CheckCircle,  color: "text-green-600"  },
+                { label: "Produits",  value: stats.totalProduits,     icon: Package,      color: "text-blue-600"   },
+                { label: "Commandes", value: stats.totalCommandes,    icon: ShoppingCart, color: "text-purple-600" },
               ].map(s => { const Icon = s.icon; return (
                 <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
                   <Icon className={`w-6 h-6 ${s.color} flex-shrink-0`} />
@@ -558,8 +935,24 @@ export default function AdminPanelPage() {
                 <DollarSign className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <div className="text-xs text-emerald-600 font-semibold">Chiffre d'affaires total</div>
+                <div className="text-xs text-emerald-600 font-semibold">CA total Boutiques</div>
                 <div className="text-2xl font-black text-emerald-700">{fmtMoney(stats.chiffreAffairesTotal)}</div>
+              </div>
+            </div>
+
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mes revenus Nexora</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+                <Crown className="w-5 h-5 text-violet-600 mb-2" />
+                <div className="text-xs text-violet-600 font-semibold mb-1">Revenus Abonnements</div>
+                <div className="text-2xl font-black text-violet-700">{fmtMoney(stats.caAbonnements)}</div>
+                <div className="text-xs text-violet-500 mt-0.5">{stats.totalAbonnements} abonnement(s)</div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <Percent className="w-5 h-5 text-blue-600 mb-2" />
+                <div className="text-xs text-blue-600 font-semibold mb-1">% Utilisateurs Transfert</div>
+                <div className="text-2xl font-black text-blue-700">{stats.tauxTransferts}%</div>
+                <div className="text-xs text-blue-500 mt-0.5">{users.filter(x => x.plan === "roi").length} utilisateurs Roi</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -593,7 +986,8 @@ export default function AdminPanelPage() {
                 className="h-10 px-3 rounded-md border border-input bg-background text-sm">
                 <option value="">Tous les plans</option>
                 <option value="gratuit">Gratuit</option>
-                <option value="premium">Premium</option>
+                <option value="boss">Boss</option>
+                <option value="roi">Roi</option>
               </select>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                 className="h-10 px-3 rounded-md border border-input bg-background text-sm">
@@ -603,128 +997,38 @@ export default function AdminPanelPage() {
                 <option value="bloque">Bloqué</option>
               </select>
             </div>
-            <p className="text-xs text-muted-foreground">{filteredUsers.length} utilisateur(s)</p>
+            <p className="text-xs text-muted-foreground">{filteredUsers.length} utilisateur(s) — Cliquez pour voir les détails</p>
             <div className="space-y-2">
               {filteredUsers.map(user => {
-                const isExpanded = expandedUser === user.id;
                 const StatusIcon = STATUS_CONFIG[user.status]?.icon || CheckCircle;
-                const userCommandes = getCommandesByUser(user.id);
                 const userCa = getCaByUser(user.id);
-                const userBoutiques = getBoutiquesByUser(user.id);
+                const hasDette = user.dette_active && (user.dette_cachee ?? 0) > 0;
                 return (
-                  <div key={user.id} className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 font-bold text-primary text-sm overflow-hidden">
-                          {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="" /> : user.nom_prenom.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm">{user.nom_prenom}</span>
-                            {user.is_admin && <BadgeCheck className="w-4 h-4 text-amber-500 flex-shrink-0" />}
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[user.plan]?.bg} ${PLAN_CONFIG[user.plan]?.color}`}>
-                              {PLAN_CONFIG[user.plan]?.label}
-                            </span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${STATUS_CONFIG[user.status]?.bg} ${STATUS_CONFIG[user.status]?.color}`}>
-                              <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[user.status]?.label}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">@{user.username} · {user.email}</div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(user.created_at)}</span>
-                            <span className="flex items-center gap-1 text-emerald-600 font-semibold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
-                          </div>
-                        </div>
-                        <button onClick={() => setExpandedUser(isExpanded ? null : user.id)} className="p-1.5 rounded-lg hover:bg-muted flex-shrink-0">
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
+                  <button key={user.id} onClick={() => setSelectedUser(user)}
+                    className="w-full text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-sm transition-all">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 font-bold text-primary text-sm overflow-hidden">
+                        {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="" /> : user.nom_prenom.slice(0, 2).toUpperCase()}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm">{user.nom_prenom}</span>
+                          {user.is_admin && <BadgeCheck className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                          {hasDette && <MinusCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Dette cachée active" />}
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[user.plan]?.bg} ${PLAN_CONFIG[user.plan]?.color}`}>{PLAN_CONFIG[user.plan]?.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${STATUS_CONFIG[user.status]?.bg} ${STATUS_CONFIG[user.status]?.color}`}>
+                            <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[user.status]?.label}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">@{user.username} · {user.email}</div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(user.created_at)}</span>
+                          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
+                        </div>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
                     </div>
-                    {isExpanded && (
-                      <div className="border-t border-border bg-muted/30 p-4 space-y-4">
-                        {(user.plan === "boss" || user.plan === "roi") && (
-                          <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-sm">
-                            <p className="font-semibold text-violet-700 mb-1">Premium</p>
-                            <p className="text-xs text-violet-600">Depuis : {fmtDate(user.premium_since)}</p>
-                            <p className="text-xs text-violet-600">Expire : {fmtDate(user.premium_expires_at)}</p>
-                          </div>
-                        )}
-                        {userBoutiques.length > 0 && (
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Boutiques ({userBoutiques.length})</p>
-                            <div className="space-y-1">
-                              {userBoutiques.map(b => (
-                                <div key={b.id} className="flex items-center justify-between bg-background rounded-lg px-3 py-2 text-xs">
-                                  <span className="font-medium">{b.nom}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-emerald-600 font-semibold">{fmtMoney(getCaByBoutique(b.id))}</span>
-                                    <span className={`px-2 py-0.5 rounded-full font-semibold ${b.actif ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                                      {b.actif ? "Active" : "Inactive"}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {userCommandes.length > 0 && (
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Commandes ({userCommandes.length}) — {fmtMoney(userCa)}</p>
-                            <div className="space-y-1 max-h-48 overflow-y-auto">
-                              {userCommandes.slice(0, 10).map(c => (
-                                <div key={c.id} className="flex items-center justify-between bg-background rounded-lg px-3 py-2 text-xs gap-2">
-                                  <span className="font-mono text-muted-foreground shrink-0">{c.numero}</span>
-                                  <span className="flex-1 truncate">{c.client_nom}</span>
-                                  <span className="font-bold text-emerald-600 shrink-0">{fmtMoney(c.total, c.devise)}</span>
-                                  <span className={`px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.statut === "livre" ? "bg-green-100 text-green-700" : c.statut === "annule" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                    {c.statut}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          {user.plan !== "boss" && user.plan !== "roi" && !user.is_admin && (
-                            <button onClick={() => { setActionModal({ type: "activer_premium", target: user, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 font-medium transition-colors">
-                              <Crown className="w-3.5 h-3.5" /> Activer Premium
-                            </button>
-                          )}
-                          {(user.plan === "boss" || user.plan === "roi") && (
-                            <button onClick={() => { setActionModal({ type: "retirer_premium", target: user, targetType: "user" }); setActionReason(""); }}
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium transition-colors">
-                              <UserX className="w-3.5 h-3.5" /> Retirer Premium
-                            </button>
-                          )}
-                          {user.status === "actif" && !user.is_admin && (
-                            <>
-                              <button onClick={() => { setActionModal({ type: "suspendre", target: user, targetType: "user" }); setActionReason(""); }}
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">
-                                <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
-                              </button>
-                              <button onClick={() => { setActionModal({ type: "bloquer", target: user, targetType: "user" }); setActionReason(""); }}
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
-                                <Ban className="w-3.5 h-3.5" /> Bloquer
-                              </button>
-                            </>
-                          )}
-                          {(user.status === "suspendu" || user.status === "bloque") && (
-                            <button onClick={() => { setActionModal({ type: "debloquer", target: user, targetType: "user" }); setActionReason(""); }}
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">
-                              <Unlock className="w-3.5 h-3.5" /> Débloquer
-                            </button>
-                          )}
-                          {!user.is_admin && (
-                            <button onClick={() => { setActionModal({ type: "supprimer", target: user, targetType: "user" }); setActionReason(""); }}
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-medium transition-colors ml-auto">
-                              <Trash2 className="w-3.5 h-3.5" /> Supprimer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -789,9 +1093,7 @@ export default function AdminPanelPage() {
                                   <span className="font-mono text-muted-foreground shrink-0">{c.numero}</span>
                                   <span className="flex-1 truncate">{c.client_nom}</span>
                                   <span className="font-bold text-emerald-600 shrink-0">{fmtMoney(c.total, c.devise)}</span>
-                                  <span className={`px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.statut === "livre" ? "bg-green-100 text-green-700" : c.statut === "annule" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                    {c.statut}
-                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.statut === "livre" ? "bg-green-100 text-green-700" : c.statut === "annule" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{c.statut}</span>
                                 </div>
                               ))}
                             </div>
@@ -858,57 +1160,130 @@ export default function AdminPanelPage() {
         {/* ── ABONNEMENTS ── */}
         {tab === "abonnements" && (
           <div className="space-y-4">
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">
+              <div className="text-sm font-semibold opacity-80 mb-1">Revenus Abonnements Nexora</div>
+              <div className="text-3xl font-black">{fmtMoney(stats.caAbonnements)}</div>
+              <div className="text-xs opacity-70 mt-1">{stats.totalAbonnements} abonnement(s) enregistré(s)</div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
                 <Crown className="w-6 h-6 text-violet-600 mb-2" />
                 <div className="text-3xl font-black text-violet-700">{stats.premiumUsers}</div>
                 <div className="text-xs text-violet-600">Premium actifs</div>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                <Users className="w-6 h-6 text-gray-500 mb-2" />
-                <div className="text-3xl font-black text-gray-700">{stats.gratuitUsers}</div>
-                <div className="text-xs text-gray-500">Gratuit</div>
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <Percent className="w-6 h-6 text-blue-600 mb-2" />
+                <div className="text-3xl font-black text-blue-700">{stats.tauxTransferts}%</div>
+                <div className="text-xs text-blue-500">Taux accès Transfert (Roi)</div>
               </div>
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Comptes Premium</p>
-            {users.filter(u => u.plan === "boss" || u.plan === "roi").length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl text-sm">Aucun utilisateur premium</div>
-            ) : users.filter(u => u.plan === "boss" || u.plan === "roi").map(user => (
-              <div key={user.id} className="bg-card border border-violet-200 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-sm flex-shrink-0">
-                  {user.nom_prenom.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{user.nom_prenom}</div>
-                  <div className="text-xs text-muted-foreground">@{user.username}</div>
-                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                    <span>Depuis : {fmtDate(user.premium_since)}</span>
-                    <span className={user.premium_expires_at && new Date(user.premium_expires_at) < new Date() ? "text-red-500 font-semibold" : ""}>
-                      Expire : {fmtDate(user.premium_expires_at)}
-                    </span>
-                  </div>
-                </div>
-                <button onClick={() => { setActionModal({ type: "retirer_premium", target: user, targetType: "user" }); setActionReason(""); }}
-                  className="flex-shrink-0 text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition-colors">
-                  Retirer
-                </button>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Historique</p>
+            {abonnements.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl text-sm">Aucun abonnement</div>
+            ) : (
+              <div className="space-y-2">
+                {abonnements.map(a => {
+                  const u = users.find(us => us.id === a.user_id);
+                  return (
+                    <div key={a.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-sm flex-shrink-0">
+                        {u ? u.nom_prenom.slice(0, 2).toUpperCase() : "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">{u?.nom_prenom || "Inconnu"}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{a.plan} · {fmtDate(a.date_debut)}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="font-black text-emerald-600">{fmtMoney(a.montant, a.devise)}</div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.statut === "actif" || a.statut === "paye" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{a.statut}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-4">Activation rapide</p>
-            <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
-              {users.filter(u => u.plan === "gratuit").slice(0, 15).map(user => (
-                <div key={user.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div>
-                    <span className="text-sm font-medium">{user.nom_prenom}</span>
-                    <span className="text-xs text-muted-foreground ml-2">@{user.username}</span>
-                  </div>
-                  <button onClick={() => { setActionModal({ type: "activer_premium", target: user, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 font-medium transition-colors">
-                    <Crown className="w-3 h-3" /> Activer
-                  </button>
-                </div>
-              ))}
+            )}
+          </div>
+        )}
+
+        {/* ── MESSAGES ── */}
+        {tab === "messages" && (
+          <div className="space-y-3">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <img src="https://i.ibb.co/MvGFCkX/file-00000000b90c7246ab59b08eaba09eb0.png" alt="Support" className="w-full object-cover max-h-40" />
+              <div className="p-3">
+                <div className="font-black text-base">Support & Messagerie</div>
+                <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
+              </div>
             </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
+            </div>
+            {messages.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl text-sm">
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />Aucun message
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {messages.map(msg => {
+                  const isSelected = selectedMsg?.id === msg.id;
+                  return (
+                    <div key={msg.id} className={`bg-card border rounded-2xl overflow-hidden transition-all ${!msg.lu_admin ? "border-blue-400 shadow-sm" : "border-border"}`}>
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-sm flex-shrink-0 overflow-hidden">
+                            {msg.user?.avatar_url ? <img src={msg.user.avatar_url} className="w-full h-full object-cover" alt="" /> : (msg.user?.nom_prenom?.slice(0, 2).toUpperCase() || "?")}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm">{msg.user?.nom_prenom || "Inconnu"}</span>
+                              {!msg.lu_admin && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">Nouveau</span>}
+                              {msg.reponse_admin && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold">Répondu</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">@{msg.user?.username} · {fmtDatetime(msg.created_at)}</div>
+                            <p className="text-sm mt-1.5 line-clamp-2">{msg.contenu}</p>
+                            {msg.fichier_url && (
+                              <a href={msg.fichier_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 mt-1 hover:underline">
+                                <ImageIcon className="w-3 h-3" /> Fichier joint
+                              </a>
+                            )}
+                          </div>
+                          <button onClick={() => { setSelectedMsg(isSelected ? null : msg); if (!msg.lu_admin) handleMarkRead(msg); }}
+                            className="p-1.5 rounded-lg hover:bg-muted flex-shrink-0">
+                            {isSelected ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="border-t border-border bg-muted/30 p-4 space-y-3">
+                          <div className="bg-background rounded-xl p-3 text-sm">{msg.contenu}</div>
+                          {msg.reponse_admin && (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Votre réponse</div>
+                              <p className="text-sm text-green-800">{msg.reponse_admin}</p>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Input value={reponseText} onChange={e => setReponseText(e.target.value)}
+                              onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSendReply()}
+                              placeholder="Écrire une réponse..." className="flex-1 rounded-xl" />
+                            <Button onClick={handleSendReply} disabled={sendingReply || !reponseText.trim()}
+                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex-shrink-0 px-3">
+                              {sendingReply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleDeleteMessage(msg)}
+                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors ml-auto">
+                              <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -923,9 +1298,7 @@ export default function AdminPanelPage() {
                     .neq("id", "00000000-0000-0000-0000-000000000000")
                     .then(() => { toast({ title: "Logs vidés" }); loadAll(); });
                 }
-              }} className="gap-1 text-xs">
-                <Trash2 className="w-3.5 h-3.5" /> Vider
-              </Button>
+              }} className="gap-1 text-xs"><Trash2 className="w-3.5 h-3.5" /> Vider</Button>
             </div>
             {logs.map(log => (
               <div key={log.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-start gap-3">
@@ -946,14 +1319,9 @@ export default function AdminPanelPage() {
             ))}
           </div>
         )}
-
-        {/* ── MESSAGES ── */}
-        {tab === "messages" && (
-          <AdminMessagesTab />
-        )}
       </div>
 
-      {/* Modal */}
+      {/* Modal actions */}
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
@@ -982,17 +1350,15 @@ export default function AdminPanelPage() {
             )}
             {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit", "toggle_boutique"].includes(actionModal.type) && (
               <div>
-                <label className="text-sm font-medium">
-                  Motif {["supprimer", "toggle_boutique"].includes(actionModal.type) ? "(optionnel)" : "*"}
-                </label>
+                <label className="text-sm font-medium">Motif {["supprimer", "toggle_boutique"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
                 <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
-                <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
+                {!["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) && (
+                  <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
+                )}
               </div>
             )}
             {actionModal.type === "supprimer" && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
-                Action irréversible. Toutes les données seront supprimées.
-              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
             )}
             <div className="flex gap-2">
               <Button onClick={handleAction} className={`flex-1 text-white ${
@@ -1002,6 +1368,35 @@ export default function AdminPanelPage() {
                 "bg-gray-600 hover:bg-gray-700"
               }`}>Confirmer</Button>
               <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(""); }} className="flex-1">Annuler</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal dette cachée */}
+      {detteModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <MinusCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">Dette Cachée</h3>
+                <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+              <p className="font-semibold">⚠ Mode silencieux</p>
+              <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement reste bloqué jusqu'au remboursement complet.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+              <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+              <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
             </div>
           </div>
         </div>
