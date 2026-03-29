@@ -279,6 +279,7 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           {children}
         </main>
 
+      
         <footer className="py-2.5 px-6 border-t border-border text-center text-xs text-muted-foreground">
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
