@@ -76,7 +76,7 @@ const ROADMAP = [
 ];
 
 const STATS = [
-  { value: "5", label: "Pays actifs", suffix: "" },
+  { value: "24", label: "Pays éligibles", suffix: "" },
   { value: "99.9", label: "Disponibilité", suffix: "%" },
   { value: "8", label: "Modules intégrés", suffix: "" },
   { value: "0", label: "Frais d'inscription", suffix: " FCFA" },
@@ -88,9 +88,28 @@ const COUNTRIES_ACTIVE = [
   { flag: "🇹🇬", name: "Togo", networks: "Flooz · T-Money" },
   { flag: "🇸🇳", name: "Sénégal", networks: "Orange · Wave · Free" },
   { flag: "🇳🇪", name: "Niger", networks: "Airtel · Moov" },
+  { flag: "🇲🇱", name: "Mali", networks: "Orange · Moov · Wave" },
+  { flag: "🇧🇫", name: "Burkina Faso", networks: "Orange · Moov" },
+  { flag: "🇨🇲", name: "Cameroun", networks: "MTN · Orange" },
+  { flag: "🇬🇭", name: "Ghana", networks: "MTN · Vodafone · AirtelTigo" },
+  { flag: "🇳🇬", name: "Nigéria", networks: "MTN · Airtel · Glo" },
+  { flag: "🇰🇪", name: "Kenya", networks: "M-Pesa · Airtel" },
+  { flag: "🇹🇿", name: "Tanzanie", networks: "M-Pesa · Tigo" },
+  { flag: "🇺🇬", name: "Ouganda", networks: "MTN · Airtel" },
+  { flag: "🇷🇼", name: "Rwanda", networks: "MTN · Airtel" },
+  { flag: "🇬🇳", name: "Guinée", networks: "Orange · MTN" },
+  { flag: "🇨🇩", name: "RD Congo", networks: "Vodacom · Airtel" },
+  { flag: "🇬🇦", name: "Gabon", networks: "Airtel · MTN" },
+  { flag: "🇨🇬", name: "Congo", networks: "MTN · Airtel" },
+  { flag: "🇲🇦", name: "Maroc", networks: "Orange · Maroc Telecom" },
+  { flag: "🇸🇳", name: "Gambie", networks: "Africell · QCell" },
+  { flag: "🇸🇱", name: "Sierra Leone", networks: "Orange · Africell" },
+  { flag: "🇱🇷", name: "Liberia", networks: "MTN · Lonestar" },
+  { flag: "🇲🇿", name: "Mozambique", networks: "M-Pesa · Airtel" },
+  { flag: "🇿🇲", name: "Zambie", networks: "MTN · Airtel" },
 ];
 
-const COUNTRIES_SOON = ["🇲🇱 Mali","🇧🇫 Burkina Faso","🇨🇲 Cameroun","🇬🇭 Ghana","🇳🇬 Nigéria","🇰🇪 Kenya","🇹🇿 Tanzanie","🇺🇬 Ouganda","🇷🇼 Rwanda","🇬🇳 Guinée","🇨🇩 RD Congo","🇬🇦 Gabon"];
+const COUNTRIES_SOON: string[] = [];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function SectionBadge({ text, color = "#6366f1" }: { text: string; color?: string }) {
@@ -185,7 +204,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-white dark:bg-[#0a0f1e] text-gray-900 dark:text-gray-100 overflow-x-hidden" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap');
         .font-display { font-family: 'Cabinet Grotesk', 'DM Sans', sans-serif; font-weight: 800; }
@@ -202,63 +221,67 @@ export default function LandingPage() {
         .card-lift:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0,0,0,.12); }
         .grad-text { background: linear-gradient(135deg,#6366f1,#8b5cf6 40%,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
         .mesh { background: radial-gradient(ellipse at 15% 15%,#eef2ff 0%,transparent 55%), radial-gradient(ellipse at 85% 10%,#fdf2f8 0%,transparent 50%), radial-gradient(ellipse at 85% 85%,#ecfdf5 0%,transparent 50%), #ffffff; }
+        .dark .mesh { background: radial-gradient(ellipse at 15% 15%,#1e1b4b33 0%,transparent 55%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 50%), #0a0f1e; }
         .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,15,30,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        /* Bordures images violet lumineux */
+        .img-violet-border { border: 2px solid #7c3aed; box-shadow: 0 0 16px 2px #7c3aed66, 0 0 40px 4px #7c3aed33; }
         input, textarea { font-family: 'DM Sans', sans-serif; }
         @media(max-width:768px){ h1{font-size:2.5rem !important; line-height:1.1 !important;} h2{font-size:2rem !important;} }
       `}</style>
 
       {/* ── TOP BANNER ── */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 py-2.5 text-center text-white text-xs font-bold tracking-wide">
-         🛩️ NEXORA Transfert disponible au Bénin, Côte d'Ivoire, Togo, Sénégal, Niger... &nbsp;·&nbsp;
+         🌍 NEXORA disponible dans 24 pays africains — Transferts, Boutique, Immobilier &nbsp;·&nbsp;
         <button onClick={() => navigate("/login")} className="underline underline-offset-2 hover:no-underline">
           Commencer gratuitement →
         </button>
       </div>
 
       {/* ── NAVBAR ── */}
-      <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "glass border-b border-gray-100 shadow-sm" : "bg-white/0"}`}>
+      <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "glass border-b border-gray-100 dark:border-white/10 shadow-sm" : "bg-white/0"}`}>
         <div className="max-w-7xl mx-auto px-5 md:px-8 h-[68px] flex items-center justify-between">
           {/* Logo */}
           <button onClick={() => scrollTo("hero")} className="flex items-center gap-3">
             <img src={LOGO} alt="NEXORA" className="w-9 h-9 object-contain" />
-            <span className="font-display text-xl tracking-tight text-gray-900">NEXORA</span>
+            <span className="font-display text-xl tracking-tight text-gray-900 dark:text-white">NEXORA</span>
           </button>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-7 text-[13.5px] font-semibold text-gray-500">
+          <div className="hidden md:flex items-center gap-7 text-[13.5px] font-semibold text-gray-500 dark:text-gray-400">
             {[["features","Fonctionnalités"],["transfert","Transfert"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
-              <button key={id} onClick={() => scrollTo(id)} className="hover:text-gray-900 transition-colors">{label}</button>
+              <button key={id} onClick={() => scrollTo(id)} className="hover:text-gray-900 dark:hover:text-white transition-colors">{label}</button>
             ))}
           </div>
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={() => navigate("/login")} className="text-[13.5px] font-semibold text-gray-500 hover:text-gray-900 px-3 py-2 transition-colors">
+            <button onClick={() => navigate("/login")} className="text-[13.5px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 transition-colors">
               Connexion
             </button>
             <button onClick={() => navigate("/login")}
-              className="flex items-center gap-1.5 text-[13.5px] font-bold bg-gray-950 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-600 transition-all duration-300 shadow-sm">
+              className="flex items-center gap-1.5 text-[13.5px] font-bold bg-gray-950 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all duration-300 shadow-sm">
               Créer un compte <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Mobile toggle */}
-          <button className="md:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
         {/* Mobile drawer */}
         {menuOpen && (
-          <div className="md:hidden glass border-b border-gray-100 px-6 pb-5 pt-2 flex flex-col gap-1">
+          <div className="md:hidden glass border-b border-gray-100 dark:border-white/10 px-6 pb-5 pt-2 flex flex-col gap-1">
             {[["features","Fonctionnalités"],["transfert","Transfert Africa"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
-              <button key={id} onClick={() => scrollTo(id)} className="text-left px-3 py-2.5 text-sm font-semibold text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
+              <button key={id} onClick={() => scrollTo(id)} className="text-left px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors">
                 {label}
               </button>
             ))}
-            <div className="border-t border-gray-100 mt-2 pt-3 flex gap-2">
-              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">Connexion</button>
-              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold bg-gray-950 text-white rounded-xl hover:bg-indigo-600 transition-colors">Créer un compte</button>
+            <div className="border-t border-gray-100 dark:border-white/10 mt-2 pt-3 flex gap-2">
+              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold border border-gray-200 dark:border-white/20 dark:text-white rounded-xl hover:border-gray-300 transition-colors">Connexion</button>
+              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold bg-gray-950 dark:bg-indigo-600 text-white rounded-xl hover:bg-indigo-600 transition-colors">Créer un compte</button>
             </div>
           </div>
         )}
@@ -304,8 +327,8 @@ export default function LandingPage() {
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
            
-<button onClick={() => window.open("https://youtu.be/On6T3pVLc_Q?si=3FOOHi4nJKoNFkCK", "_blank")}
-  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
+<button onClick={() => setVideoOpen(true)}
+  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 dark:text-gray-200 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 dark:border-white/20 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
   
   <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
     <Play className="w-3 h-3 text-white fill-white" />
@@ -350,11 +373,11 @@ export default function LandingPage() {
 
           {/* Photo de la plateforme */}
           <div className="anim-fadeup mt-12 max-w-5xl mx-auto" style={{ animationDelay: ".6s" }}>
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-100">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl img-violet-border">
               <img
                 src="https://i.postimg.cc/fRtP8L5N/nexora.png"
                 alt="Dashboard NEXORA"
-                className="w-full h-64 md:h-96 object-cover object-top"
+                className="w-full object-cover object-top"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-gray-950/60 via-transparent to-transparent flex items-end p-8">
                 <div className="text-white">
@@ -370,19 +393,24 @@ export default function LandingPage() {
       {/* ── VIDEO MODAL ── */}
       {videoOpen && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 anim-scalein" onClick={() => setVideoOpen(false)}>
-          <div className="w-full max-w-4xl bg-gray-950 rounded-3xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-gray-950 rounded-3xl overflow-hidden shadow-2xl img-violet-border" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
               <p className="text-white font-bold">Présentation NEXORA</p>
               <button onClick={() => setVideoOpen(false)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
-            <div className="aspect-video bg-gray-900 flex items-center justify-center">
-              <div className="text-center text-white/50">
-                <Play className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                <p className="text-sm font-semibold">Vidéo de présentation</p>
-                <p className="text-xs mt-1 opacity-60">Remplacez ceci par votre iframe vidéo YouTube ou Vimeo</p>
-              </div>
+            <div className="aspect-video bg-black">
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/On6T3pVLc_Q?autoplay=1&rel=0"
+                title="Présentation NEXORA"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
             </div>
           </div>
         </div>
@@ -470,12 +498,12 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-5 md:px-8 pb-20">
         <div className="text-center mb-12">
           <SectionBadge text="Interface" color="#10b981" />
-          <h2 className="text-3xl md:text-4xl font-black mt-5 mb-3">Une expérience pensée pour l'Afrique</h2>
-          <p className="text-gray-500 max-w-lg mx-auto">Design moderne, rapide et optimisé pour mobile.</p>
+          <h2 className="text-3xl md:text-4xl font-black mt-5 mb-3 dark:text-white">Une expérience pensée pour l'Afrique</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">Design moderne, rapide et optimisé pour mobile.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 rounded-3xl overflow-hidden h-64 md:h-80 relative card-lift">
-            <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900&q=80" alt="Commerce Afrique" className="w-full h-full object-cover" />
+          <div className="md:col-span-2 rounded-3xl overflow-hidden relative card-lift img-violet-border">
+            <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900&q=80" alt="Commerce Afrique" className="w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black text-lg">Boutique & Commerce</p>
@@ -483,8 +511,8 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl overflow-hidden h-64 md:h-80 relative card-lift">
-            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&q=80" alt="Finance Mobile" className="w-full h-full object-cover" />
+          <div className="rounded-3xl overflow-hidden relative card-lift img-violet-border">
+            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&q=80" alt="Finance Mobile" className="w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black text-lg">Finances Mobile</p>
@@ -492,17 +520,17 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl overflow-hidden h-56 md:h-64 relative card-lift">
-            <img src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&q=80" alt="Transfert Argent" className="w-full h-full object-cover" />
+          <div className="rounded-3xl overflow-hidden relative card-lift img-violet-border">
+            <img src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&q=80" alt="Transfert Argent" className="w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black">Transfert d'Argent</p>
-                <p className="text-sm text-white/70">5 pays, Mobile Money</p>
+                <p className="text-sm text-white/70">24 pays, Mobile Money</p>
               </div>
             </div>
           </div>
-          <div className="rounded-3xl overflow-hidden h-56 md:h-64 relative card-lift">
-            <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&q=80" alt="Immobilier" className="w-full h-full object-cover" />
+          <div className="rounded-3xl overflow-hidden relative card-lift img-violet-border">
+            <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&q=80" alt="Immobilier" className="w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black">Marché Immobilier</p>
@@ -510,8 +538,8 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl overflow-hidden h-56 md:h-64 relative card-lift">
-            <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80" alt="Factures" className="w-full h-full object-cover" />
+          <div className="rounded-3xl overflow-hidden relative card-lift img-violet-border">
+            <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80" alt="Factures" className="w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 to-transparent flex items-end p-6">
               <div className="text-white">
                 <p className="font-black">Facturation Pro</p>
@@ -537,8 +565,8 @@ export default function LandingPage() {
               </p>
 
               {/* Pays actifs */}
-              <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">✓ Disponibles maintenant</p>
-              <div className="grid grid-cols-1 gap-2 mb-6">
+              <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">✓ 24 pays éligibles</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6 max-h-64 overflow-y-auto pr-1">
                 {COUNTRIES_ACTIVE.map(c => (
                   <div key={c.name} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
                     <span className="text-2xl">{c.flag}</span>
@@ -547,14 +575,6 @@ export default function LandingPage() {
                       <p className="text-gray-400 text-xs">{c.networks}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Pays bientôt */}
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">🔒 Bientôt disponibles</p>
-              <div className="flex flex-wrap gap-2 mb-8">
-                {COUNTRIES_SOON.map(c => (
-                  <span key={c} className="px-3 py-1 bg-white/5 border border-white/10 rounded-xl text-xs font-semibold text-gray-400">{c}</span>
                 ))}
               </div>
 
@@ -793,7 +813,7 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-wrap items-center justify-center gap-8">
               {[
                 { icon: ShieldCheck, label: "100% sécurisé" },
-                { icon: Globe, label: "5 pays actifs" },
+                { icon: Globe, label: "24 pays éligibles" },
                 { icon: Users, label: "Inscription gratuite" },
               ].map((item, i) => {
                 const Icon = item.icon;
