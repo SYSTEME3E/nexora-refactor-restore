@@ -208,7 +208,7 @@ function ModalRetrait({ solde, devise, onClose, onConfirm }: ModalRetraitProps) 
               <input type="number" value={montant} onChange={e => setMontant(e.target.value)}
                 placeholder="Ex: 10000" min={500} max={solde}
                 className="w-full px-4 py-3.5 pr-20 bg-gray-50 border-2 border-gray-200 focus:border-pink-400 rounded-2xl text-xl font-black outline-none transition-colors" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">{devise}</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 dark:text-gray-500">{devise}</span>
             </div>
             {montantNum > solde && (
               <p className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1">
@@ -267,7 +267,7 @@ function ModalRetrait({ solde, devise, onClose, onConfirm }: ModalRetraitProps) 
           <div>
             <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-1.5">Numéro Mobile Money</label>
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input type="tel" value={numero} onChange={e => setNumero(e.target.value)}
                 placeholder="+229 97 00 00 00"
                 className="w-full pl-11 pr-4 py-3 bg-gray-50 border-2 border-gray-200 focus:border-pink-400 rounded-2xl text-sm font-semibold outline-none transition-colors" />
@@ -302,7 +302,7 @@ function CarteVente({ vente }: { vente: VenteDigitale }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -328,11 +328,11 @@ function CarteVente({ vente }: { vente: VenteDigitale }) {
           <div className="flex items-center gap-2">
             <div className="text-right">
               <p className="font-black text-pink-600">{fmt(vente.net_vendeur, vente.devise)}</p>
-              <p className="text-xs text-gray-400">net vendeur</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">net vendeur</p>
             </div>
             <button onClick={() => setExpanded(!expanded)}
               className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0">
-              {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              {expanded ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />}
             </button>
           </div>
         </div>
@@ -362,10 +362,10 @@ function CarteVente({ vente }: { vente: VenteDigitale }) {
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/80 p-4 space-y-3">
           {/* Résumé financier */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 space-y-2">
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 space-y-2">
             <p className="text-xs font-black text-gray-400 uppercase tracking-wider">Détail financier</p>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Prix vendu</span>
+              <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Prix vendu</span>
               <span className="font-bold">{fmt(vente.total, vente.devise)}</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -376,20 +376,20 @@ function CarteVente({ vente }: { vente: VenteDigitale }) {
               <span className="font-bold text-red-500">− {fmt(vente.commission, vente.devise)}</span>
             </div>
             <div className="flex justify-between text-sm border-t border-dashed border-gray-200 pt-2">
-              <span className="font-black text-gray-700">Votre gain net</span>
+              <span className="font-black text-gray-700 dark:text-gray-200">Votre gain net</span>
               <span className="font-black text-green-600">{fmt(vente.net_vendeur, vente.devise)}</span>
             </div>
           </div>
 
           {/* Infos client */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-3 space-y-2">
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 space-y-2">
             <p className="text-xs font-black text-gray-400 uppercase tracking-wider">Coordonnées client</p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <Users className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="font-semibold truncate">{vente.client_nom}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="font-semibold">{vente.client_telephone}</span>
               </div>
@@ -399,7 +399,7 @@ function CarteVente({ vente }: { vente: VenteDigitale }) {
                   <span className="font-semibold truncate">{vente.client_email}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="font-semibold">{vente.client_ville}, {vente.client_pays}</span>
               </div>
@@ -627,7 +627,7 @@ export default function DigitalFinancePage() {
               className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all flex-shrink-0 ${
                 activeTab === tab.id
                   ? "bg-pink-500 text-white shadow-lg shadow-pink-200"
-                  : "bg-white border border-gray-200 text-gray-500 hover:border-pink-300 hover:text-pink-500"
+                  : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-pink-300 hover:text-pink-500"
               }`}>
               <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
@@ -642,37 +642,37 @@ export default function DigitalFinancePage() {
           <div className="space-y-4">
             {/* Stats globales */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+              <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-5 shadow-sm">
                 <div className="w-9 h-9 rounded-2xl bg-green-100 flex items-center justify-center mb-3">
                   <TrendingUp className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Gains totaux</p>
-                <p className="text-2xl font-black text-gray-800">{Math.round(totalGains).toLocaleString()}</p>
-                <p className="text-xs text-gray-400">{devise}</p>
+                <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{Math.round(totalGains).toLocaleString()}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">{devise}</p>
               </div>
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+              <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-5 shadow-sm">
                 <div className="w-9 h-9 rounded-2xl bg-purple-100 flex items-center justify-center mb-3">
                   <Zap className="w-4 h-4 text-purple-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Produits vendus</p>
-                <p className="text-2xl font-black text-gray-800">{ventes.length}</p>
-                <p className="text-xs text-gray-400">digitaux</p>
+                <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{ventes.length}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">digitaux</p>
               </div>
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+              <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-5 shadow-sm">
                 <div className="w-9 h-9 rounded-2xl bg-amber-100 flex items-center justify-center mb-3">
                   <Clock className="w-4 h-4 text-amber-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">En attente 24h</p>
                 <p className="text-2xl font-black text-amber-600">{Math.round(totalEnAttente).toLocaleString()}</p>
-                <p className="text-xs text-gray-400">{devise}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">{devise}</p>
               </div>
-              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+              <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-5 shadow-sm">
                 <div className="w-9 h-9 rounded-2xl bg-blue-100 flex items-center justify-center mb-3">
                   <Users className="w-4 h-4 text-blue-600" />
                 </div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Clients uniques</p>
-                <p className="text-2xl font-black text-gray-800">{clientsUniques.length}</p>
-                <p className="text-xs text-gray-400">acheteurs</p>
+                <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{clientsUniques.length}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">acheteurs</p>
               </div>
             </div>
 
@@ -683,7 +683,7 @@ export default function DigitalFinancePage() {
               </h3>
               <div className="space-y-2">
                 {ventes.slice(0, 3).map(v => (
-                  <div key={v.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-3 shadow-sm">
+                  <div key={v.id} className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-3 shadow-sm">
                     <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${v.disponible_retrait ? "bg-green-100" : "bg-amber-100"}`}>
                       {v.disponible_retrait
                         ? <CheckCircle className="w-4 h-4 text-green-600" />
@@ -691,11 +691,11 @@ export default function DigitalFinancePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm text-gray-800 truncate">{v.produit_nom}</p>
-                      <p className="text-xs text-gray-400">{v.client_nom}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{v.client_nom}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-black text-pink-600 text-sm">{fmt(v.net_vendeur, devise)}</p>
-                      <p className="text-xs text-gray-400">net</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">net</p>
                     </div>
                   </div>
                 ))}
@@ -710,20 +710,20 @@ export default function DigitalFinancePage() {
         {activeTab === "ventes" && (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input value={searchVente} onChange={e => setSearchVente(e.target.value)}
                 placeholder="Produit, client, numéro..."
-                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:border-pink-400 transition-colors" />
+                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm outline-none focus:border-pink-400 transition-colors" />
             </div>
 
             {/* Légende */}
-            <div className="flex gap-4 text-xs text-gray-500">
+            <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
               <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Disponible retrait</span>
               <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-500" /> Attente 24h</span>
             </div>
 
             {ventesFiltrees.length === 0 ? (
-              <div className="text-center py-14 bg-white border border-gray-100 rounded-3xl">
+              <div className="text-center py-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl">
                 <ShoppingBag className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <p className="text-gray-500 font-bold">Aucune vente digitale</p>
               </div>
@@ -746,7 +746,7 @@ export default function DigitalFinancePage() {
             </button>
 
             {retraits.length === 0 ? (
-              <div className="text-center py-14 bg-white border border-gray-100 rounded-3xl">
+              <div className="text-center py-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl">
                 <Wallet className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <p className="text-gray-500 font-bold">Aucun retrait effectué</p>
               </div>
@@ -774,7 +774,7 @@ export default function DigitalFinancePage() {
                               <p className="text-xs text-gray-400 mt-0.5">
                                 {r.reseau} · {r.numero_mobile} · {r.pays}
                               </p>
-                              <p className="text-xs text-gray-400">{formatDate(r.created_at)}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">{formatDate(r.created_at)}</p>
                               {r.statut === "traitement" && (
                                 <div className="flex items-center gap-1.5 mt-1">
                                   <Timer className="w-3.5 h-3.5 text-blue-500" />
@@ -807,16 +807,16 @@ export default function DigitalFinancePage() {
         {activeTab === "clients" && (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input value={searchVente} onChange={e => setSearchVente(e.target.value)}
                 placeholder="Rechercher un client..."
-                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:border-pink-400 transition-colors" />
+                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm outline-none focus:border-pink-400 transition-colors" />
             </div>
 
             <p className="text-xs text-gray-400 font-bold">{clientsFiltres.length} client{clientsFiltres.length > 1 ? "s" : ""} unique{clientsFiltres.length > 1 ? "s" : ""}</p>
 
             {clientsFiltres.length === 0 ? (
-              <div className="text-center py-14 bg-white border border-gray-100 rounded-3xl">
+              <div className="text-center py-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl">
                 <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <p className="text-gray-500 font-bold">Aucun client</p>
               </div>
@@ -826,7 +826,7 @@ export default function DigitalFinancePage() {
                   const achatsClient = ventes.filter(v => v.client_telephone === client.client_telephone);
                   const totalClient  = achatsClient.reduce((s, v) => s + v.total, 0);
                   return (
-                    <div key={client.client_telephone} className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm">
+                    <div key={client.client_telephone} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-4 shadow-sm">
                       <div className="flex items-start gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white font-black text-base flex-shrink-0">
                           {client.client_nom.charAt(0).toUpperCase()}
@@ -849,7 +849,7 @@ export default function DigitalFinancePage() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="font-black text-pink-600">{fmt(totalClient, devise)}</p>
-                          <p className="text-xs text-gray-400">{achatsClient.length} achat{achatsClient.length > 1 ? "s" : ""}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">{achatsClient.length} achat{achatsClient.length > 1 ? "s" : ""}</p>
                         </div>
                       </div>
 
