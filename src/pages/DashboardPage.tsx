@@ -25,7 +25,6 @@ function getDateStr() {
   });
 }
 
-// ── Badge de vérification bleu rond statique ────────────────────
 function VerifiedBadge() {
   return (
     <span
@@ -117,10 +116,6 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-
-      {/* ── Animations CSS injectées ── */}
-      {/* Badge is now static, no animations needed */}
-
       <div
         className="w-full overflow-hidden"
         style={{
@@ -143,8 +138,6 @@ export default function DashboardPage() {
           </div>
           <div className="relative flex items-center gap-3">
             <div style={{ flex: 1, minWidth: 0 }}>
-
-              {/* Nom + Badge */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -163,7 +156,6 @@ export default function DashboardPage() {
                   }}>
                   {getGreeting()}, {displayName} ! 👋
                 </div>
-                {/* ── Badge bleu vérifié ── */}
                 {hasBadge && <VerifiedBadge />}
               </div>
 
@@ -194,8 +186,8 @@ export default function DashboardPage() {
               onChange={(e) => setDevise(e.target.value as "XOF" | "USD")}
               className="bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground rounded-lg font-semibold cursor-pointer"
               style={{ padding: "4px 8px", fontSize: "11px", flexShrink: 0 }}>
-              <option value="XOF">XOF</option>
-              <option value="USD">USD</option>
+              <option value="XOF" className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800">XOF</option>
+              <option value="USD" className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800">USD</option>
             </select>
           </div>
         </div>
@@ -204,15 +196,23 @@ export default function DashboardPage() {
             SOLDE NET
         ══════════════════════════ */}
         <div
-          className={`rounded-xl border ${solde >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+          className={`rounded-xl border ${
+            solde >= 0
+              ? "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-700"
+              : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-700"
+          }`}
           style={{ padding: "10px 14px", flexShrink: 0 }}>
           <div
-            className="font-bold uppercase text-muted-foreground"
+            className="font-bold uppercase text-muted-foreground dark:text-gray-400"
             style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "2px" }}>
             Solde net total
           </div>
           <div
-            className={`font-black font-display ${solde >= 0 ? "text-green-700" : "text-destructive"}`}
+            className={`font-black font-display ${
+              solde >= 0
+                ? "text-green-700 dark:text-green-400"
+                : "text-destructive dark:text-red-400"
+            }`}
             style={{
               fontSize: "20px", lineHeight: 1.2,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -227,15 +227,15 @@ export default function DashboardPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           <Link
             to="/entrees-depenses"
-            className="bg-card border border-border rounded-xl hover:shadow-brand transition-all"
+            className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl hover:shadow-brand transition-all"
             style={{ padding: "10px 12px", overflow: "hidden" }}>
             <div
-              className="font-bold text-green-600 uppercase flex items-center gap-1"
+              className="font-bold text-green-600 dark:text-green-400 uppercase flex items-center gap-1"
               style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "4px" }}>
               <TrendingUp style={{ width: 11, height: 11 }} /> Entrées
             </div>
             <div
-              className="font-black text-green-600"
+              className="font-black text-green-600 dark:text-green-400"
               style={{ fontSize: "17px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {loading ? "—" : fmt(stats.totalEntrees)}
             </div>
@@ -243,15 +243,15 @@ export default function DashboardPage() {
 
           <Link
             to="/entrees-depenses"
-            className="bg-card border border-border rounded-xl hover:shadow-brand transition-all"
+            className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl hover:shadow-brand transition-all"
             style={{ padding: "10px 12px", overflow: "hidden" }}>
             <div
-              className="font-bold text-destructive uppercase flex items-center gap-1"
+              className="font-bold text-destructive dark:text-red-400 uppercase flex items-center gap-1"
               style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "4px" }}>
               <TrendingDown style={{ width: 11, height: 11 }} /> Dépenses
             </div>
             <div
-              className="font-black text-destructive"
+              className="font-black text-destructive dark:text-red-400"
               style={{ fontSize: "17px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {loading ? "—" : fmt(stats.totalDepenses)}
             </div>
@@ -268,30 +268,33 @@ export default function DashboardPage() {
               icon: <TrendingUp style={{ width: 18, height: 18, color: "#6366f1" }} />,
               label: "Factures",
               value: "→",
-              cls: "bg-primary-bg border-primary/20",
-              textCls: "text-primary",
+              lightCls: "bg-indigo-50 border-indigo-200",
+              darkCls: "dark:bg-indigo-950/50 dark:border-indigo-700",
+              textCls: "text-indigo-600 dark:text-indigo-400",
             },
             {
               to: "/transfert",
               icon: <ArrowUpRight style={{ width: 18, height: 18, color: "#0ea5e9" }} />,
               label: "Transfert",
               value: "→",
-              cls: "bg-sky-50 border-sky-200",
-              textCls: "text-sky-600",
+              lightCls: "bg-sky-50 border-sky-200",
+              darkCls: "dark:bg-sky-950/50 dark:border-sky-700",
+              textCls: "text-sky-600 dark:text-sky-400",
             },
             {
               to: "/boutique",
               icon: <Store style={{ width: 18, height: 18, color: "#ec4899" }} />,
               label: "Boutique",
               value: "→",
-              cls: "bg-pink-50 border-pink-200",
-              textCls: "text-pink-600",
+              lightCls: "bg-pink-50 border-pink-200",
+              darkCls: "dark:bg-pink-950/50 dark:border-pink-700",
+              textCls: "text-pink-600 dark:text-pink-400",
             },
           ].map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`border rounded-xl card-hover flex flex-col items-center justify-center text-center ${item.cls}`}
+              className={`border rounded-xl card-hover flex flex-col items-center justify-center text-center ${item.lightCls} ${item.darkCls}`}
               style={{ padding: "10px 6px" }}>
               {item.icon}
               <div
@@ -314,26 +317,26 @@ export default function DashboardPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           <Link
             to="/"
-            className="bg-indigo-50 border border-indigo-200 rounded-xl card-hover flex flex-col items-center justify-center text-center"
+            className="bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-700 rounded-xl card-hover flex flex-col items-center justify-center text-center"
             style={{ padding: "10px 6px" }}>
             <Home style={{ width: 18, height: 18, color: "#6366f1" }} />
-            <div className="font-semibold text-indigo-700" style={{ fontSize: "10px", marginTop: "4px" }}>
+            <div className="font-semibold text-indigo-700 dark:text-indigo-400" style={{ fontSize: "10px", marginTop: "4px" }}>
               Accueil
             </div>
-            <div className="font-display font-black text-indigo-700" style={{ fontSize: "18px", marginTop: "2px" }}>
+            <div className="font-display font-black text-indigo-700 dark:text-indigo-400" style={{ fontSize: "18px", marginTop: "2px" }}>
               →
             </div>
           </Link>
 
           <Link
             to="/historique"
-            className="bg-destructive-bg border border-destructive/20 rounded-xl card-hover flex flex-col items-center justify-center text-center"
+            className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-700 rounded-xl card-hover flex flex-col items-center justify-center text-center"
             style={{ padding: "10px 6px" }}>
             <History style={{ width: 18, height: 18, color: "var(--destructive)" }} />
-            <div className="font-semibold text-destructive" style={{ fontSize: "10px", marginTop: "4px" }}>
+            <div className="font-semibold text-destructive dark:text-red-400" style={{ fontSize: "10px", marginTop: "4px" }}>
               Historique
             </div>
-            <div className="font-display font-black text-destructive" style={{ fontSize: "18px", marginTop: "2px" }}>
+            <div className="font-display font-black text-destructive dark:text-red-400" style={{ fontSize: "18px", marginTop: "2px" }}>
               ↗
             </div>
           </Link>
@@ -348,47 +351,47 @@ export default function DashboardPage() {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
               <span
-                className="font-display font-bold text-destructive flex items-center gap-1"
+                className="font-display font-bold text-destructive dark:text-red-400 flex items-center gap-1"
                 style={{ fontSize: "11px" }}>
                 <TrendingDown style={{ width: 12, height: 12 }} /> Dépenses
               </span>
               <Link
                 to="/entrees-depenses"
-                className="text-primary font-semibold flex items-center gap-0.5 hover:underline"
+                className="text-primary dark:text-indigo-400 font-semibold flex items-center gap-0.5 hover:underline"
                 style={{ fontSize: "10px" }}>
                 Voir <ArrowUpRight style={{ width: 10, height: 10 }} />
               </Link>
             </div>
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl overflow-hidden">
               {loading ? (
-                <div className="text-center text-muted-foreground" style={{ padding: "10px", fontSize: "11px" }}>
+                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
                   Chargement...
                 </div>
               ) : stats.dernièresDepenses.length === 0 ? (
-                <div className="text-center text-muted-foreground" style={{ padding: "10px", fontSize: "11px" }}>
+                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
                   Aucune dépense
                 </div>
               ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border dark:divide-gray-700">
                   {stats.dernièresDepenses.map((d: any, i: number) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px" }}>
                       <div
-                        className="bg-destructive/10 rounded-full flex items-center justify-center flex-shrink-0"
+                        className="bg-red-100 dark:bg-red-950/60 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ width: 22, height: 22 }}>
                         <TrendingDown style={{ width: 11, height: 11, color: "var(--destructive)" }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
-                          className="font-medium"
+                          className="font-medium text-gray-900 dark:text-gray-100"
                           style={{ fontSize: "10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {d.titre}
                         </div>
-                        <div className="text-muted-foreground" style={{ fontSize: "9px" }}>
+                        <div className="text-muted-foreground dark:text-gray-500" style={{ fontSize: "9px" }}>
                           {d.date_depense}
                         </div>
                       </div>
                       <div
-                        className="font-bold text-destructive"
+                        className="font-bold text-destructive dark:text-red-400"
                         style={{ fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>
                         -{fmt(d.devise === "USD" ? convertAmount(Number(d.montant), "USD", "XOF") : Number(d.montant))}
                       </div>
@@ -403,47 +406,47 @@ export default function DashboardPage() {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
               <span
-                className="font-display font-bold text-green-600 flex items-center gap-1"
+                className="font-display font-bold text-green-600 dark:text-green-400 flex items-center gap-1"
                 style={{ fontSize: "11px" }}>
                 <TrendingUp style={{ width: 12, height: 12 }} /> Entrées
               </span>
               <Link
                 to="/entrees-depenses"
-                className="text-primary font-semibold flex items-center gap-0.5 hover:underline"
+                className="text-primary dark:text-indigo-400 font-semibold flex items-center gap-0.5 hover:underline"
                 style={{ fontSize: "10px" }}>
                 Voir <ArrowUpRight style={{ width: 10, height: 10 }} />
               </Link>
             </div>
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl overflow-hidden">
               {loading ? (
-                <div className="text-center text-muted-foreground" style={{ padding: "10px", fontSize: "11px" }}>
+                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
                   Chargement...
                 </div>
               ) : stats.dernièresEntrees.length === 0 ? (
-                <div className="text-center text-muted-foreground" style={{ padding: "10px", fontSize: "11px" }}>
+                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
                   Aucune entrée
                 </div>
               ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border dark:divide-gray-700">
                   {stats.dernièresEntrees.map((e: any, i: number) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px" }}>
                       <div
-                        className="bg-green-100 rounded-full flex items-center justify-center flex-shrink-0"
+                        className="bg-green-100 dark:bg-green-950/60 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ width: 22, height: 22 }}>
                         <TrendingUp style={{ width: 11, height: 11, color: "#16a34a" }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
-                          className="font-medium"
+                          className="font-medium text-gray-900 dark:text-gray-100"
                           style={{ fontSize: "10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {e.titre}
                         </div>
-                        <div className="text-muted-foreground" style={{ fontSize: "9px" }}>
+                        <div className="text-muted-foreground dark:text-gray-500" style={{ fontSize: "9px" }}>
                           {e.date_entree}
                         </div>
                       </div>
                       <div
-                        className="font-bold text-green-600"
+                        className="font-bold text-green-600 dark:text-green-400"
                         style={{ fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>
                         +{fmt(e.devise === "USD" ? convertAmount(Number(e.montant), "USD", "XOF") : Number(e.montant))}
                       </div>
