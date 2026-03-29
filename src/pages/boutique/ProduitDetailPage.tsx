@@ -309,7 +309,7 @@ export default function ProduitDetailPage() {
                     disabled={enRupture}
                     className="h-12 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-pink-200 active:scale-95 flex items-center justify-center gap-2"
                   >
-                    Commander maintenant
+                    Commander maintenant!
                   </button>
                 )}
               </div>
