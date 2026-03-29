@@ -109,13 +109,11 @@ const COUNTRIES_ACTIVE = [
   { flag: "🇿🇲", name: "Zambie", networks: "MTN · Airtel" },
 ];
 
-const COUNTRIES_SOON: string[] = [];
-
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function SectionBadge({ text, color = "#6366f1" }: { text: string; color?: string }) {
   return (
     <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest"
-      style={{ background: color + "15", color, border: `1px solid ${color}25` }}>
+      style={{ background: color + "20", color, border: `1px solid ${color}35` }}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
       {text}
     </span>
@@ -160,7 +158,6 @@ export default function LandingPage() {
     { name: "Fatou Diallo", country: "🇸🇳 Sénégal", text: "Les factures PDF sont magnifiques, mes clients sont impressionnés. Le transfert d'argent fonctionne parfaitement.", stars: 5 },
   ]);
 
-  // Load persistent reviews from DB
   useEffect(() => {
     const loadReviews = async () => {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -188,7 +185,6 @@ export default function LandingPage() {
     if (!reviewForm.name.trim() || !reviewForm.text.trim()) return;
     const newReview = { name: reviewForm.name, country: reviewForm.country, text: reviewForm.text, stars: reviewForm.stars };
     setReviews(prev => [newReview, ...prev]);
-    // Persist to DB
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       await (supabase as any).from("avis_produits").insert({
@@ -218,15 +214,22 @@ export default function LandingPage() {
         .anim-fadeup { opacity:0; animation: fadeUp .65s ease forwards; }
         .anim-scalein { animation: scaleIn .4s ease forwards; }
         .card-lift { transition: all .3s cubic-bezier(.4,0,.2,1); }
-        .card-lift:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0,0,0,.12); }
+        .card-lift:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0,0,0,.18); }
         .grad-text { background: linear-gradient(135deg,#6366f1,#8b5cf6 40%,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
         .mesh { background: radial-gradient(ellipse at 15% 15%,#eef2ff 0%,transparent 55%), radial-gradient(ellipse at 85% 10%,#fdf2f8 0%,transparent 50%), radial-gradient(ellipse at 85% 85%,#ecfdf5 0%,transparent 50%), #ffffff; }
         .dark .mesh { background: radial-gradient(ellipse at 15% 15%,#1e1b4b33 0%,transparent 55%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 50%), #0a0f1e; }
         .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .dark .glass { background: rgba(10,15,30,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        /* Bordures images violet lumineux */
         .img-violet-border { border: 2px solid #7c3aed; box-shadow: 0 0 16px 2px #7c3aed66, 0 0 40px 4px #7c3aed33; }
         input, textarea { font-family: 'DM Sans', sans-serif; }
+        /* Dark mode inputs */
+        .dark input, .dark textarea { background: #1e2433 !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+        .dark input::placeholder, .dark textarea::placeholder { color: #64748b !important; }
+        .dark input:focus, .dark textarea:focus { border-color: #6366f1 !important; }
+        /* Feature card dark */
+        .dark .feature-card-bg-0 { background: #1e1b4b !important; }
+        .dark .feature-card-bg-1 { background: #052e16 !important; }
+        .dark .feature-card-right { background: rgba(255,255,255,0.04) !important; }
         @media(max-width:768px){ h1{font-size:2.5rem !important; line-height:1.1 !important;} h2{font-size:2rem !important;} }
       `}</style>
 
@@ -239,22 +242,19 @@ export default function LandingPage() {
       </div>
 
       {/* ── NAVBAR ── */}
-      <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "glass border-b border-gray-100 dark:border-white/10 shadow-sm" : "bg-white/0"}`}>
+      <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "glass border-b border-gray-100 dark:border-white/10 shadow-sm" : "bg-white/0 dark:bg-transparent"}`}>
         <div className="max-w-7xl mx-auto px-5 md:px-8 h-[68px] flex items-center justify-between">
-          {/* Logo */}
           <button onClick={() => scrollTo("hero")} className="flex items-center gap-3">
             <img src={LOGO} alt="NEXORA" className="w-9 h-9 object-contain" />
             <span className="font-display text-xl tracking-tight text-gray-900 dark:text-white">NEXORA</span>
           </button>
 
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-7 text-[13.5px] font-semibold text-gray-500 dark:text-gray-400">
             {[["features","Fonctionnalités"],["transfert","Transfert"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="hover:text-gray-900 dark:hover:text-white transition-colors">{label}</button>
             ))}
           </div>
 
-          {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
             <button onClick={() => navigate("/login")} className="text-[13.5px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 transition-colors">
               Connexion
@@ -265,22 +265,20 @@ export default function LandingPage() {
             </button>
           </div>
 
-          {/* Mobile toggle */}
           <button className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/10 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
-        {/* Mobile drawer */}
         {menuOpen && (
           <div className="md:hidden glass border-b border-gray-100 dark:border-white/10 px-6 pb-5 pt-2 flex flex-col gap-1">
             {[["features","Fonctionnalités"],["transfert","Transfert Africa"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
-              <button key={id} onClick={() => scrollTo(id)} className="text-left px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors">
+              <button key={id} onClick={() => scrollTo(id)} className="text-left px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors">
                 {label}
               </button>
             ))}
             <div className="border-t border-gray-100 dark:border-white/10 mt-2 pt-3 flex gap-2">
-              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold border border-gray-200 dark:border-white/20 dark:text-white rounded-xl hover:border-gray-300 transition-colors">Connexion</button>
+              <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-xl hover:border-gray-300 transition-colors">Connexion</button>
               <button onClick={() => navigate("/login")} className="flex-1 py-2.5 text-sm font-bold bg-gray-950 dark:bg-indigo-600 text-white rounded-xl hover:bg-indigo-600 transition-colors">Créer un compte</button>
             </div>
           </div>
@@ -290,62 +288,55 @@ export default function LandingPage() {
       {/* ── HERO ── */}
       <section id="hero" className="mesh relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-indigo-200/30 blur-3xl" />
-          <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-pink-200/30 blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 w-60 h-60 rounded-full bg-violet-200/25 blur-2xl" />
+          <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-indigo-200/30 dark:bg-indigo-800/20 blur-3xl" />
+          <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-pink-200/30 dark:bg-pink-900/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 w-60 h-60 rounded-full bg-violet-200/25 dark:bg-violet-900/20 blur-2xl" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-5 md:px-8 pt-14 pb-20 md:pt-20 md:pb-28">
-          {/* Badge */}
           <div className="flex justify-center mb-7">
-            <div className="anim-fadeup inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-indigo-100 shadow-md text-xs font-black text-indigo-600 uppercase tracking-wider">
+            <div className="anim-fadeup inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-white/10 border border-indigo-100 dark:border-indigo-700 shadow-md text-xs font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-wider">
               <Zap className="w-3.5 h-3.5" />
               Plateforme financière tout-en-un · Afrique
               <span className="px-2 py-0.5 bg-indigo-600 text-white rounded-full text-[10px] font-black">NOUVEAU</span>
             </div>
           </div>
 
-          {/* Title */}
           <div className="text-center">
-            <h1 className="anim-fadeup text-[3.2rem] md:text-[5.5rem] font-black tracking-tight leading-[1.04] mb-7 text-gray-950"
+            <h1 className="anim-fadeup text-[3.2rem] md:text-[5.5rem] font-black tracking-tight leading-[1.04] mb-7 text-gray-950 dark:text-white"
               style={{ animationDelay: ".08s" }}>
               Gérez votre<br />
               <span className="grad-text">argent, boutique</span><br />
               <span>et vos factures</span>
             </h1>
 
-            <p className="anim-fadeup text-gray-500 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
+            <p className="anim-fadeup text-gray-500 dark:text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
               style={{ animationDelay: ".18s" }}>
               NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, les prêts et le transfert d'argent dans une seule application moderne, sécurisée et conçue pour l'Afrique.
             </p>
 
-            {/* CTAs */}
             <div className="anim-fadeup flex flex-col sm:flex-row items-center justify-center gap-4 mb-10"
               style={{ animationDelay: ".28s" }}>
               <button onClick={() => navigate("/login")}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-[15px] px-8 py-4 rounded-2xl shadow-xl shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95">
                 Commencer gratuitement <ArrowRight className="w-4 h-4" />
               </button>
-           
-<button onClick={() => setVideoOpen(true)}
-  className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 dark:text-gray-200 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 dark:border-white/20 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all">
-  
-  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-    <Play className="w-3 h-3 text-white fill-white" />
-  </div>
+              <button onClick={() => setVideoOpen(true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 text-gray-700 dark:text-gray-200 font-semibold text-[15px] px-7 py-4 rounded-2xl border border-gray-200 dark:border-white/20 bg-white dark:bg-white/5 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-white/40 transition-all">
+                <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <Play className="w-3 h-3 text-white fill-white" />
+                </div>
+                Voir la démo
+              </button>
+            </div>
 
-  Voir la démo
-</button>
- </div>
-
-  {/* Trust badges */}
-            <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
+            <div className="anim-fadeup flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-sm text-gray-400 dark:text-gray-400 font-medium" style={{ animationDelay: ".38s" }}>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Données chiffrées</span>
-              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200" />
+              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-amber-400" /> 99.9% disponibilité</span>
-              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200" />
+              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-indigo-500" /> 5 pays actifs</span>
-              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200" />
+              <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> Inscription gratuite</span>
             </div>
           </div>
@@ -360,18 +351,18 @@ export default function LandingPage() {
             ].map((c, i) => {
               const Icon = c.icon;
               return (
-                <div key={i} className="bg-white rounded-2xl p-4 shadow-xl border border-gray-50 anim-float" style={{ animationDelay: `${i * 0.4}s` }}>
-                  <div className="w-9 h-9 rounded-xl mb-3 flex items-center justify-center" style={{ background: c.color + "18" }}>
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-50 dark:border-gray-700 anim-float" style={{ animationDelay: `${i * 0.4}s` }}>
+                  <div className="w-9 h-9 rounded-xl mb-3 flex items-center justify-center" style={{ background: c.color + "25" }}>
                     <Icon className="w-4.5 h-4.5" style={{ color: c.color }} />
                   </div>
-                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">{c.label}</p>
-                  <p className="font-black text-[13px] text-gray-900 leading-tight">{c.value}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">{c.label}</p>
+                  <p className="font-black text-[13px] text-gray-900 dark:text-white leading-tight">{c.value}</p>
                 </div>
               );
             })}
           </div>
 
-          {/* Photo de la plateforme */}
+          {/* Screenshot */}
           <div className="anim-fadeup mt-12 max-w-5xl mx-auto" style={{ animationDelay: ".6s" }}>
             <div className="relative rounded-3xl overflow-hidden shadow-2xl img-violet-border">
               <img
@@ -402,14 +393,12 @@ export default function LandingPage() {
             </div>
             <div className="aspect-video bg-black">
               <iframe
-                width="100%"
-                height="100%"
+                width="100%" height="100%"
                 src="https://www.youtube.com/embed/On6T3pVLc_Q?autoplay=1&rel=0"
                 title="Présentation NEXORA"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
+                allowFullScreen className="w-full h-full"
               />
             </div>
           </div>
@@ -417,12 +406,12 @@ export default function LandingPage() {
       )}
 
       {/* ── OPÉRATEURS MARQUEE ── */}
-      <section className="bg-gray-50 border-y border-gray-100 py-4 overflow-hidden">
-        <p className="text-center text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Opérateurs Mobile Money supportés</p>
+      <section className="bg-gray-50 dark:bg-gray-900 border-y border-gray-100 dark:border-gray-800 py-4 overflow-hidden">
+        <p className="text-center text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">Opérateurs Mobile Money supportés</p>
         <div className="relative overflow-hidden">
           <div className="anim-marquee flex gap-10 whitespace-nowrap">
             {[...OPERATORS,...OPERATORS].map((op, i) => (
-              <span key={i} className="flex-shrink-0 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-600 shadow-sm">
+              <span key={i} className="flex-shrink-0 px-4 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm font-bold text-gray-600 dark:text-gray-300 shadow-sm">
                 {op.name}
               </span>
             ))}
@@ -445,19 +434,26 @@ export default function LandingPage() {
       </section>
 
       {/* ── FEATURES ── */}
+      {/* ⚠️ Les cards sont non-cliquables : onClick et "Accéder au module" ont été supprimés */}
       <section id="features" className="max-w-7xl mx-auto px-5 md:px-8 py-20 md:py-28">
         <div className="text-center mb-16">
           <SectionBadge text="8 Modules complets" />
-          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950">Tout ce dont vous avez besoin,<br />dans une seule app</h2>
-          <p className="text-gray-500 max-w-xl mx-auto text-lg leading-relaxed">Chaque module est conçu pour vous faire gagner du temps et de l'argent. Aucun abonnement requis pour commencer.</p>
+          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950 dark:text-white">Tout ce dont vous avez besoin,<br />dans une seule app</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto text-lg leading-relaxed">Chaque module est conçu pour vous faire gagner du temps et de l'argent. Aucun abonnement requis pour commencer.</p>
         </div>
 
         <div className="space-y-6">
           {FEATURES.map((f, i) => {
             const Icon = f.icon;
             return (
-              <div key={i} className={`card-lift group rounded-3xl border border-gray-100 overflow-hidden cursor-pointer ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
-                onClick={() => navigate("/dashboard")}>
+              /* ── DIV (non-cliquable) au lieu de Link/button ── */
+              <div
+                key={i}
+                className={`rounded-3xl border overflow-hidden ${
+                  i % 2 === 0
+                    ? "bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700"
+                    : "bg-gray-50/50 dark:bg-gray-900/60 border-gray-100 dark:border-gray-700"
+                }`}>
                 <div className="flex flex-col md:flex-row">
                   {/* Left */}
                   <div className="md:w-2/5 p-8 md:p-10 flex flex-col justify-center">
@@ -469,20 +465,18 @@ export default function LandingPage() {
                         ✓ {f.tag}
                       </span>
                     </div>
-                    <h3 className="text-2xl font-black mb-3 text-gray-950">{f.title}</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-6">{f.desc}</p>
-                    <div className="flex items-center gap-2 text-sm font-bold transition-all" style={{ color: f.color }}>
-                      Accéder au module <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
+                    <h3 className="text-2xl font-black mb-3 text-gray-950 dark:text-white">{f.title}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+                    {/* Bouton "Accéder au module" SUPPRIMÉ */}
                   </div>
 
                   {/* Right — points */}
-                  <div className="md:w-3/5 p-8 md:p-10 flex items-center" style={{ background: f.bg + "60" }}>
+                  <div className="md:w-3/5 p-8 md:p-10 flex items-center" style={{ background: f.bg + "40" }}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                       {f.points.map((pt, j) => (
-                        <div key={j} className="flex items-start gap-3 bg-white/70 rounded-2xl p-4">
+                        <div key={j} className="flex items-start gap-3 bg-white/80 dark:bg-gray-800/80 rounded-2xl p-4 border border-white/50 dark:border-gray-700">
                           <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: f.color }} />
-                          <span className="text-sm font-semibold text-gray-700">{pt}</span>
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{pt}</span>
                         </div>
                       ))}
                     </div>
@@ -498,7 +492,7 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-5 md:px-8 pb-20">
         <div className="text-center mb-12">
           <SectionBadge text="Interface" color="#10b981" />
-          <h2 className="text-3xl md:text-4xl font-black mt-5 mb-3 dark:text-white">Une expérience pensée pour l'Afrique</h2>
+          <h2 className="text-3xl md:text-4xl font-black mt-5 mb-3 text-gray-950 dark:text-white">Une expérience pensée pour l'Afrique</h2>
           <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">Design moderne, rapide et optimisé pour mobile.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -554,17 +548,15 @@ export default function LandingPage() {
       <section id="transfert" className="bg-gray-950 py-20 md:py-28 overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 md:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            {/* Left */}
             <div>
               <SectionBadge text="Transfert Africa" color="#0ea5e9" />
               <h2 className="text-4xl md:text-5xl font-black text-white mt-5 mb-5 leading-tight">
                 Un continent,<br /><span style={{ color: "#38bdf8" }}>une infrastructure.</span>
               </h2>
               <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-                Rechargez votre compte gratuitement via Mobile Money et envoyez de l'argent vers 5 pays africains avec seulement 3% de frais. Rapide, sécurisé, et disponible 24h/24.
+                Rechargez votre compte gratuitement via Mobile Money et envoyez de l'argent vers 5 pays africains avec seulement 3% de frais.
               </p>
 
-              {/* Pays actifs */}
               <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">✓ 24 pays éligibles</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6 max-h-64 overflow-y-auto pr-1">
                 {COUNTRIES_ACTIVE.map(c => (
@@ -584,7 +576,6 @@ export default function LandingPage() {
               </button>
             </div>
 
-            {/* Right — widget */}
             <div className="relative">
               <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-7 border border-white/10 shadow-2xl">
                 <div className="flex items-center gap-3 mb-6">
@@ -638,23 +629,23 @@ export default function LandingPage() {
       <section id="roadmap" className="max-w-7xl mx-auto px-5 md:px-8 py-20 md:py-28">
         <div className="text-center mb-14">
           <SectionBadge text="Roadmap publique" color="#8b5cf6" />
-          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950">Ce qui arrive bientôt</h2>
-          <p className="text-gray-500 max-w-md mx-auto text-lg">NEXORA grandit avec vous. Voici ce que nous construisons pour vous.</p>
+          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950 dark:text-white">Ce qui arrive bientôt</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto text-lg">NEXORA grandit avec vous. Voici ce que nous construisons pour vous.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {ROADMAP.map((item, i) => (
-            <div key={i} className="card-lift bg-gray-50 border border-gray-100 rounded-3xl p-7">
+            <div key={i} className="card-lift bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-7">
               <div className="flex items-center gap-2 mb-4">
-                <span className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                <span className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-700">
                   <Clock className="w-3 h-3" /> Bientôt
                 </span>
               </div>
-              <h3 className="text-xl font-black mb-2 text-gray-950">{item.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed mb-5">{item.desc}</p>
-              <div className="flex justify-between text-xs text-gray-400 font-bold mb-2">
+              <h3 className="text-xl font-black mb-2 text-gray-950 dark:text-white">{item.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-5">{item.desc}</p>
+              <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 font-bold mb-2">
                 <span>Progression</span><span>{item.pct}%</span>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500" style={{ width: `${item.pct}%` }} />
               </div>
             </div>
@@ -663,12 +654,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── SÉCURITÉ ── */}
-      <section className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20">
+      <section className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-indigo-950/40 dark:via-gray-900 dark:to-purple-950/30 py-20">
         <div className="max-w-6xl mx-auto px-5 md:px-8">
           <div className="text-center mb-12">
             <SectionBadge text="Sécurité & Confiance" color="#10b981" />
-            <h2 className="text-3xl md:text-4xl font-black mt-5 mb-4">Construit pour inspirer confiance</h2>
-            <p className="text-gray-500 max-w-lg mx-auto">Vos données et votre argent sont notre priorité absolue.</p>
+            <h2 className="text-3xl md:text-4xl font-black mt-5 mb-4 text-gray-950 dark:text-white">Construit pour inspirer confiance</h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">Vos données et votre argent sont notre priorité absolue.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
@@ -678,12 +669,12 @@ export default function LandingPage() {
             ].map((item, i) => {
               const Icon = item.icon;
               return (
-                <div key={i} className="bg-white rounded-3xl p-8 border border-white shadow-lg text-center card-lift">
-                  <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: item.color + "15" }}>
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-white dark:border-gray-700 shadow-lg text-center card-lift">
+                  <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: item.color + "20" }}>
                     <Icon className="w-8 h-8" style={{ color: item.color }} />
                   </div>
-                  <h3 className="font-black text-lg mb-3 text-gray-950">{item.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  <h3 className="font-black text-lg mb-3 text-gray-950 dark:text-white">{item.title}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               );
             })}
@@ -695,25 +686,24 @@ export default function LandingPage() {
       <section id="avis" className="max-w-7xl mx-auto px-5 md:px-8 py-20 md:py-28">
         <div className="text-center mb-14">
           <SectionBadge text="Avis utilisateurs" color="#f43f5e" />
-          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950">Ce que disent<br />nos utilisateurs</h2>
-          <p className="text-gray-500 max-w-md mx-auto text-lg">Des retours réels d'entrepreneurs africains.</p>
+          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950 dark:text-white">Ce que disent<br />nos utilisateurs</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto text-lg">Des retours réels d'entrepreneurs africains.</p>
         </div>
 
-        {/* Grille d'avis */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-14">
           {reviews.map((r, i) => (
-            <div key={i} className="card-lift bg-white border border-gray-100 rounded-3xl p-7">
+            <div key={i} className="card-lift bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl p-7">
               <div className="flex gap-1 mb-4">
                 {[...Array(r.stars)].map((_,j) => <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
               </div>
-              <p className="text-gray-700 text-[15px] leading-relaxed mb-6 italic">"{r.text}"</p>
+              <p className="text-gray-700 dark:text-gray-300 text-[15px] leading-relaxed mb-6 italic">"{r.text}"</p>
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center text-white font-black text-base flex-shrink-0 shadow-md">
                   {r.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="font-black text-sm text-gray-900">{r.name}</p>
-                  <p className="text-xs text-gray-400">{r.country}</p>
+                  <p className="font-black text-sm text-gray-900 dark:text-white">{r.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{r.country}</p>
                 </div>
               </div>
             </div>
@@ -721,25 +711,24 @@ export default function LandingPage() {
         </div>
 
         {/* Formulaire d'avis */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-3xl p-8 md:p-10 max-w-2xl mx-auto">
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/40 border border-indigo-100 dark:border-indigo-800 rounded-3xl p-8 md:p-10 max-w-2xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-black text-lg text-gray-950">Partagez votre avis</h3>
-              <p className="text-xs text-gray-500">Votre retour aide d'autres utilisateurs</p>
+              <h3 className="font-black text-lg text-gray-950 dark:text-white">Partagez votre avis</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Votre retour aide d'autres utilisateurs</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            {/* Star selector */}
             <div>
-              <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Note *</label>
+              <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Note *</label>
               <div className="flex gap-1">
                 {[1,2,3,4,5].map(s => (
                   <button key={s} type="button" onClick={() => setReviewForm(p => ({...p, stars: s}))}>
-                    <Star className={`w-6 h-6 ${s <= reviewForm.stars ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                    <Star className={`w-6 h-6 ${s <= reviewForm.stars ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"}`} />
                   </button>
                 ))}
               </div>
@@ -747,35 +736,35 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Nom complet *</label>
+                <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Nom complet *</label>
                 <input
                   type="text"
                   value={reviewForm.name}
                   onChange={e => setReviewForm(p => ({...p, name: e.target.value}))}
                   placeholder="Ex : Kouassi Jean"
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Pays</label>
+                <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Pays</label>
                 <input
                   type="text"
                   value={reviewForm.country}
                   onChange={e => setReviewForm(p => ({...p, country: e.target.value}))}
                   placeholder="Ex : 🇧🇯 Bénin"
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Votre avis *</label>
+              <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Votre avis *</label>
               <textarea
                 rows={4}
                 value={reviewForm.text}
                 onChange={e => setReviewForm(p => ({...p, text: e.target.value}))}
                 placeholder="Partagez votre expérience avec NEXORA..."
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 transition-all resize-none"
               />
             </div>
 
@@ -832,7 +821,6 @@ export default function LandingPage() {
       <footer className="bg-gray-950 text-gray-400">
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-14 pb-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
                 <img src={LOGO} alt="NEXORA" className="w-10 h-10 object-contain" />
@@ -853,7 +841,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Modules */}
             <div>
               <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Modules</p>
               <div className="flex flex-col gap-2">
@@ -863,7 +850,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Ressources */}
             <div>
               <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Ressources</p>
               <div className="flex flex-col gap-2">
@@ -874,7 +860,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Légal */}
             <div>
               <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Légal</p>
               <div className="flex flex-col gap-2">
@@ -892,7 +877,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Bottom bar */}
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-sm text-gray-600">© {new Date().getFullYear()} NEXORA. Tous droits réservés.</p>
             <div className="flex items-center gap-4 text-xs text-gray-600">
