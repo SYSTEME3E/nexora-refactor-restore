@@ -35,9 +35,9 @@ function VerifiedBadge() {
         width: "18px",
         height: "18px",
         borderRadius: "999px",
-        background: "#3b82f6",
+        background: "#60A5FA", // Bleu clair pour contraste subtil selon consigne
         flexShrink: 0,
-        border: "2px solid rgba(255,255,255,0.4)",
+        border: "1.5px solid rgba(255,255,255,0.6)",
       }}>
       <BadgeCheck style={{ width: 11, height: 11, color: "#fff", flexShrink: 0 }} />
     </span>
@@ -60,9 +60,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const nexoraUser = getNexoraUser();
-  const displayName = nexoraUser?.nom_prenom?.split(" ")[0] || "Eric";
+  const displayName = nexoraUser?.nom_prenom?.split(" ")[0] || "NEXORA";
   const hasBadge = nexoraUser?.badge_premium || nexoraUser?.is_admin;
-  const isPremium = nexoraUser?.plan === "boss" || nexoraUser?.plan === "roi" || nexoraUser?.plan === "admin";
 
   useEffect(() => {
     loadStats();
@@ -126,24 +125,16 @@ export default function DashboardPage() {
           boxSizing: "border-box",
         }}>
 
-        {/* ══════════════════════════
-            HERO GREETING
-        ══════════════════════════ */}
+        {/* 1️⃣ HEADER HERO */}
         <div
-          className="relative overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-brand-lg"
-          style={{ padding: "12px 14px", flexShrink: 0 }}>
+          className="relative overflow-hidden rounded-xl shadow-brand-lg"
+          style={{ padding: "12px 14px", flexShrink: 0, backgroundColor: "#3B82F6", color: "#FFFFFF" }}>
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border-2 border-white" />
-            <div className="absolute -bottom-4 right-14 w-20 h-20 rounded-full border-2 border-white" />
           </div>
           <div className="relative flex items-center gap-3">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                overflow: "hidden",
-              }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
                 <div
                   className="font-display font-black"
                   style={{
@@ -152,7 +143,6 @@ export default function DashboardPage() {
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    flexShrink: 1,
                   }}>
                   {getGreeting()}, {displayName} ! 👋
                 </div>
@@ -160,22 +150,18 @@ export default function DashboardPage() {
               </div>
 
               <div
-                className="text-primary-foreground/70 capitalize"
                 style={{
                   fontSize: "11px",
                   marginTop: "2px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  color: "rgba(255,255,255,0.8)",
+                  textTransform: "capitalize"
                 }}>
                 {getDateStr()}
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
-                <Clock style={{ width: 11, height: 11, color: "var(--accent)" }} />
-                <span
-                  className="font-mono font-black"
-                  style={{ fontSize: "11px", color: "var(--accent)", letterSpacing: "0.1em" }}>
+                <Clock style={{ width: 11, height: 11, color: "#FFFFFF" }} />
+                <span className="font-mono font-black" style={{ fontSize: "11px", letterSpacing: "0.1em" }}>
                   {clockStr}
                 </span>
               </div>
@@ -184,307 +170,180 @@ export default function DashboardPage() {
             <select
               value={devise}
               onChange={(e) => setDevise(e.target.value as "XOF" | "USD")}
-              className="bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground rounded-lg font-semibold cursor-pointer"
+              className="bg-white/20 border border-white/30 text-white rounded-lg font-semibold cursor-pointer outline-none"
               style={{ padding: "4px 8px", fontSize: "11px", flexShrink: 0 }}>
-              <option value="XOF" className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800">XOF</option>
-              <option value="USD" className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800">USD</option>
+              <option value="XOF" style={{ color: "#000" }}>XOF</option>
+              <option value="USD" style={{ color: "#000" }}>USD</option>
             </select>
           </div>
         </div>
 
-        {/* ══════════════════════════
-            SOLDE NET
-        ══════════════════════════ */}
+        {/* 2️⃣ SOLDE NET TOTAL */}
         <div
-          className={`rounded-xl border ${
-            solde >= 0
-              ? "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-700"
-              : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-700"
-          }`}
-          style={{ padding: "10px 14px", flexShrink: 0 }}>
+          className="rounded-xl border"
+          style={{ 
+            padding: "10px 14px", 
+            flexShrink: 0, 
+            backgroundColor: "#111827", 
+            borderColor: "#16A34A" 
+          }}>
           <div
-            className="font-bold uppercase text-muted-foreground dark:text-gray-400"
-            style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "2px" }}>
+            className="font-bold uppercase"
+            style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "2px", color: "#9CA3AF" }}>
             Solde net total
           </div>
           <div
-            className={`font-black font-display ${
-              solde >= 0
-                ? "text-green-700 dark:text-green-400"
-                : "text-destructive dark:text-red-400"
-            }`}
+            className="font-black font-display"
             style={{
-              fontSize: "20px", lineHeight: 1.2,
+              fontSize: "20px", 
+              lineHeight: 1.2,
+              color: "#22C55E", // Vert vif
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
             {loading ? "—" : fmt(solde)}
           </div>
         </div>
 
-        {/* ══════════════════════════
-            ENTRÉES + DÉPENSES
-        ══════════════════════════ */}
+        {/* 3️⃣ ENTRÉES / DÉPENSES */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          {/* Entrées */}
           <Link
             to="/entrees-depenses"
-            className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl hover:shadow-brand transition-all"
-            style={{ padding: "10px 12px", overflow: "hidden" }}>
+            className="border rounded-xl transition-all"
+            style={{ padding: "10px 12px", backgroundColor: "#1F2937", borderColor: "#374151" }}>
             <div
-              className="font-bold text-green-600 dark:text-green-400 uppercase flex items-center gap-1"
-              style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "4px" }}>
-              <TrendingUp style={{ width: 11, height: 11 }} /> Entrées
+              className="font-bold uppercase flex items-center gap-1"
+              style={{ fontSize: "10px", color: "#22C55E", marginBottom: "4px" }}>
+              <TrendingUp style={{ width: 11, height: 11, color: "#34D399" }} /> Entrées
             </div>
             <div
-              className="font-black text-green-600 dark:text-green-400"
-              style={{ fontSize: "17px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              className="font-black"
+              style={{ fontSize: "17px", color: "#22C55E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {loading ? "—" : fmt(stats.totalEntrees)}
             </div>
           </Link>
 
+          {/* Dépenses */}
           <Link
             to="/entrees-depenses"
-            className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl hover:shadow-brand transition-all"
-            style={{ padding: "10px 12px", overflow: "hidden" }}>
+            className="border rounded-xl transition-all"
+            style={{ padding: "10px 12px", backgroundColor: "#1F2937", borderColor: "#374151" }}>
             <div
-              className="font-bold text-destructive dark:text-red-400 uppercase flex items-center gap-1"
-              style={{ fontSize: "10px", letterSpacing: "0.05em", marginBottom: "4px" }}>
-              <TrendingDown style={{ width: 11, height: 11 }} /> Dépenses
+              className="font-bold uppercase flex items-center gap-1"
+              style={{ fontSize: "10px", color: "#F87171", marginBottom: "4px" }}>
+              <TrendingDown style={{ width: 11, height: 11, color: "#FCA5A5" }} /> Dépenses
             </div>
             <div
-              className="font-black text-destructive dark:text-red-400"
-              style={{ fontSize: "17px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              className="font-black"
+              style={{ fontSize: "17px", color: "#F87171", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {loading ? "—" : fmt(stats.totalDepenses)}
             </div>
           </Link>
         </div>
 
-        {/* ══════════════════════════
-            QUICK LINKS LIGNE 1
-        ══════════════════════════ */}
+        {/* 4️⃣ BOUTONS FONCTIONNELS */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
           {[
-            {
-              to: "/factures",
-              icon: <TrendingUp style={{ width: 18, height: 18, color: "#6366f1" }} />,
-              label: "Factures",
-              value: "→",
-              lightCls: "bg-indigo-50 border-indigo-200",
-              darkCls: "dark:bg-indigo-950/50 dark:border-indigo-700",
-              textCls: "text-indigo-600 dark:text-indigo-400",
-            },
-            {
-              to: "/transfert",
-              icon: <ArrowUpRight style={{ width: 18, height: 18, color: "#0ea5e9" }} />,
-              label: "Transfert",
-              value: "→",
-              lightCls: "bg-sky-50 border-sky-200",
-              darkCls: "dark:bg-sky-950/50 dark:border-sky-700",
-              textCls: "text-sky-600 dark:text-sky-400",
-            },
-            {
-              to: "/boutique",
-              icon: <Store style={{ width: 18, height: 18, color: "#ec4899" }} />,
-              label: "Boutique",
-              value: "→",
-              lightCls: "bg-pink-50 border-pink-200",
-              darkCls: "dark:bg-pink-950/50 dark:border-pink-700",
-              textCls: "text-pink-600 dark:text-pink-400",
-            },
+            { to: "/factures", label: "Factures", color: "#4338CA", icon: <TrendingUp style={{ width: 18, height: 18 }} /> },
+            { to: "/transfert", label: "Transfert", color: "#0EA5E9", icon: <ArrowUpRight style={{ width: 18, height: 18 }} /> },
+            { to: "/boutique", label: "Boutique", color: "#BE185D", icon: <Store style={{ width: 18, height: 18 }} /> },
           ].map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`border rounded-xl card-hover flex flex-col items-center justify-center text-center ${item.lightCls} ${item.darkCls}`}
-              style={{ padding: "10px 6px" }}>
+              className="rounded-xl flex flex-col items-center justify-center text-center"
+              style={{ padding: "10px 6px", backgroundColor: item.color, color: "#FFFFFF" }}>
               {item.icon}
-              <div
-                className={`font-semibold ${item.textCls}`}
-                style={{ fontSize: "10px", marginTop: "4px", lineHeight: 1.2 }}>
+              <div className="font-semibold" style={{ fontSize: "10px", marginTop: "4px" }}>
                 {item.label}
               </div>
-              <div
-                className={`font-display font-black ${item.textCls}`}
-                style={{ fontSize: "18px", marginTop: "2px", lineHeight: 1 }}>
-                {item.value}
-              </div>
+              <div className="font-display font-black" style={{ fontSize: "18px", marginTop: "2px" }}>→</div>
             </Link>
           ))}
         </div>
 
-        {/* ══════════════════════════
-            QUICK LINKS LIGNE 2
-        ══════════════════════════ */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
           <Link
             to="/"
-            className="bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-700 rounded-xl card-hover flex flex-col items-center justify-center text-center"
-            style={{ padding: "10px 6px" }}>
-            <Home style={{ width: 18, height: 18, color: "#6366f1" }} />
-            <div className="font-semibold text-indigo-700 dark:text-indigo-400" style={{ fontSize: "10px", marginTop: "4px" }}>
-              Accueil
-            </div>
-            <div className="font-display font-black text-indigo-700 dark:text-indigo-400" style={{ fontSize: "18px", marginTop: "2px" }}>
-              →
-            </div>
+            className="rounded-xl flex flex-col items-center justify-center text-center"
+            style={{ padding: "10px 6px", backgroundColor: "#4338CA", color: "#FFFFFF" }}>
+            <Home style={{ width: 18, height: 18 }} />
+            <div className="font-semibold" style={{ fontSize: "10px", marginTop: "4px" }}>Accueil</div>
+            <div className="font-display font-black" style={{ fontSize: "18px", marginTop: "2px" }}>→</div>
           </Link>
 
           <Link
             to="/historique"
-            className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-700 rounded-xl card-hover flex flex-col items-center justify-center text-center"
-            style={{ padding: "10px 6px" }}>
-            <History style={{ width: 18, height: 18, color: "var(--destructive)" }} />
-            <div className="font-semibold text-destructive dark:text-red-400" style={{ fontSize: "10px", marginTop: "4px" }}>
-              Historique
-            </div>
-            <div className="font-display font-black text-destructive dark:text-red-400" style={{ fontSize: "18px", marginTop: "2px" }}>
-              ↗
-            </div>
+            className="rounded-xl flex flex-col items-center justify-center text-center"
+            style={{ padding: "10px 6px", backgroundColor: "#B91C1C", color: "#FFFFFF" }}>
+            <History style={{ width: 18, height: 18 }} />
+            <div className="font-semibold" style={{ fontSize: "10px", marginTop: "4px" }}>Historique</div>
+            <div className="font-display font-black" style={{ fontSize: "18px", marginTop: "2px" }}>↗</div>
           </Link>
         </div>
 
-        {/* ══════════════════════════
-            TRANSACTIONS RÉCENTES
-        ══════════════════════════ */}
+        {/* 5️⃣ TRANSACTIONS RÉCENTES (Détails) */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-
-          {/* Dépenses */}
+          {/* List Dépenses */}
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-              <span
-                className="font-display font-bold text-destructive dark:text-red-400 flex items-center gap-1"
-                style={{ fontSize: "11px" }}>
-                <TrendingDown style={{ width: 12, height: 12 }} /> Dépenses
-              </span>
-              <Link
-                to="/entrees-depenses"
-                className="text-primary dark:text-indigo-400 font-semibold flex items-center gap-0.5 hover:underline"
-                style={{ fontSize: "10px" }}>
-                Voir <ArrowUpRight style={{ width: 10, height: 10 }} />
-              </Link>
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold" style={{ fontSize: "11px", color: "#F87171" }}>Dépenses</span>
             </div>
-            <div className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl overflow-hidden">
-              {loading ? (
-                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
-                  Chargement...
+            <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "#1F2937" }}>
+              {stats.dernièresDepenses.map((d: any, i: number) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderBottom: "1px solid #374151" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "10px", color: "#FFFFFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.titre}</div>
+                    <div style={{ fontSize: "8px", color: "#9CA3AF" }}>{d.date_depense}</div>
+                  </div>
+                  <div className="font-bold" style={{ fontSize: "10px", color: "#F87171" }}>
+                    -{fmt(d.devise === "USD" ? convertAmount(Number(d.montant), "USD", "XOF") : Number(d.montant))}
+                  </div>
                 </div>
-              ) : stats.dernièresDepenses.length === 0 ? (
-                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
-                  Aucune dépense
-                </div>
-              ) : (
-                <div className="divide-y divide-border dark:divide-gray-700">
-                  {stats.dernièresDepenses.map((d: any, i: number) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px" }}>
-                      <div
-                        className="bg-red-100 dark:bg-red-950/60 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ width: 22, height: 22 }}>
-                        <TrendingDown style={{ width: 11, height: 11, color: "var(--destructive)" }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          className="font-medium text-gray-900 dark:text-gray-100"
-                          style={{ fontSize: "10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {d.titre}
-                        </div>
-                        <div className="text-muted-foreground dark:text-gray-500" style={{ fontSize: "9px" }}>
-                          {d.date_depense}
-                        </div>
-                      </div>
-                      <div
-                        className="font-bold text-destructive dark:text-red-400"
-                        style={{ fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        -{fmt(d.devise === "USD" ? convertAmount(Number(d.montant), "USD", "XOF") : Number(d.montant))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           </div>
 
-          {/* Entrées */}
+          {/* List Entrées */}
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-              <span
-                className="font-display font-bold text-green-600 dark:text-green-400 flex items-center gap-1"
-                style={{ fontSize: "11px" }}>
-                <TrendingUp style={{ width: 12, height: 12 }} /> Entrées
-              </span>
-              <Link
-                to="/entrees-depenses"
-                className="text-primary dark:text-indigo-400 font-semibold flex items-center gap-0.5 hover:underline"
-                style={{ fontSize: "10px" }}>
-                Voir <ArrowUpRight style={{ width: 10, height: 10 }} />
-              </Link>
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold" style={{ fontSize: "11px", color: "#22C55E" }}>Entrées</span>
             </div>
-            <div className="bg-card dark:bg-gray-800 border border-border dark:border-gray-700 rounded-xl overflow-hidden">
-              {loading ? (
-                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
-                  Chargement...
+            <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "#1F2937" }}>
+              {stats.dernièresEntrees.map((e: any, i: number) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderBottom: "1px solid #374151" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "10px", color: "#FFFFFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.titre}</div>
+                    <div style={{ fontSize: "8px", color: "#9CA3AF" }}>{e.date_entree}</div>
+                  </div>
+                  <div className="font-bold" style={{ fontSize: "10px", color: "#22C55E" }}>
+                    +{fmt(e.devise === "USD" ? convertAmount(Number(e.montant), "USD", "XOF") : Number(e.montant))}
+                  </div>
                 </div>
-              ) : stats.dernièresEntrees.length === 0 ? (
-                <div className="text-center text-muted-foreground dark:text-gray-400" style={{ padding: "10px", fontSize: "11px" }}>
-                  Aucune entrée
-                </div>
-              ) : (
-                <div className="divide-y divide-border dark:divide-gray-700">
-                  {stats.dernièresEntrees.map((e: any, i: number) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px" }}>
-                      <div
-                        className="bg-green-100 dark:bg-green-950/60 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ width: 22, height: 22 }}>
-                        <TrendingUp style={{ width: 11, height: 11, color: "#16a34a" }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          className="font-medium text-gray-900 dark:text-gray-100"
-                          style={{ fontSize: "10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {e.titre}
-                        </div>
-                        <div className="text-muted-foreground dark:text-gray-500" style={{ fontSize: "9px" }}>
-                          {e.date_entree}
-                        </div>
-                      </div>
-                      <div
-                        className="font-bold text-green-600 dark:text-green-400"
-                        style={{ fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        +{fmt(e.devise === "USD" ? convertAmount(Number(e.montant), "USD", "XOF") : Number(e.montant))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
 
-        {/* ══════════════════════════
-            BANNIÈRE PREMIUM
-        ══════════════════════════ */}
+        {/* BANNIÈRE PREMIUM */}
         {nexoraUser && nexoraUser.plan === "gratuit" && (
           <div
-            className="bg-gradient-to-r from-primary to-primary/80 rounded-xl text-white"
+            className="rounded-xl text-white"
             style={{
               padding: "10px 12px",
               display: "flex", alignItems: "center",
               gap: "10px", flexShrink: 0,
+              backgroundColor: "#3B82F6"
             }}>
             <Zap style={{ width: 20, height: 20, color: "#fde047", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="font-bold" style={{ fontSize: "12px" }}>Passez au Premium !</div>
-              <div
-                className="text-white/80"
-                style={{
-                  fontSize: "10px",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                Toutes les fonctionnalités illimitées — 10$/mois
-              </div>
+              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.8)" }}>Fonctionnalités illimitées</div>
             </div>
             <Link
               to="/abonnement"
               className="bg-yellow-400 text-gray-900 font-bold rounded-lg"
-              style={{ padding: "5px 10px", fontSize: "11px", flexShrink: 0, whiteSpace: "nowrap" }}>
+              style={{ padding: "5px 10px", fontSize: "11px", flexShrink: 0 }}>
               Voir
             </Link>
           </div>
