@@ -1,7 +1,13 @@
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Types handled via global declarations elsewhere
+declare global {
+  interface Window {
+    openKkiapayWidget: (config: any) => void;
+    addKkiapayListener: (event: string, handler: (response: any) => void) => void;
+    removeKkiapayListener: (event: string) => void;
+  }
+}
 
 interface KkiapayProps {
   amount: number;

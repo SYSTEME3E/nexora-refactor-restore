@@ -114,7 +114,7 @@ export async function initPayment(params: InitPaymentParams): Promise<GeniusPayR
         user_id:        user.id,
         user_email:     user.email ?? "",
         user_name:      user.nom_prenom ?? "Client NEXORA",
-        user_phone:     user.telephone ?? "",
+        user_phone:     "",
         metadata:       params.metadata ?? {},
       },
     });
