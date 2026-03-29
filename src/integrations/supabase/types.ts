@@ -956,6 +956,66 @@ export type Database = {
           },
         ]
       }
+      nexora_payouts: {
+        Row: {
+          amount: number
+          amount_net: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          frais: number
+          id: string
+          metadata: Json | null
+          moneroo_code: string | null
+          moneroo_id: string | null
+          nom_beneficiaire: string | null
+          numero: string | null
+          pays: string | null
+          reseau: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          amount_net?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          frais?: number
+          id?: string
+          metadata?: Json | null
+          moneroo_code?: string | null
+          moneroo_id?: string | null
+          nom_beneficiaire?: string | null
+          numero?: string | null
+          pays?: string | null
+          reseau?: string | null
+          status?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          amount_net?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          frais?: number
+          id?: string
+          metadata?: Json | null
+          moneroo_code?: string | null
+          moneroo_id?: string | null
+          nom_beneficiaire?: string | null
+          numero?: string | null
+          pays?: string | null
+          reseau?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       nexora_sessions: {
         Row: {
           created_at: string
@@ -990,6 +1050,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nexora_transactions: {
+        Row: {
+          amount: number
+          checkout_url: string | null
+          completed_at: string | null
+          created_at: string
+          currency: string
+          frais: number
+          id: string
+          metadata: Json | null
+          moneroo_id: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          checkout_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          frais?: number
+          id?: string
+          metadata?: Json | null
+          moneroo_id?: string | null
+          status?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          checkout_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          frais?: number
+          id?: string
+          metadata?: Json | null
+          moneroo_id?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nexora_transfert_comptes: {
+        Row: {
+          created_at: string
+          id: string
+          solde: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          solde?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          solde?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       nexora_users: {
         Row: {

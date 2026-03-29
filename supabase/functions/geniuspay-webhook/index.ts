@@ -1,7 +1,3 @@
-// supabase/supabase/functions/moneroo-webhook/index.ts
-// Deploy : supabase functions deploy moneroo-webhook
-// Env var : GENIUSPAY_WEBHOOK_SECRET=whsec_xxxxxxx
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,7 +7,7 @@ const WEBHOOK_SECRET       = Deno.env.get("GENIUSPAY_WEBHOOK_SECRET") ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 async function verifySignature(rawBody: string, signature: string, timestamp: string, secret: string): Promise<boolean> {
@@ -37,10 +33,8 @@ serve(async (req) => {
   if (WEBHOOK_SECRET) {
     const valid = await verifySignature(rawBody, signature, timestamp, WEBHOOK_SECRET);
     if (!valid) {
-      console.error("Signature webhook invalide");
-      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401 });
     }
-    console.log("Signature valide ✓");
   }
 
   try {
@@ -48,7 +42,6 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const eventType = payload.event ?? eventHdr;
     const data      = payload.data ?? {};
-    console.log("Événement:", eventType);
 
     // ── PAIEMENT RÉUSSI
     if (eventType === "payment.success" || eventType === "payment.completed") {
@@ -57,38 +50,37 @@ serve(async (req) => {
       const metadata    = transaction.metadata ?? {};
       const userId      = metadata.user_id;
       const paymentType = metadata.payment_type;
-      const amountNet   = parseInt(metadata.amount_net ?? transaction.net_amount ?? transaction.amount ?? "0", 10);
+      const amountNet   = parseInt(metadata.amount_net ?? "0", 10);
 
       if (!userId || !paymentType) return new Response("Missing metadata", { status: 400 });
 
-      // Idempotence
-      const { data: existing } = await supabase.from("nexora_transactions").select("status").eq("moneroo_id", reference).single();
-      if (existing?.status === "completed") return new Response(JSON.stringify({ received: true, note: "already_processed" }), { status: 200 });
+      const { data: existing } = await supabase.from("nexora_transactions").select("status").eq("moneroo_id", reference).maybeSingle();
+      if (existing?.status === "completed") return new Response(JSON.stringify({ received: true }), { status: 200 });
 
       await supabase.from("nexora_transactions").update({ status: "completed", completed_at: new Date().toISOString() }).eq("moneroo_id", reference);
 
       if (paymentType === "abonnement_premium") {
         const expireAt = new Date();
         expireAt.setMonth(expireAt.getMonth() + 1);
-        await supabase.from("nexora_users").update({ plan: "premium", plan_expire_at: expireAt.toISOString(), badge_premium: true }).eq("id", userId);
+        await supabase.from("nexora_users").update({ plan: "boss", badge_premium: true, premium_since: new Date().toISOString(), premium_expires_at: expireAt.toISOString() }).eq("id", userId);
+
+        // Notification
+        await supabase.from("nexora_notifications").insert({ user_id: userId, titre: "Abonnement activé !", message: "Votre plan Premium est maintenant actif pour 30 jours.", type: "success" });
 
       } else if (paymentType === "recharge_transfert") {
-        const { data: compte } = await supabase.from("nexora_transfert_comptes").select("solde").eq("user_id", userId).single();
+        const { data: compte } = await supabase.from("nexora_transfert_comptes").select("solde").eq("user_id", userId).maybeSingle();
         if (compte) {
-          await supabase.from("nexora_transfert_comptes").update({ solde: (compte.solde ?? 0) + amountNet }).eq("user_id", userId);
+          await supabase.from("nexora_transfert_comptes").update({ solde: (compte.solde ?? 0) + amountNet, updated_at: new Date().toISOString() }).eq("user_id", userId);
         } else {
           await supabase.from("nexora_transfert_comptes").insert({ user_id: userId, solde: amountNet });
         }
-        console.log(`Transfert crédité +${amountNet} FCFA pour:`, userId);
-
-      } else if (paymentType === "depot_epargne") {
-        await supabase.from("nexora_epargne").insert({ user_id: userId, moneroo_id: reference, type: "depot", montant: amountNet, plan: metadata.plan_epargne ?? "libre", status: "completed" });
+        await supabase.from("nexora_notifications").insert({ user_id: userId, titre: "Recharge réussie", message: `Votre compte a été rechargé de ${amountNet} FCFA.`, type: "success" });
       }
 
       return new Response(JSON.stringify({ received: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── PAIEMENT ÉCHOUÉ / ANNULÉ
+    // ── PAIEMENT ÉCHOUÉ
     if (eventType === "payment.failed" || eventType === "payment.cancelled") {
       const transaction = data.transaction ?? data;
       await supabase.from("nexora_transactions").update({ status: "failed" }).eq("moneroo_id", transaction.reference ?? transaction.id);
@@ -99,31 +91,26 @@ serve(async (req) => {
     if (eventType === "cashout.completed" || eventType === "payout.completed") {
       const payout    = data.payout ?? data;
       const reference = payout.reference ?? payout.id;
-      const { data: existingPayout } = await supabase.from("nexora_payouts").select("status").eq("moneroo_id", reference).single();
-      if (existingPayout?.status === "completed") return new Response(JSON.stringify({ received: true, note: "already_processed" }), { status: 200 });
       await supabase.from("nexora_payouts").update({ status: "completed", completed_at: new Date().toISOString() }).eq("moneroo_id", reference);
-      console.log("Payout complété:", reference);
       return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
 
-    // ── RETRAIT ÉCHOUÉ — rembourser l'utilisateur
+    // ── RETRAIT ÉCHOUÉ — rembourser
     if (eventType === "cashout.failed" || eventType === "payout.failed") {
       const payout      = data.payout ?? data;
       const reference   = payout.reference ?? payout.id;
       const metadata    = payout.metadata ?? {};
       const userId      = metadata.user_id;
-      const payoutType  = metadata.payout_type;
-      const montantBrut = parseInt(metadata.montant_brut ?? payout.amount ?? "0", 10);
+      const montantBrut = parseInt(metadata.montant_brut ?? "0", 10);
 
       await supabase.from("nexora_payouts").update({ status: "failed" }).eq("moneroo_id", reference);
 
-      // Rembourser si retrait_transfert
-      if (payoutType === "retrait_transfert" && userId && montantBrut > 0) {
-        const { data: compte } = await supabase.from("nexora_transfert_comptes").select("solde").eq("user_id", userId).single();
+      if (metadata.payout_type === "retrait_transfert" && userId && montantBrut > 0) {
+        const { data: compte } = await supabase.from("nexora_transfert_comptes").select("solde").eq("user_id", userId).maybeSingle();
         if (compte) {
           await supabase.from("nexora_transfert_comptes").update({ solde: (compte.solde ?? 0) + montantBrut }).eq("user_id", userId);
-          console.log(`Remboursement +${montantBrut} FCFA pour:`, userId);
         }
+        await supabase.from("nexora_notifications").insert({ user_id: userId, titre: "Transfert échoué", message: `Le transfert de ${montantBrut} FCFA a échoué. Votre solde a été recrédité.`, type: "warning" });
       }
       return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
