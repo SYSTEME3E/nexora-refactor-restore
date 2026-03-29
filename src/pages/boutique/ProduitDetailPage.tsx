@@ -291,21 +291,27 @@ export default function ProduitDetailPage() {
                 </div>
               )}
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              {/* ── Boutons d'action ── */}
+              <div className="grid gap-3">
+                {/* Ajouter au panier toujours visible */}
                 <button
                   onClick={() => handleAddToCart(false)}
                   disabled={enRupture}
-                  className="h-12 rounded-2xl bg-gray-900 text-white font-bold disabled:opacity-50"
+                  className="h-12 rounded-2xl bg-gray-900 text-white font-bold disabled:opacity-50 hover:bg-gray-800 transition-colors"
                 >
                   Ajouter au panier
                 </button>
-                <button
-                  onClick={() => handleAddToCart(true)}
-                  disabled={enRupture}
-                  className="h-12 rounded-2xl bg-pink-500 text-white font-bold disabled:opacity-50"
-                >
-                  Commander maintenant
-                </button>
+
+                {/* Commander maintenant — visible si lien paiement OU paiement mobile money OU paiement réception */}
+                {(produit.paiement_lien || produit.paiement_reception || produit.moyens_paiement.length > 0) && (
+                  <button
+                    onClick={() => navigate(`/shop/${slug}/acheter/${produit.id}?qte=${quantite}`)}
+                    disabled={enRupture}
+                    className="h-12 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-pink-200 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    Commander maintenant
+                  </button>
+                )}
               </div>
             </div>
 
