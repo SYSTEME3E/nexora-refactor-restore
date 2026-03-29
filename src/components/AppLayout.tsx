@@ -2,35 +2,33 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
-  Search, ChevronRight, TrendingUp, History,
-  HandCoins, PiggyBank, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight // ✅ Import ajouté
+  Search, ChevronRight, TrendingUp, History, Home,
+  HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
+  ShieldCheck, ArrowLeftRight
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
-import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession, type NexoraPlan } from "@/lib/nexora-auth";
+import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession } from "@/lib/nexora-auth";
 import { Input } from "@/components/ui/input";
 import { ReactNode } from "react";
 import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
+import ChatWidget from "@/components/ChatWidget";
+
 
 const getNavItems = (isAdmin: boolean) => {
   const items = [
-    { path: "/dashboard",        icon: LayoutDashboard, label: "Tableau de bord",    color: "text-red-400",     bg: "bg-red-400/10"      },
-    { path: "/entrees-depenses", icon: TrendingUp,      label: "Entrées & Dépenses", color: "text-green-400",   bg: "bg-green-400/10"   },
-    { path: "/historique",       icon: History,          label: "Historique",          color: "text-accent",      bg: "bg-accent/10"      },
-    
-    // ✅ Nouveau : Nexora Transfert ajouté ici
-    { path: "/transfert",        icon: ArrowLeftRight,   label: "Nexora Transfert",   color: "text-violet-400",  bg: "bg-violet-400/10"  },
-    
-    { path: "/prets",            icon: HandCoins,        label: "Prêts & Dettes",      color: "text-orange-300",  bg: "bg-orange-300/10"  },
-    { path: "/investissements",  icon: PiggyBank,        label: "Épargne",             color: "text-emerald-300", bg: "bg-emerald-300/10" },
-    { path: "/factures",         icon: Receipt,          label: "Factures",            color: "text-purple-300",  bg: "bg-purple-300/10"  },
-    { path: "/coffre-fort",      icon: Lock,             label: "Coffre-fort",         color: "text-yellow-300",  bg: "bg-yellow-300/10"  },
-    { path: "/liens",            icon: Link2,            label: "Liens & Contacts",    color: "text-green-300",   bg: "bg-green-300/10"   },
-    { path: "/boutique",         icon: Store,            label: "Nexora Shop",         color: "text-pink-300",    bg: "bg-pink-300/10"    },
-    { path: "/immobilier",       icon: Map,              label: "Marché Immobilier",   color: "text-blue-300",    bg: "bg-blue-300/10"    },
+    { path: "/",                 icon: Home,            label: "Accueil",             color: "text-indigo-400",  bg: "bg-indigo-400/10"  },
+    { path: "/dashboard",        icon: LayoutDashboard, label: "Tableau de bord",     color: "text-red-400",     bg: "bg-red-400/10"     },
+    { path: "/entrees-depenses", icon: TrendingUp,      label: "Entrées & Dépenses",  color: "text-green-400",   bg: "bg-green-400/10"   },
+    { path: "/historique",       icon: History,         label: "Historique",           color: "text-accent",      bg: "bg-accent/10"      },
+    { path: "/transfert",        icon: ArrowLeftRight,  label: "Nexora Transfert",    color: "text-violet-400",  bg: "bg-violet-400/10"  },
+    { path: "/prets",            icon: HandCoins,       label: "Prêts & Dettes",       color: "text-orange-300",  bg: "bg-orange-300/10"  },
+    { path: "/factures",         icon: Receipt,         label: "Factures",             color: "text-purple-300",  bg: "bg-purple-300/10"  },
+    { path: "/coffre-fort",      icon: Lock,            label: "Coffre-fort",          color: "text-yellow-300",  bg: "bg-yellow-300/10"  },
+    { path: "/liens",            icon: Link2,           label: "Liens & Contacts",     color: "text-green-300",   bg: "bg-green-300/10"   },
+    { path: "/boutique",         icon: Store,           label: "Nexora Shop",          color: "text-pink-300",    bg: "bg-pink-300/10"    },
+    { path: "/immobilier",       icon: Map,             label: "Marché Immobilier",    color: "text-blue-300",    bg: "bg-blue-300/10"    },
   ];
-
   if (isAdmin) {
     items.push({ path: "/admin",  icon: ShieldCheck, label: "Panel Admin", color: "text-amber-400", bg: "bg-amber-400/10" });
     items.push({ path: "/medias", icon: Image,       label: "Médias",      color: "text-sky-300",   bg: "bg-sky-300/10"  });
@@ -42,37 +40,63 @@ interface AppLayoutProps {
   children: ReactNode;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  isDark?: boolean;
+  /** Boutons ou éléments supplémentaires injectés à droite du header (avant NexoraNotifications) */
+  headerActions?: ReactNode;
 }
 
-export default function AppLayout({ children, searchQuery = "", onSearchChange }: AppLayoutProps) {
+export default function AppLayout({
+  children,
+  searchQuery = "",
+  onSearchChange,
+  isDark,
+  headerActions,
+}: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen]             = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location  = useLocation();
+  const navigate  = useNavigate();
 
-  // ── Refresh session au montage ──
+  /* ── Synchronise le thème global depuis la prop isDark ou localStorage ── */
   useEffect(() => {
-    refreshNexoraSession();
-  }, []);
+    const useDark =
+      isDark !== undefined
+        ? isDark
+        : localStorage.getItem("nexora-theme") === "dark" ||
+          (!localStorage.getItem("nexora-theme") &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+    if (useDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("nexora-theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("nexora-theme", "light");
+    }
+  }, [isDark]);
+
+  useEffect(() => { refreshNexoraSession(); }, []);
 
   const nexoraUser  = getNexoraUser();
   const adminUser   = isNexoraAdmin() || isAdminUser();
   const navItems    = getNavItems(adminUser);
 
   const displayName = nexoraUser?.nom_prenom || "Eric Kpakpo";
-  const displayRole = nexoraUser?.is_admin ? "Administrateur" : (nexoraUser?.plan === "boss" || nexoraUser?.plan === "roi") ? "Premium" : "Gratuit";
+  const displayRole = nexoraUser?.is_admin
+    ? "Administrateur"
+    : nexoraUser?.plan === "boss" || nexoraUser?.plan === "roi"
+    ? "Premium"
+    : "Gratuit";
   const hasBadge    = nexoraUser?.badge_premium || nexoraUser?.is_admin;
   const isAdminPage = location.pathname === "/admin";
   const canGoBack   = location.pathname !== "/dashboard";
 
-  const currentPage = navItems.find(i =>
-    i.path === location.pathname ||
-    (i.path === "/boutique" && location.pathname.startsWith("/boutique")) ||
-    (i.path === "/entrees-depenses" && (
-      location.pathname === "/entrees" ||
-      location.pathname === "/depenses" ||
-      location.pathname === "/entrees-depenses"
-    ))
+  const currentPage = navItems.find(
+    (i) =>
+      i.path === location.pathname ||
+      (i.path === "/boutique" && location.pathname.startsWith("/boutique")) ||
+      (i.path === "/entrees-depenses" &&
+        ["/entrees", "/depenses", "/entrees-depenses"].includes(location.pathname))
   );
 
   const handleLogout = async () => {
@@ -81,15 +105,15 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
     navigate("/login");
   };
 
-  if (isAdminPage) {
-    return <>{children}</>;
-  }
+  if (isAdminPage) return <>{children}</>;
 
   return (
     <div className="min-h-screen flex bg-muted/30 overflow-x-hidden max-w-[100vw]">
       {mobileSidebarOpen && (
-        <div className="fixed inset-0 bg-foreground/30 z-20 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-foreground/30 z-20 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
       )}
 
       {/* ── Sidebar ── */}
@@ -102,8 +126,11 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
         <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-destructive flex-shrink-0" />
 
         {/* Profil */}
-        <Link to="/profil" onClick={() => setMobileSidebarOpen(false)}
-          className="flex items-center gap-3 px-3 py-3.5 border-b border-sidebar-border hover:bg-sidebar-accent transition-colors">
+        <Link
+          to="/profil"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="flex items-center gap-3 px-3 py-3.5 border-b border-sidebar-border hover:bg-sidebar-accent transition-colors"
+        >
           <div className="relative flex-shrink-0">
             <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-accent/60">
               {nexoraUser?.avatar_url ? (
@@ -126,14 +153,18 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           )}
         </Link>
 
-        {/* Logo + toggle */}
+        {/* Logo + toggle collapse */}
         <div className={`flex items-center gap-2.5 px-3 py-2.5 border-b border-sidebar-border ${!sidebarOpen ? "justify-center" : ""}`}>
           <img src={nexoraLogo} alt="Nexora" className="w-6 h-6 object-contain flex-shrink-0" />
           {sidebarOpen && (
-            <span className="font-display font-black text-xs text-sidebar-foreground tracking-widest flex-1">NEXORA</span>
+            <span className="font-display font-black text-xs text-sidebar-foreground tracking-widest flex-1">
+              NEXORA
+            </span>
           )}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`hidden lg:flex w-6 h-6 items-center justify-center rounded hover:bg-sidebar-accent transition-colors flex-shrink-0 ${!sidebarOpen ? "ml-0" : "ml-auto"}`}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`hidden lg:flex w-6 h-6 items-center justify-center rounded hover:bg-sidebar-accent transition-colors flex-shrink-0 ${!sidebarOpen ? "ml-0" : "ml-auto"}`}
+          >
             <ChevronRight className={`w-3.5 h-3.5 transition-transform ${sidebarOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
@@ -144,11 +175,8 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
             const active =
               location.pathname === path ||
               (path === "/boutique" && location.pathname.startsWith("/boutique")) ||
-              (path === "/entrees-depenses" && (
-                location.pathname === "/entrees" ||
-                location.pathname === "/depenses" ||
-                location.pathname === "/entrees-depenses"
-              ));
+              (path === "/entrees-depenses" &&
+                ["/entrees", "/depenses", "/entrees-depenses"].includes(location.pathname));
             const isAdminItem = path === "/admin";
             return (
               <div key={path}>
@@ -162,7 +190,9 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
                     )}
                   </div>
                 )}
-                <Link to={path} onClick={() => setMobileSidebarOpen(false)}
+                <Link
+                  to={path}
+                  onClick={() => setMobileSidebarOpen(false)}
                   title={!sidebarOpen ? label : undefined}
                   className={`
                     flex items-center gap-3 rounded-xl transition-all duration-150
@@ -171,7 +201,8 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
                       ? "bg-accent text-accent-foreground font-semibold shadow-sm"
                       : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     }
-                  `}>
+                  `}
+                >
                   <div className={`
                     flex items-center justify-center rounded-lg flex-shrink-0
                     ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}
@@ -187,14 +218,17 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           })}
         </nav>
 
-        {/* Logout */}
+        {/* Déconnexion uniquement (thème géré par le Dashboard) */}
         <div className="p-2.5 border-t border-sidebar-border">
-          <button onClick={handleLogout} title="Déconnexion"
+          <button
+            onClick={handleLogout}
+            title="Déconnexion"
             className={`
               w-full flex items-center gap-3 rounded-xl text-sidebar-foreground/70
               hover:bg-destructive/20 hover:text-red-200 transition-colors
               ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
-            `}>
+            `}
+          >
             <div className={`flex items-center justify-center rounded-lg flex-shrink-0 bg-red-500/10 ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}`}>
               <LogOut className={`text-red-300 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
             </div>
@@ -208,19 +242,26 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
 
         {/* Header */}
         <header className="sticky top-0 z-10 bg-card border-b border-border px-4 lg:px-6 h-14 flex items-center gap-3 shadow-sm">
-          <button onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
+          {/* Burger mobile */}
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
+          >
             {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
+          {/* Retour dashboard (autres pages) */}
           {canGoBack && (
-            <button onClick={() => navigate("/dashboard")}
+            <button
+              onClick={() => navigate("/dashboard")}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
-              title="Retour au Dashboard">
+              title="Retour au Dashboard"
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
+          {/* Titre page courante */}
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {currentPage && (
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${currentPage.bg}`}>
@@ -232,18 +273,23 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
             </h2>
           </div>
 
+          {/* Recherche (optionnelle) */}
           {onSearchChange && (
             <div className="relative hidden sm:block w-52">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
                 placeholder="Rechercher..."
                 value={searchQuery}
-                onChange={e => onSearchChange(e.target.value)}
+                onChange={(e) => onSearchChange(e.target.value)}
                 className="pl-9 h-8 bg-muted border-0 focus:bg-card text-sm rounded-full"
               />
             </div>
           )}
 
+          {/* ── Actions injectées par la page (ex: Refresh + Thème du Dashboard) ── */}
+          {headerActions}
+
+          {/* Notifications globales */}
           <NexoraNotifications />
         </header>
 
@@ -255,6 +301,8 @@ export default function AppLayout({ children, searchQuery = "", onSearchChange }
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
       </div>
+
+      <ChatWidget />
     </div>
   );
 }
