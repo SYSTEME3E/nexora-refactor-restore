@@ -39,6 +39,7 @@ import BoutiqueParametresPage from "@/pages/boutique/ParametresPage";
 import DigitalFinancePage from "@/pages/boutique/DigitalFinancePage";
 import BoutiqueVitrinePage from "@/pages/boutique/VitrinePage";
 import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
+import AcheterPage from "@/pages/boutique/AcheterPage";
 import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 
 // Immobilier
@@ -52,6 +53,8 @@ import PaymentCallbackPage from "@/pages/PaymentCallbackPage";
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
+
+import ChatPage from "@/pages/ChatPage";
 
 import NotFound from "@/pages/NotFound";
 
@@ -133,7 +136,10 @@ const App = () => (
           <Route path="/cgu" element={<CGUPage />} />
           <Route path="/confidentialite" element={<PrivacyPage />} />
 
-          {/* Routes Protégées Standard */}
+          {/* Chat */}
+          <Route path="/chat" element={<ProtectedPage><ChatPage /></ProtectedPage>} />
+
+          {/* Routes Dashboard / Finance */}
           <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
           <Route path="/historique"        element={<ProtectedPage><HistoriquePage /></ProtectedPage>} />
           <Route path="/coffre-fort"       element={<ProtectedPage><CoffreFortPage /></ProtectedPage>} />
@@ -162,10 +168,11 @@ const App = () => (
           <Route path="/boutique/finances"      element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
 
           {/* Vitrines (Accessibles via slugs) */}
-          <Route path="/shop/:slug"                        element={<BoutiqueVitrinePage />} />
-          <Route path="/shop/:slug/produit/:produitId"     element={<ProduitDetailPage />} />
-          <Route path="/immobilier/vendeur/:userId"        element={<ProfilVendeurPage />} />
-          <Route path="/commande/:commandeId"              element={<CommandeTrackingPage />} />
+          <Route path="/shop/:slug"                               element={<BoutiqueVitrinePage />} />
+          <Route path="/shop/:slug/produit/:produitId"            element={<ProduitDetailPage />} />
+          <Route path="/shop/:slug/acheter/:produitId"            element={<AcheterPage />} />
+          <Route path="/immobilier/vendeur/:userId"               element={<ProfilVendeurPage />} />
+          <Route path="/commande/:commandeId"                     element={<CommandeTrackingPage />} />
 
           {/* Admin */}
           <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
