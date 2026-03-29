@@ -8,10 +8,11 @@ import { useChat } from "@/hooks/useChat";
 import { getNexoraUser } from "@/lib/nexora-auth";
 import AppLayout from "@/components/AppLayout";
 
+const SOPHIA_AVATAR = "https://i.ibb.co/MvGFCkX/file-00000000b90c7246ab59b08eaba09eb0.png";
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
-
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -24,7 +25,6 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long" });
 }
 
-// Rendu markdown léger (gras **texte**, sauts de ligne)
 function RenderBotMessage({ content }: { content: string }) {
   const parts = content.split(/\*\*(.*?)\*\*/g);
   return (
@@ -54,17 +54,14 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Marquer comme lus à l'ouverture
   useEffect(() => {
     markAdminMessagesRead();
   }, [markAdminMessagesRead]);
 
-  // Scroll auto vers le bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Ajuster hauteur textarea
   useEffect(() => {
     if (textAreaRef.current) {
       textAreaRef.current.style.height = "auto";
@@ -110,7 +107,6 @@ export default function ChatPage() {
     return null;
   }
 
-  // Grouper messages par date
   const grouped: { date: string; msgs: typeof messages }[] = [];
   messages.forEach(msg => {
     const d = formatDate(msg.created_at);
@@ -129,30 +125,36 @@ export default function ChatPage() {
         {/* ── En-tête ── */}
         <div className="flex items-center gap-3 px-4 py-3 bg-card border border-border rounded-2xl shadow-sm mb-3 flex-shrink-0">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src={SOPHIA_AVATAR}
+              alt="Sophia"
+              className="w-10 h-10 rounded-xl object-cover shadow-lg"
+            />
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-card" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-foreground text-sm">Sophia — Support NEXORA</p>
-            <p className="text-xs text-emerald-500 font-semibold">En ligne </p>
+            <p className="text-xs text-emerald-500 font-semibold">En ligne</p>
           </div>
-          
+        </div>
+        {/* ── FIN En-tête ── */}
+
         {/* ── Zone de messages ── */}
         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scroll-smooth">
 
           {loading && (
             <div className="flex justify-center py-8">
-              <div className="w-7 h-7 rounded-full border-3 border-violet-500 border-t-transparent animate-spin" />
+              <div className="w-7 h-7 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
             </div>
           )}
 
           {!loading && messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mb-4 shadow-xl shadow-violet-200 dark:shadow-violet-900">
-                <MessageCircle className="w-8 h-8 text-white" />
-              </div>
+              <img
+                src={SOPHIA_AVATAR}
+                alt="Sophia"
+                className="w-16 h-16 rounded-2xl object-cover mb-4 shadow-xl shadow-violet-200 dark:shadow-violet-900"
+              />
               <h2 className="text-lg font-black text-foreground mb-2">Bienvenue sur le support NEXORA</h2>
               <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
                 Je suis Sophia, votre assistante virtuelle. Posez-moi toutes vos questions sur NEXORA !
@@ -170,7 +172,6 @@ export default function ChatPage() {
 
           {grouped.map(({ date, msgs }) => (
             <div key={date}>
-              {/* Séparateur date */}
               <div className="flex items-center gap-3 my-3">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs font-semibold text-muted-foreground px-3 py-1 rounded-full bg-muted">{date}</span>
@@ -179,8 +180,8 @@ export default function ChatPage() {
 
               <div className="space-y-2">
                 {msgs.map(msg => {
-                  const isUser = msg.sender === "user";
-                  const isBot = msg.sender === "bot";
+                  const isUser  = msg.sender === "user";
+                  const isBot   = msg.sender === "bot";
                   const isAdmin = msg.sender === "admin";
                   const isExpired = msg.file_expires_at && new Date(msg.file_expires_at) < new Date();
 
@@ -189,20 +190,22 @@ export default function ChatPage() {
 
                       {/* Avatar */}
                       {!isUser && (
-                        <div className={`w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center ${
-                          isAdmin ? "bg-blue-600" : "bg-gradient-to-br from-violet-600 to-indigo-600"
-                        }`}>
-                          {isAdmin
-                            ? <User className="w-3.5 h-3.5 text-white" />
-                            : <Bot className="w-3.5 h-3.5 text-white" />
-                          }
-                        </div>
+                        isAdmin ? (
+                          <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center bg-blue-600">
+                            <User className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        ) : (
+                          <img
+                            src={SOPHIA_AVATAR}
+                            alt="Sophia"
+                            className="w-7 h-7 rounded-xl flex-shrink-0 object-cover"
+                          />
+                        )
                       )}
 
-                      {/* Bulle message */}
+                      {/* Bulle */}
                       <div className={`max-w-[80%] space-y-1 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
 
-                        {/* Label expéditeur */}
                         {!isUser && (
                           <span className="text-[10px] font-bold text-muted-foreground ml-1">
                             {isAdmin ? "Agent NEXORA" : "Sophia"}
@@ -217,7 +220,6 @@ export default function ChatPage() {
                             : "bg-card border border-border text-foreground rounded-bl-sm"
                         }`}>
 
-                          {/* Fichier joint */}
                           {msg.file_url && !isExpired && (
                             <div className="mb-2">
                               {msg.file_type === "image" && (
@@ -246,7 +248,6 @@ export default function ChatPage() {
                             </div>
                           )}
 
-                          {/* Texte */}
                           {msg.content && (
                             isBot
                               ? <RenderBotMessage content={msg.content} />
@@ -254,7 +255,6 @@ export default function ChatPage() {
                           )}
                         </div>
 
-                        {/* Heure */}
                         <span className={`text-[10px] text-muted-foreground ${isUser ? "mr-1" : "ml-1"}`}>
                           {formatTime(msg.created_at)}
                         </span>
@@ -268,29 +268,28 @@ export default function ChatPage() {
 
           <div ref={messagesEndRef} />
         </div>
+        {/* ── FIN Zone de messages ── */}
 
-        {/* ── Bouton Appeler un opérateur ── */}
-        {!operatorRequested ? (
-          <div className="flex-shrink-0 px-2 mb-2">
+        {/* ── Bouton opérateur ── */}
+        <div className="flex-shrink-0 px-2 mb-2">
+          {!operatorRequested ? (
             <button
               onClick={handleRequestOperator}
               className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-violet-600 dark:text-violet-400 text-sm font-bold hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all">
               <Phone className="w-4 h-4" /> Appeler un opérateur humain
             </button>
-          </div>
-        ) : (
-          <div className="flex-shrink-0 px-2 mb-2">
+          ) : (
             <div className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-semibold">
               <Clock className="w-4 h-4" /> Un opérateur a été notifié — il vous répond bientôt
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        {/* ── FIN Bouton opérateur ── */}
 
         {/* ── Zone de saisie ── */}
         <div className="flex-shrink-0 bg-card border border-border rounded-2xl shadow-sm p-3">
           <div className="flex items-end gap-2">
 
-            {/* Bouton fichier */}
             <input
               ref={fileInputRef}
               type="file"
@@ -302,14 +301,13 @@ export default function ChatPage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-violet-100 dark:hover:bg-violet-900/30 text-muted-foreground hover:text-violet-600 transition-all flex-shrink-0"
-              title="Joindre un fichier (image, vidéo, document)">
+              title="Joindre un fichier">
               {uploading
                 ? <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
                 : <Paperclip className="w-4 h-4" />
               }
             </button>
 
-            {/* Texte */}
             <textarea
               ref={textAreaRef}
               value={text}
@@ -320,7 +318,6 @@ export default function ChatPage() {
               className="flex-1 resize-none bg-transparent text-foreground text-sm placeholder-muted-foreground outline-none leading-relaxed py-1.5 max-h-[120px]"
             />
 
-            {/* Envoyer */}
             <button
               onClick={handleSend}
               disabled={!text.trim() || sending}
@@ -332,7 +329,6 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Aide types de fichiers */}
           <div className="flex items-center gap-3 mt-2 px-1">
             <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Image className="w-3 h-3" /> Photos</span>
             <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Film className="w-3 h-3" /> Vidéos</span>
@@ -340,6 +336,8 @@ export default function ChatPage() {
             <span className="text-[10px] text-muted-foreground ml-auto">Entrée pour envoyer</span>
           </div>
         </div>
+        {/* ── FIN Zone de saisie ── */}
+
       </div>
     </AppLayout>
   );
