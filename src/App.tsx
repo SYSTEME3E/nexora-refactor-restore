@@ -18,8 +18,6 @@ import PrivacyPage from "@/pages/PrivacyPage";
 
 // Pages Dashboard / Finance
 import DashboardPage from "@/pages/DashboardPage";
-import DepensesPage from "@/pages/DepensesPage";
-import EntreesPage from "@/pages/EntreesPage";
 import HistoriquePage from "@/pages/HistoriquePage";
 import CoffreFortPage from "@/pages/CoffreFortPage";
 import MediasPage from "@/pages/MediasPage";
@@ -39,6 +37,7 @@ import BoutiqueParametresPage from "@/pages/boutique/ParametresPage";
 import DigitalFinancePage from "@/pages/boutique/DigitalFinancePage";
 import BoutiqueVitrinePage from "@/pages/boutique/VitrinePage";
 import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
+import AcheterPage from "@/pages/boutique/AcheterPage";
 import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 
 // Immobilier
