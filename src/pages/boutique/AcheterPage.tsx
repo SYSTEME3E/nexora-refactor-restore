@@ -146,7 +146,7 @@ export default function AcheterPage() {
   const total = prixUnit * qte;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0f1e]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 dark:bg-[#0a0f1e]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="max-w-lg mx-auto px-4 py-8">
 
         {/* Header */}
@@ -170,7 +170,7 @@ export default function AcheterPage() {
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
                 etape === e ? "bg-pink-500 text-white shadow-lg shadow-pink-300"
                 : i < ["recap","paiement","confirmation"].indexOf(etape) ? "bg-green-500 text-white"
-                : "bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400"
+                : "bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400 dark:text-gray-500"
               }`}>
                 {i < ["recap","paiement","confirmation"].indexOf(etape) ? "✓" : i + 1}
               </div>
@@ -276,7 +276,7 @@ export default function AcheterPage() {
                       <div className="flex-1">
                         <p className="font-black text-sm text-gray-900 dark:text-white">{mp.reseau}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">{mp.numero}</p>
-                        <p className="text-xs text-gray-400">Au nom de : {mp.nom_titulaire}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Au nom de : {mp.nom_titulaire}</p>
                       </div>
                     </div>
                   ))}
