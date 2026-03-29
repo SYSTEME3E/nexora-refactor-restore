@@ -11,6 +11,7 @@ interface Variation {
   valeurs: string[];
 }
 
+
 interface ProduitDetail {
   id: string;
   boutique_id: string;
