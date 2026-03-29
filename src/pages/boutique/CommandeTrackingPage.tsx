@@ -104,7 +104,7 @@ export default function CommandeTrackingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -112,10 +112,10 @@ export default function CommandeTrackingPage() {
 
   if (!commande) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center gap-4 px-6 text-center">
         <Package className="w-16 h-16 text-gray-300" />
         <h1 className="text-xl font-black">Commande introuvable</h1>
-        <p className="text-sm text-gray-500">Cette commande n'existe pas ou le lien est invalide.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Cette commande n'existe pas ou le lien est invalide.</p>
         <button onClick={() => navigate("/")} className="text-primary underline text-sm">Retour à l'accueil</button>
       </div>
     );
@@ -135,16 +135,16 @@ export default function CommandeTrackingPage() {
     : 1;
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
-          <button onClick={() => navigate("/")} className="p-2 rounded-xl hover:bg-gray-100">
+          <button onClick={() => navigate("/")} className="p-2 rounded-xl hover:bg-gray-100 dark:bg-gray-700">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <p className="font-black text-sm">Suivi de commande</p>
-            <p className="text-xs text-gray-500">#{commande.numero}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">#{commande.numero}</p>
           </div>
         </div>
       </div>
@@ -159,11 +159,11 @@ export default function CommandeTrackingPage() {
               const done = i <= currentStep;
               return (
                 <div key={step.key} className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${done ? "bg-green-100" : "bg-gray-100"}`}>
-                    <Icon className={`w-4 h-4 ${done ? "text-green-600" : "text-gray-400"}`} />
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${done ? "bg-green-100" : "bg-gray-100 dark:bg-gray-700"}`}>
+                    <Icon className={`w-4 h-4 ${done ? "text-green-600" : "text-gray-400 dark:text-gray-500"}`} />
                   </div>
                   <div>
-                    <p className={`text-sm font-bold ${done ? "text-gray-900" : "text-gray-400"}`}>{step.label}</p>
+                    <p className={`text-sm font-bold ${done ? "text-gray-900" : "text-gray-400 dark:text-gray-500"}`}>{step.label}</p>
                   </div>
                   {i <= currentStep && <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />}
                 </div>
@@ -222,21 +222,21 @@ export default function CommandeTrackingPage() {
           <h3 className="font-black text-sm mb-3">Détails de la commande</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">Client</span>
+              <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Client</span>
               <span className="font-bold">{commande.client_nom}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Date</span>
+              <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Date</span>
               <span className="font-medium">{new Date(commande.created_at).toLocaleDateString("fr-FR")}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Boutique</span>
+              <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Boutique</span>
               <span className="font-medium">{boutique?.nom || "—"}</span>
             </div>
             <div className="border-t pt-2 mt-2">
               {items.map((item: any, i: number) => (
                 <div key={i} className="flex justify-between py-1">
-                  <span className="text-gray-700">{item.nom || item.produit?.nom || "Produit"} x{item.quantite || 1}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{item.nom || item.produit?.nom || "Produit"} x{item.quantite || 1}</span>
                   <span className="font-bold">{fmt(item.prix || item.montant || 0, commande.devise)}</span>
                 </div>
               ))}
@@ -256,7 +256,7 @@ export default function CommandeTrackingPage() {
             <input
               readOnly
               value={`${window.location.origin}/commande/${commande.id}`}
-              className="flex-1 text-xs bg-gray-50 border rounded-xl px-3 py-2.5 text-gray-700"
+              className="flex-1 text-xs bg-gray-50 border rounded-xl px-3 py-2.5 text-gray-700 dark:text-gray-200"
             />
             <button
               onClick={() => {
