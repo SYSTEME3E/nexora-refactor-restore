@@ -39,8 +39,6 @@ import BoutiqueParametresPage from "@/pages/boutique/ParametresPage";
 import DigitalFinancePage from "@/pages/boutique/DigitalFinancePage";
 import BoutiqueVitrinePage from "@/pages/boutique/VitrinePage";
 import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
-import AcheterPage from "@/pages/boutique/AcheterPage";
-import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 
 // Immobilier
 import ImmobilierPage from "@/pages/ImmobilierPage";
