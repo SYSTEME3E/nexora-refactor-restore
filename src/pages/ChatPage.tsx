@@ -12,6 +12,7 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   const today = new Date();
