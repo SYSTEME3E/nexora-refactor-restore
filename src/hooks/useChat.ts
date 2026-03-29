@@ -14,11 +14,11 @@ export interface ChatMessage {
   file_type?: "image" | "video" | "doc" | null;
   file_name?: string | null;
   file_expires_at?: string | null;
+  _optimistic?: boolean; // flag pour les messages non encore confirmés
 }
 
 // ─────────────────────────────────────────────────────────────
 // MESSAGES PRÉ-ENREGISTRÉS AVEC MOTS-CLÉS
-// Modifie ici pour ajouter/modifier les réponses automatiques
 // ─────────────────────────────────────────────────────────────
 export const BOT_RESPONSES: {
   keywords: string[];
@@ -110,8 +110,18 @@ export function useChat() {
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      setMessages(data as ChatMessage[]);
-      const unread = (data as ChatMessage[]).filter(
+      const confirmed = data as ChatMessage[];
+      // Fusionne : garde les messages optimistic non encore confirmés
+      setMessages(prev => {
+        const pendingOptimistic = prev.filter(m =>
+          m._optimistic &&
+          !confirmed.some(
+            c => c.content === m.content && c.sender === m.sender
+          )
+        );
+        return [...confirmed, ...pendingOptimistic];
+      });
+      const unread = confirmed.filter(
         (m) => !m.is_read && (m.sender === "admin" || m.sender === "bot")
       ).length;
       setUnreadCount(unread);
@@ -128,8 +138,26 @@ export function useChat() {
     }) => {
       if (!userId) return;
 
-      // 1. Insérer le message utilisateur
-      await (supabase as any).from("chat_messages").insert({
+      // ── OPTIMISTIC UPDATE : affiche le message immédiatement ──
+      const optimisticId = `optimistic_${Date.now()}_${Math.random()}`;
+      const optimisticMsg: ChatMessage = {
+        id: optimisticId,
+        user_id: userId,
+        content: content.trim() || (fileData ? `[${fileData.file_type}]` : ""),
+        sender: "user",
+        is_read: false,
+        is_archived: false,
+        created_at: new Date().toISOString(),
+        file_url: fileData?.file_url ?? null,
+        file_type: fileData?.file_type ?? null,
+        file_name: fileData?.file_name ?? null,
+        file_expires_at: fileData?.file_expires_at ?? null,
+        _optimistic: true,
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+
+      // 1. Insérer le message en base
+      const { error } = await (supabase as any).from("chat_messages").insert({
         user_id: userId,
         content: content.trim() || (fileData ? `[${fileData.file_type}]` : ""),
         sender: "user",
@@ -141,12 +169,24 @@ export function useChat() {
         file_expires_at: fileData?.file_expires_at ?? null,
       });
 
-      // 2. Chercher une réponse bot si message texte
+      if (error) {
+        // Marquer le message comme échoué (tu peux afficher une icône ⚠️ dans l'UI)
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === optimisticId ? { ...m, _error: true } as ChatMessage : m
+          )
+        );
+        return;
+      }
+
+      // Le realtime va déclencher fetchMessages() qui remplacera le message optimistic
+      // par la version confirmée de la base
+
+      // 2. Réponse bot
       if (content.trim()) {
         const botReply = findBotResponse(content);
 
         if (botReply) {
-          // Réponse bot trouvée
           setTimeout(async () => {
             await (supabase as any).from("chat_messages").insert({
               user_id: userId,
@@ -157,7 +197,6 @@ export function useChat() {
             });
           }, 800);
         } else {
-          // Aucun mot-clé trouvé → créer une notification admin
           setTimeout(async () => {
             await (supabase as any).from("chat_messages").insert({
               user_id: userId,
@@ -167,13 +206,12 @@ export function useChat() {
               is_archived: false,
             });
 
-            // Notifier l'admin via la table notifications
             await (supabase as any).from("nexora_notifications").insert({
               type: "chat_unknown_question",
               user_id: userId,
               message: `Question sans réponse : "${content.trim().slice(0, 100)}"`,
               is_read: false,
-            }).catch(() => {}); // silencieux si la table n'existe pas encore
+            }).catch(() => {});
           }, 800);
         }
       }
@@ -190,7 +228,6 @@ export function useChat() {
   } | null> => {
     if (!userId) return null;
 
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
     const path = `chat/${userId}/${Date.now()}_${file.name}`;
 
     let file_type: "image" | "video" | "doc" = "doc";
@@ -210,7 +247,6 @@ export function useChat() {
       .from("chat-files")
       .getPublicUrl(path);
 
-    // Expiration 72h
     const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
     return {
@@ -232,7 +268,6 @@ export function useChat() {
     setUnreadCount(0);
   }, [userId]);
 
-  // Notifier admin : l'utilisateur demande un opérateur
   const requestOperator = useCallback(async () => {
     if (!userId) return;
     await (supabase as any).from("chat_messages").insert({
@@ -366,7 +401,6 @@ export function useAdminChat() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Admin ne supprime/archive jamais — lecture seule pour l'archivage
   const archiveConversation = useCallback(async (userId: string) => {
     await (supabase as any)
       .from("chat_messages")
