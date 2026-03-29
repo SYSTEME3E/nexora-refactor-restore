@@ -1,12 +1,10 @@
-import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, ChevronDown, X } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { getNexoraUser } from "@/lib/nexora-auth";
 
 // Widget flottant uniquement — le chat s'ouvre sur /chat
 export default function ChatWidget() {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const user = getNexoraUser();
   const { unreadCount } = useChat();
