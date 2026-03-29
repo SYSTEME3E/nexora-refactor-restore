@@ -136,15 +136,9 @@ export default function ChatPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-foreground text-sm">Sophia — Support NEXORA</p>
-            <p className="text-xs text-emerald-500 font-semibold">En ligne · Répond en quelques secondes</p>
+            <p className="text-xs text-emerald-500 font-semibold">En ligne </p>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-muted">
-              Fichiers supprimés après 72h
-            </span>
-          </div>
-        </div>
-
+          
         {/* ── Zone de messages ── */}
         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scroll-smooth">
 
