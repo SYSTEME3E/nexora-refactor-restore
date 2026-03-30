@@ -1,24 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // lib/theme.ts — Système de thème global NEXORA
-// Persiste dans localStorage, s'applique à TOUTES les pages automatiquement
+// Persiste dans localStorage, s'applique à TOUTES les pages automatiquement.
+// Usage : importez initTheme() dans chaque layout/page pour appliquer le thème.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const THEME_KEY = "nexora-theme";
-
 export type NexoraTheme = "light" | "dark";
 
-/** Lit le thème actuel depuis localStorage */
+/** Lit le thème depuis localStorage (ou préférence système en fallback) */
 export function getTheme(): NexoraTheme {
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "dark" || stored === "light") return stored;
-    // Fallback : préférence système
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) return "dark";
   } catch {}
   return "light";
 }
 
-/** Applique le thème sur <html> et le stocke */
+/** Applique le thème sur <html> et le persiste en localStorage */
 export function applyTheme(theme: NexoraTheme) {
   const html = document.documentElement;
   if (theme === "dark") {
@@ -36,7 +35,10 @@ export function toggleTheme(): NexoraTheme {
   return next;
 }
 
-/** À appeler au démarrage de chaque page/layout pour appliquer le thème sauvegardé */
+/**
+ * À appeler au montage de chaque layout/page pour appliquer le thème sauvegardé.
+ * S'applique automatiquement à toutes les pages qui utilisent AppLayout, BoutiqueLayout ou LandingPage.
+ */
 export function initTheme() {
   applyTheme(getTheme());
 }
