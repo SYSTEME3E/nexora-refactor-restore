@@ -126,22 +126,9 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   gratuit: { label: "Gratuit", color: "text-gray-600",   bg: "bg-gray-100"   },
   boss:    { label: "Boss",    color: "text-blue-700",    bg: "bg-blue-100"   },
   roi:     { label: "Roi",     color: "text-violet-700",  bg: "bg-violet-100" },
-  admin:   { label: "Admin",   color: "text-amber-700",  bg: "bg-amber-100"  },
+  
 };
 
-const ALL_ADMIN_FEATURES = [
-  { key: "stats",       label: "Statistiques générales" },
-  { key: "users_view",  label: "Voir les utilisateurs" },
-  { key: "users_edit",  label: "Modifier les utilisateurs" },
-  { key: "boutiques",   label: "Gérer les boutiques" },
-  { key: "produits",    label: "Gérer les produits" },
-  { key: "abonnements", label: "Voir les abonnements" },
-  { key: "messages",    label: "Messagerie Support" },
-  { key: "logs",        label: "Voir les logs" },
-  { key: "transferts",  label: "Gestion transferts / dettes" },
-];
-
-const ADMIN_CODE = "ERIC";
 
 // ══════════════════════════════════════════════════════════
 export default function AdminPanelPage() {
