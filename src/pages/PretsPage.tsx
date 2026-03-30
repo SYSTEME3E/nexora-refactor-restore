@@ -5,18 +5,16 @@ import { formatAmount } from "@/lib/app-utils";
 import { hasNexoraPremium, getNexoraUser } from "@/lib/nexora-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, FileDown, ChevronDown, ChevronUp, Trash2, HandCoins, Wallet, Calendar, ArrowRight, Crown } from "lucide-react";
+import { Plus, FileDown, ChevronDown, ChevronUp, Trash2, HandCoins, Calendar, ArrowRight, Crown } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
 import AppLayout from "@/components/AppLayout";
 import { useNavigate } from "react-router-dom";
 
 type Devise = "XOF" | "USD";
 type Statut = "en_attente" | "partiel" | "rembourse";
-type TypePret = "pret" | "dette";
 
 interface Pret {
   id: string;
-  type: TypePret;
   nom_personne: string;
   nom_preteur: string | null;
   montant: number;
@@ -69,16 +67,8 @@ async function generatePDF(pret: Pret) {
   const noir: [number, number, number] = [15, 23, 42];
   const vert: [number, number, number] = [22, 163, 74];
 
-  const user = getNexoraUser();
-  const userName = user?.nom_prenom || "Utilisateur";
-
-  // Utilise nom_preteur saisi si disponible, sinon fallback
-  const preteur = pret.type === "pret"
-    ? (pret.nom_preteur || userName)
-    : pret.nom_personne;
-  const emprunteur = pret.type === "pret"
-    ? pret.nom_personne
-    : (pret.nom_preteur || userName);
+  const preteur = pret.nom_preteur || "—";
+  const emprunteur = pret.nom_personne;
 
   doc.setFillColor(...bleu);
   doc.rect(0, 0, W, 40, "F");
@@ -88,12 +78,7 @@ async function generatePDF(pret: Pret) {
   doc.text("CONTRAT DE PRET", W / 2, 18, { align: "center" });
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text(
-    pret.type === "pret"
-      ? `Preteur : ${preteur}  |  Emprunteur : ${pret.nom_personne}`
-      : `Preteur : ${pret.nom_personne}  |  Emprunteur : ${emprunteur}`,
-    W / 2, 28, { align: "center" }
-  );
+  doc.text(`Preteur : ${preteur}  |  Emprunteur : ${emprunteur}`, W / 2, 28, { align: "center" });
   doc.text(`Ref: ${pret.id.substring(0, 8).toUpperCase()}`, W / 2, 35, { align: "center" });
 
   let y = 52;
@@ -246,7 +231,7 @@ async function generatePDF(pret: Pret) {
   doc.text("NEXORA", W / 2, 288, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text(`Document  généré le ${today} — nexora-app`, W / 2, 293, { align: "center" });
+  doc.text(`Document généré le ${today} — nexora-app`, W / 2, 293, { align: "center" });
 
   doc.save(`contrat_pret_${pret.nom_personne.replace(/\s/g, "_")}_${new Date(pret.date_pret).toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`);
 }
@@ -259,14 +244,13 @@ export default function PretsPage() {
   const [prets, setPrets] = useState<Pret[]>([]);
   const [remboursements, setRemboursements] = useState<Remboursement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TypePret>("pret");
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showRembForm, setShowRembForm] = useState<string | null>(null);
 
   const emptyForm = {
-    nom_personne: "",
     nom_preteur: "",
+    nom_personne: "",
     montant: "",
     devise: "XOF" as Devise,
     objectif: "",
@@ -297,24 +281,21 @@ export default function PretsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const nbPrets = prets.filter(p => p.type === "pret").length;
-  const nbDettes = prets.filter(p => p.type === "dette").length;
-  const nbActuel = activeTab === "pret" ? nbPrets : nbDettes;
-  const limiteAtteinte = !isPremium && nbActuel >= LIMITE_GRATUIT;
+  const nbPrets = prets.length;
+  const limiteAtteinte = !isPremium && nbPrets >= LIMITE_GRATUIT;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isPremium && nbActuel >= LIMITE_GRATUIT) {
+    if (!isPremium && nbPrets >= LIMITE_GRATUIT) {
       toast({
         title: "Limite atteinte",
-        description: `Le plan gratuit est limité à ${LIMITE_GRATUIT} ${activeTab === "pret" ? "prêts" : "dettes"}. Passez au Premium pour continuer.`,
+        description: `Le plan gratuit est limité à ${LIMITE_GRATUIT} contrats. Passez au Premium pour continuer.`,
         variant: "destructive",
       });
       return;
     }
 
-    // Tous les champs obligatoires sauf note et nom_temoin
     if (
       !form.nom_preteur.trim() ||
       !form.nom_personne.trim() ||
@@ -325,7 +306,7 @@ export default function PretsPage() {
     ) {
       toast({
         title: "Champs requis",
-        description: "Tous les champs sont obligatoires sauf la note.",
+        description: "Tous les champs sont obligatoires sauf la note et le témoin.",
         variant: "destructive",
       });
       return;
@@ -335,7 +316,7 @@ export default function PretsPage() {
     if (!userId) return;
 
     const { error } = await supabase.from("prets" as any).insert({
-      type: activeTab,
+      type: "pret",
       nom_personne: form.nom_personne,
       nom_preteur: form.nom_preteur,
       user_id: userId,
@@ -343,7 +324,7 @@ export default function PretsPage() {
       devise: form.devise,
       objectif: form.objectif,
       date_pret: form.date_pret,
-      date_echeance: form.date_echeance || null,
+      date_echeance: form.date_echeance,
       nom_temoin: form.nom_temoin || null,
       note: form.note || null,
       signature_preteur: form.signature_preteur || null,
@@ -356,7 +337,7 @@ export default function PretsPage() {
       return;
     }
 
-    toast({ title: "Enregistré", description: `${activeTab === "pret" ? "Prêt" : "Dette"} ajouté avec succès.` });
+    toast({ title: "Enregistré", description: "Contrat de prêt ajouté avec succès." });
     setShowForm(false);
     setForm(emptyForm);
     load();
@@ -382,24 +363,16 @@ export default function PretsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Supprimer ce prêt ?")) return;
+    if (!confirm("Supprimer ce contrat de prêt ?")) return;
     await supabase.from("prets" as any).delete().eq("id", id);
     toast({ title: "Supprimé" });
     load();
   };
 
-  const filteredPrets = prets.filter(p => p.type === activeTab);
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const currentUserName = getNexoraUser()?.nom_prenom || "Utilisateur";
-
-  // Labels dynamiques basés sur les champs saisis
-  const preteurLabel = activeTab === "pret"
-    ? form.nom_preteur || "Prêteur"
-    : form.nom_personne || "Prêteur";
-  const emprunteurLabel = activeTab === "pret"
-    ? form.nom_personne || "Emprunteur"
-    : form.nom_preteur || "Emprunteur";
+  const preteurLabel = form.nom_preteur || "Prêteur";
+  const emprunteurLabel = form.nom_personne || "Emprunteur";
 
   return (
     <AppLayout>
@@ -408,7 +381,7 @@ export default function PretsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-foreground">Prêts & Dettes</h1>
+            <h1 className="text-2xl font-black text-foreground">Contrats de Prêt</h1>
             <p className="text-sm text-muted-foreground">Gérez vos contrats de prêt</p>
           </div>
           <Button
@@ -416,7 +389,7 @@ export default function PretsPage() {
               if (limiteAtteinte) {
                 toast({
                   title: "Limite atteinte",
-                  description: `Plan gratuit limité à ${LIMITE_GRATUIT} ${activeTab === "pret" ? "prêts" : "dettes"}.`,
+                  description: `Plan gratuit limité à ${LIMITE_GRATUIT} contrats.`,
                   variant: "destructive",
                 });
                 return;
@@ -425,22 +398,20 @@ export default function PretsPage() {
             }}
             className="bg-primary text-white gap-1"
           >
-            <Plus className="w-4 h-4" /> Nouveau
+            <Plus className="w-4 h-4" /> Nouveau contrat
           </Button>
         </div>
 
         {/* Bannière limite gratuit */}
         {!isPremium && (
           <div className={`rounded-xl px-4 py-3 flex items-center justify-between gap-3 border ${
-            nbActuel >= LIMITE_GRATUIT
-              ? "bg-red-50 border-red-200"
-              : "bg-yellow-50 border-yellow-200"
+            nbPrets >= LIMITE_GRATUIT ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"
           }`}>
             <div className="flex items-center gap-2 min-w-0">
-              <Crown className={`w-4 h-4 flex-shrink-0 ${nbActuel >= LIMITE_GRATUIT ? "text-red-500" : "text-yellow-600"}`} />
-              <p className={`text-xs font-semibold ${nbActuel >= LIMITE_GRATUIT ? "text-red-700" : "text-yellow-700"}`}>
-                {activeTab === "pret" ? "Prêts" : "Dettes"} : {nbActuel} / {LIMITE_GRATUIT}
-                {nbActuel >= LIMITE_GRATUIT && " — Limite atteinte"}
+              <Crown className={`w-4 h-4 flex-shrink-0 ${nbPrets >= LIMITE_GRATUIT ? "text-red-500" : "text-yellow-600"}`} />
+              <p className={`text-xs font-semibold ${nbPrets >= LIMITE_GRATUIT ? "text-red-700" : "text-yellow-700"}`}>
+                Contrats : {nbPrets} / {LIMITE_GRATUIT}
+                {nbPrets >= LIMITE_GRATUIT && " — Limite atteinte"}
               </p>
             </div>
             <button
@@ -452,17 +423,6 @@ export default function PretsPage() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex bg-muted rounded-xl p-1">
-          {(["pret", "dette"] as TypePret[]).map(tab => (
-            <button key={tab} onClick={() => { setActiveTab(tab); setShowForm(false); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-white shadow text-primary" : "text-muted-foreground"}`}>
-              {tab === "pret" ? <HandCoins className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
-              {tab === "pret" ? `Mes Prêts (${nbPrets}/${isPremium ? "∞" : LIMITE_GRATUIT})` : `Mes Dettes (${nbDettes}/${isPremium ? "∞" : LIMITE_GRATUIT})`}
-            </button>
-          ))}
-        </div>
-
         {/* Mur limite atteinte */}
         {limiteAtteinte && !showForm && (
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-6 text-center space-y-4">
@@ -472,7 +432,7 @@ export default function PretsPage() {
             <div>
               <p className="font-black text-gray-800 text-lg">Limite du plan gratuit atteinte</p>
               <p className="text-gray-500 text-sm mt-1">
-                Vous avez atteint les <span className="font-bold">{LIMITE_GRATUIT} {activeTab === "pret" ? "prêts" : "dettes"}</span> inclus dans le plan gratuit.
+                Vous avez atteint les <span className="font-bold">{LIMITE_GRATUIT} contrats</span> inclus dans le plan gratuit.
               </p>
               <p className="text-gray-400 text-xs mt-1">Passez au Premium pour enregistrer sans limite.</p>
             </div>
@@ -488,52 +448,40 @@ export default function PretsPage() {
         {/* Formulaire */}
         {showForm && !limiteAtteinte && (
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
-            <h2 className="font-bold text-lg text-foreground">
-              {activeTab === "pret" ? "Nouveau prêt accordé" : "Nouvelle dette"}
-            </h2>
+            <h2 className="font-bold text-lg text-foreground">Nouveau contrat de prêt</h2>
 
-            {/* Aperçu prêteur → emprunteur */}
-            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm">
+            {/* Aperçu live */}
+            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm flex-wrap">
               <span className="font-bold text-primary">{preteurLabel}</span>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <span className="font-bold text-orange-600">{emprunteurLabel}</span>
-              <span className="text-muted-foreground ml-1">
-                ({activeTab === "pret" ? "vous prêtez" : "vous empruntez"})
-              </span>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
 
-                {/* Nom du Prêteur */}
                 <div className="col-span-2">
-                  <label className="text-sm font-medium">
-                    {activeTab === "pret" ? "Nom du Prêteur *" : "Nom du Prêteur *"}
-                  </label>
+                  <label className="text-sm font-medium">Nom du Prêteur *</label>
                   <Input
                     value={form.nom_preteur}
                     onChange={e => setForm({ ...form, nom_preteur: e.target.value })}
-                    placeholder={activeTab === "pret" ? "Votre nom complet" : "Nom de la personne qui prête"}
+                    placeholder="Nom complet du prêteur"
                     className="mt-1"
                     required
                   />
                 </div>
 
-                {/* Nom de l'Emprunteur */}
                 <div className="col-span-2">
-                  <label className="text-sm font-medium">
-                    {activeTab === "pret" ? "Nom de l'Emprunteur *" : "Votre nom (Emprunteur) *"}
-                  </label>
+                  <label className="text-sm font-medium">Nom de l'Emprunteur *</label>
                   <Input
                     value={form.nom_personne}
                     onChange={e => setForm({ ...form, nom_personne: e.target.value })}
-                    placeholder={activeTab === "pret" ? "Nom de la personne qui emprunte" : "Votre nom complet"}
+                    placeholder="Nom complet de l'emprunteur"
                     className="mt-1"
                     required
                   />
                 </div>
 
-                {/* Montant */}
                 <div>
                   <label className="text-sm font-medium">Montant *</label>
                   <Input
@@ -547,7 +495,6 @@ export default function PretsPage() {
                   />
                 </div>
 
-                {/* Devise */}
                 <div>
                   <label className="text-sm font-medium">Devise *</label>
                   <select
@@ -561,7 +508,6 @@ export default function PretsPage() {
                   </select>
                 </div>
 
-                {/* Objectif */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Objectif du prêt *</label>
                   <Input
@@ -573,7 +519,6 @@ export default function PretsPage() {
                   />
                 </div>
 
-                {/* Date du prêt */}
                 <div>
                   <label className="text-sm font-medium">Date du prêt *</label>
                   <Input
@@ -585,7 +530,6 @@ export default function PretsPage() {
                   />
                 </div>
 
-                {/* Date d'échéance */}
                 <div>
                   <label className="text-sm font-medium">Date d'échéance *</label>
                   <Input
@@ -597,7 +541,6 @@ export default function PretsPage() {
                   />
                 </div>
 
-                {/* Témoin (optionnel) */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Nom du témoin (optionnel)</label>
                   <Input
@@ -608,7 +551,6 @@ export default function PretsPage() {
                   />
                 </div>
 
-                {/* Note (optionnel) */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Note (optionnel)</label>
                   <Input
@@ -650,36 +592,31 @@ export default function PretsPage() {
         {/* Liste */}
         {loading ? (
           <div className="text-center text-muted-foreground p-8">Chargement...</div>
-        ) : filteredPrets.length === 0 ? (
+        ) : prets.length === 0 ? (
           <div className="text-center p-12 bg-card border border-border rounded-2xl">
             <HandCoins className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Aucun {activeTab === "pret" ? "prêt" : "dette"} enregistré</p>
+            <p className="text-muted-foreground">Aucun contrat de prêt enregistré</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredPrets.map(pret => {
+            {prets.map(pret => {
               const reste = pret.montant - pret.montant_rembourse;
               const pct = pret.montant > 0 ? Math.min(100, (pret.montant_rembourse / pret.montant) * 100) : 0;
               const isExpanded = expandedId === pret.id;
               const rembList = rembPour(pret.id);
-
-              const preteurNom = pret.type === "pret"
-                ? (pret.nom_preteur || currentUserName)
-                : pret.nom_personne;
-              const emprunteurNom = pret.type === "pret"
-                ? pret.nom_personne
-                : (pret.nom_preteur || currentUserName);
+              const preteurNom = pret.nom_preteur || "—";
+              const emprunteurNom = pret.nom_personne;
 
               return (
                 <div key={pret.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                   <div className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${pret.type === "pret" ? "bg-orange-100" : "bg-red-100"}`}>
-                        {pret.type === "pret" ? <HandCoins className="w-5 h-5 text-orange-600" /> : <Wallet className="w-5 h-5 text-red-600" />}
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-orange-100">
+                        <HandCoins className="w-5 h-5 text-orange-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold truncate">{pret.nom_personne}</span>
+                          <span className="font-semibold truncate">{emprunteurNom}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUT_COLORS[pret.statut]}`}>
                             {STATUT_LABELS[pret.statut]}
                           </span>
@@ -691,8 +628,14 @@ export default function PretsPage() {
                         </div>
                         <div className="text-sm text-muted-foreground mt-0.5">{pret.objectif}</div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                          <span className="flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {new Date(pret.date_pret).toLocaleDateString("fr-FR")}</span>
-                          {pret.date_echeance && <span className="text-orange-600">Échéance: {new Date(pret.date_echeance).toLocaleDateString("fr-FR")}</span>}
+                          <span className="flex items-center gap-0.5">
+                            <Calendar className="w-3 h-3" /> {new Date(pret.date_pret).toLocaleDateString("fr-FR")}
+                          </span>
+                          {pret.date_echeance && (
+                            <span className="text-orange-600">
+                              Échéance: {new Date(pret.date_echeance).toLocaleDateString("fr-FR")}
+                            </span>
+                          )}
                         </div>
                         <div className="mt-2">
                           <div className="flex justify-between text-xs mb-1">
@@ -703,18 +646,30 @@ export default function PretsPage() {
                             <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                           </div>
                           {pret.statut !== "rembourse" && (
-                            <div className="text-xs text-destructive mt-1 font-medium">Reste: {formatAmount(reste, pret.devise)}</div>
+                            <div className="text-xs text-destructive mt-1 font-medium">
+                              Reste: {formatAmount(reste, pret.devise)}
+                            </div>
                           )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-1 flex-shrink-0">
-                        <button onClick={() => generatePDF(pret)} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="Télécharger PDF">
+                        <button
+                          onClick={() => generatePDF(pret)}
+                          className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                          title="Télécharger PDF"
+                        >
                           <FileDown className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setExpandedId(isExpanded ? null : pret.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : pret.id)}
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                        >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => handleDelete(pret.id)} className="p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive hover:text-white text-destructive transition-colors">
+                        <button
+                          onClick={() => handleDelete(pret.id)}
+                          className="p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive hover:text-white text-destructive transition-colors"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -725,21 +680,38 @@ export default function PretsPage() {
                     <div className="border-t border-border bg-muted/30 p-4 space-y-3">
                       {pret.statut !== "rembourse" && (
                         <div>
-                          <button onClick={() => setShowRembForm(showRembForm === pret.id ? null : pret.id)}
-                            className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                          <button
+                            onClick={() => setShowRembForm(showRembForm === pret.id ? null : pret.id)}
+                            className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                          >
                             <ArrowRight className="w-4 h-4" /> Enregistrer un remboursement
                           </button>
                           {showRembForm === pret.id && (
                             <div className="mt-3 p-3 bg-card border border-border rounded-xl flex flex-wrap gap-2 items-end">
                               <div className="flex-1 min-w-32">
                                 <label className="text-xs font-medium">Montant</label>
-                                <Input type="number" value={rembForm.montant} onChange={e => setRembForm({ ...rembForm, montant: e.target.value })} placeholder="0" className="mt-1 h-8" />
+                                <Input
+                                  type="number"
+                                  value={rembForm.montant}
+                                  onChange={e => setRembForm({ ...rembForm, montant: e.target.value })}
+                                  placeholder="0"
+                                  className="mt-1 h-8"
+                                />
                               </div>
                               <div className="flex-1 min-w-32">
                                 <label className="text-xs font-medium">Note</label>
-                                <Input value={rembForm.note} onChange={e => setRembForm({ ...rembForm, note: e.target.value })} placeholder="Optionnel" className="mt-1 h-8" />
+                                <Input
+                                  value={rembForm.note}
+                                  onChange={e => setRembForm({ ...rembForm, note: e.target.value })}
+                                  placeholder="Optionnel"
+                                  className="mt-1 h-8"
+                                />
                               </div>
-                              <Button size="sm" onClick={() => handleRemboursement(pret)} className="bg-green-600 hover:bg-green-700 text-white h-8">
+                              <Button
+                                size="sm"
+                                onClick={() => handleRemboursement(pret)}
+                                className="bg-green-600 hover:bg-green-700 text-white h-8"
+                              >
                                 Confirmer
                               </Button>
                             </div>
