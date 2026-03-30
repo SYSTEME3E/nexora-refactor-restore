@@ -156,7 +156,7 @@ function WhatsAppFloatingButton() {
         <div className="wa-tooltip">💬 Rejoignez la communauté</div>
 
         {/* Bouton */}
-        
+        <a
           href="https://chat.whatsapp.com/BCBOcRIFGr6LoRPyMiXRAp"
           target="_blank"
           rel="noopener noreferrer"
