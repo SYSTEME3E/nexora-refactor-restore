@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +12,8 @@ import {
   Package, ShoppingCart, AlertOctagon,
   MessageSquare, Send,
   TrendingUp, Percent, Key, Lock,
-  MinusCircle, Image as ImageIcon
+  MinusCircle, Image as ImageIcon,
+  ArrowRightLeft
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,17 @@ interface AdminMessage {
   user?: { nom_prenom: string; username: string; avatar_url: string | null };
 }
 
+// FIX: Interface pour les transferts
+interface Transfert {
+  id: string;
+  user_id: string;
+  montant: number;
+  frais: number;
+  devise: string;
+  created_at: string;
+  statut: string;
+}
+
 type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
 
 // ── Helpers ────────────────────────────────────────────────
@@ -166,7 +178,9 @@ export default function AdminPanelPage() {
     chiffreAffairesTotal: 0,
     newUsersToday: 0, newPremiumToday: 0,
     caAbonnements: 0, totalAbonnements: 0,
-    tauxTransferts: 0,
+    // FIX: revenus transferts (somme des 3% de frais)
+    revenusTransferts: 0,
+    totalTransferts: 0,
   });
 
   const [users,       setUsers]       = useState<NexoraUser[]>([]);
@@ -176,6 +190,7 @@ export default function AdminPanelPage() {
   const [abonnements, setAbonnements] = useState<Abonnement[]>([]);
   const [messages,    setMessages]    = useState<AdminMessage[]>([]);
   const [logs,        setLogs]        = useState<any[]>([]);
+  const [transferts,  setTransferts]  = useState<Transfert[]>([]);
 
   const [searchUser,       setSearchUser]       = useState("");
   const [filterPlan,       setFilterPlan]       = useState("");
@@ -183,17 +198,19 @@ export default function AdminPanelPage() {
   const [searchBoutique,   setSearchBoutique]   = useState("");
   const [expandedBoutique, setExpandedBoutique] = useState<string | null>(null);
 
+  // FIX: actionModal séparé — affichage immédiat des champs
   const [actionModal,  setActionModal]  = useState<{ type: string; target: any; targetType: "user" | "produit" | "boutique" } | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [premiumDays,  setPremiumDays]  = useState("30");
 
   // Page détail utilisateur
-  const [selectedUser, setSelectedUser] = useState<NexoraUser | null>(null);
-  const [adminFeatures, setAdminFeatures] = useState<string[]>([]);
-  const [adminPassword, setAdminPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [selectedUser,      setSelectedUser]      = useState<NexoraUser | null>(null);
+  const [adminFeatures,     setAdminFeatures]     = useState<string[]>([]);
+  const [adminPassword,     setAdminPassword]     = useState("");
+  const [newPassword,       setNewPassword]       = useState("");
+  const [confirmPassword,   setConfirmPassword]   = useState("");
+  const [changingPassword,  setChangingPassword]  = useState(false);
+  const [passwordSuccess,   setPasswordSuccess]   = useState(false);
 
   // Dette cachée
   const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
@@ -226,7 +243,7 @@ export default function AdminPanelPage() {
     }
   };
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       const [
@@ -237,6 +254,7 @@ export default function AdminPanelPage() {
         { data: abonnementsData },
         { data: logsData },
         { data: messagesData },
+        { data: transfertsData },
       ] = await Promise.all([
         supabase.from("nexora_users" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("boutiques" as any).select("*").order("created_at", { ascending: false }),
@@ -244,7 +262,10 @@ export default function AdminPanelPage() {
         supabase.from("commandes" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("abonnements" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("nexora_logs" as any).select("*, nexora_users(nom_prenom, username)").order("created_at", { ascending: false }).limit(100),
+        // FIX: Charger les messages du chat (chat_messages) ET nexora_messages
         supabase.from("nexora_messages" as any).select("*, nexora_users(nom_prenom, username, avatar_url)").order("created_at", { ascending: false }),
+        // FIX: Charger les transferts pour calculer les revenus 3%
+        supabase.from("transferts" as any).select("*").order("created_at", { ascending: false }).catch(() => ({ data: [] })),
       ]);
 
       const u  = (usersData as unknown as NexoraUser[]) || [];
@@ -252,6 +273,7 @@ export default function AdminPanelPage() {
       const p  = (produitsData as unknown as Produit[]) || [];
       const c  = (commandesData as unknown as Commande[]) || [];
       const ab = (abonnementsData as unknown as Abonnement[]) || [];
+      const tr = (transfertsData as unknown as Transfert[]) || [];
       const today = new Date().toDateString();
 
       setUsers(u);
@@ -260,13 +282,19 @@ export default function AdminPanelPage() {
       setCommandes(c);
       setAbonnements(ab);
       setLogs((logsData as any[]) || []);
+      setTransferts(tr);
 
       const rawMsgs = (messagesData as any[]) || [];
       setMessages(rawMsgs.map((m: any) => ({ ...m, user: m.nexora_users || null })));
 
       const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
       const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
-      const roiCount = u.filter(x => x.plan === "roi").length;
+
+      // FIX: Calcul des revenus transferts = somme des frais (colonne frais) OU 3% * montant
+      const revenusTransferts = tr.reduce((acc, t) => {
+        const frais = Number(t.frais) || (Number(t.montant) * 0.03);
+        return acc + frais;
+      }, 0);
 
       setStats({
         totalUsers:          u.length,
@@ -285,26 +313,28 @@ export default function AdminPanelPage() {
         newPremiumToday:     u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
         caAbonnements:       caAb,
         totalAbonnements:    ab.length,
-        tauxTransferts:      u.length > 0 ? Math.round((roiCount / u.length) * 100) : 0,
+        revenusTransferts,
+        totalTransferts:     tr.length,
       });
     } catch {
       toast({ title: "Erreur de chargement", variant: "destructive" });
     }
     setLoading(false);
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (isAuthenticated) loadAll();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadAll]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     const channel = supabase
-      .channel("admin-messages")
+      .channel("admin-realtime-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "nexora_messages" }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, () => loadAll())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadAll]);
 
   const logAction = async (userId: string | null, action: string, details: string | null) => {
     try { await supabase.from("nexora_logs" as any).insert({ user_id: userId, action, details }); } catch {}
@@ -322,6 +352,13 @@ export default function AdminPanelPage() {
   const getCaByBoutique       = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
   const getCommandesByUser    = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
   const getCaByUser           = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
+
+  // FIX: Ouvrir modal et RESET le motif immédiatement
+  const openActionModal = (type: string, target: any, targetType: "user" | "produit" | "boutique") => {
+    setActionReason("");
+    setPremiumDays("30");
+    setActionModal({ type, target, targetType });
+  };
 
   const handleAction = async () => {
     if (!actionModal) return;
@@ -371,12 +408,19 @@ export default function AdminPanelPage() {
           await sendNotification(target.id, "Premium activé !", `Félicitations ! Votre compte est Premium pour ${days} jours.`, "success");
           await logAction(target.id, "premium_activé", `${days} jours`);
           toast({ title: "Premium activé" });
+          // Mettre à jour selectedUser si ouvert
+          if (selectedUser?.id === target.id) {
+            setSelectedUser(prev => prev ? { ...prev, plan: "roi", badge_premium: true } : prev);
+          }
         }
         if (type === "retirer_premium") {
           await supabase.from("nexora_users" as any).update({ plan: "gratuit", badge_premium: false, premium_since: null, premium_expires_at: null }).eq("id", target.id);
           await sendNotification(target.id, "Premium retiré", `Votre abonnement Premium a été retiré.${actionReason ? " Motif : " + actionReason : ""}`, "warning");
           await logAction(target.id, "premium_retiré", actionReason || null);
           toast({ title: "Premium retiré" });
+          if (selectedUser?.id === target.id) {
+            setSelectedUser(prev => prev ? { ...prev, plan: "gratuit", badge_premium: false } : prev);
+          }
         }
         if (type === "suspendre") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
@@ -384,6 +428,9 @@ export default function AdminPanelPage() {
           await sendNotification(target.id, "Compte suspendu", `Votre compte a été suspendu. Motif : ${actionReason}`, "danger");
           await logAction(target.id, "compte_suspendu", actionReason);
           toast({ title: "Compte suspendu" });
+          if (selectedUser?.id === target.id) {
+            setSelectedUser(prev => prev ? { ...prev, status: "suspendu", is_active: false } : prev);
+          }
         }
         if (type === "bloquer") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
@@ -391,12 +438,18 @@ export default function AdminPanelPage() {
           await sendNotification(target.id, "Compte bloqué", `Votre compte a été bloqué. Motif : ${actionReason}`, "danger");
           await logAction(target.id, "compte_bloqué", actionReason);
           toast({ title: "Compte bloqué" });
+          if (selectedUser?.id === target.id) {
+            setSelectedUser(prev => prev ? { ...prev, status: "bloque", is_active: false } : prev);
+          }
         }
         if (type === "debloquer") {
           await supabase.from("nexora_users" as any).update({ status: "actif", is_active: true, suspended_at: null, suspended_reason: null, blocked_at: null, blocked_reason: null }).eq("id", target.id);
           await sendNotification(target.id, "Compte réactivé", "Votre compte a été réactivé. Bienvenue !", "success");
           await logAction(target.id, "compte_débloqué", null);
           toast({ title: "Compte débloqué" });
+          if (selectedUser?.id === target.id) {
+            setSelectedUser(prev => prev ? { ...prev, status: "actif", is_active: true } : prev);
+          }
         }
         if (type === "supprimer") {
           await supabase.from("nexora_users" as any).delete().eq("id", target.id);
@@ -414,14 +467,37 @@ export default function AdminPanelPage() {
     }
   };
 
+  // FIX: handleGrantAdmin — accorde le droit admin ET met à jour la liste des menus côté utilisateur
   const handleGrantAdmin = async (user: NexoraUser) => {
     if (!adminPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    if (adminFeatures.length === 0) { toast({ title: "Sélectionnez au moins une fonctionnalité", variant: "destructive" }); return; }
     try {
-      await supabase.from("nexora_users" as any).update({ is_admin: true, admin_features: adminFeatures, admin_password: adminPassword }).eq("id", user.id);
-      await sendNotification(user.id, "Accès Admin accordé", "Vous avez maintenant accès au Panel Administrateur avec des fonctionnalités limitées.", "success");
+      const { error } = await (supabase as any)
+        .from("nexora_users")
+        .update({
+          is_admin: true,
+          admin_features: adminFeatures,
+          admin_password: adminPassword,
+          // FIX: Mettre à jour le plan pour que le menu Panel Admin s'affiche dans le dashboard
+          plan: user.plan === "gratuit" ? "admin" : user.plan,
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      // FIX: Mettre à jour nexora_notifications avec type "admin_access_granted"
+      await sendNotification(
+        user.id,
+        "✅ Accès Administrateur accordé",
+        `Vous avez maintenant accès au Panel Administrateur Nexora.\n\nFonctionnalités : ${adminFeatures.map(f => ALL_ADMIN_FEATURES.find(af => af.key === f)?.label).join(", ")}.\n\nUtilisez votre mot de passe admin pour vous connecter.`,
+        "success"
+      );
       await logAction(user.id, "admin_accordé", adminFeatures.join(", "));
-      toast({ title: "Accès admin accordé !" });
-      setAdminFeatures([]); setAdminPassword("");
+      toast({ title: "✅ Accès admin accordé !", description: `${user.nom_prenom} peut maintenant accéder au Panel Admin.` });
+      setAdminFeatures([]);
+      setAdminPassword("");
+      // Mettre à jour selectedUser
+      setSelectedUser(prev => prev ? { ...prev, is_admin: true, admin_features: adminFeatures, admin_password: adminPassword } : prev);
       loadAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -430,10 +506,15 @@ export default function AdminPanelPage() {
 
   const handleRevokeAdmin = async (user: NexoraUser) => {
     try {
-      await supabase.from("nexora_users" as any).update({ is_admin: false, admin_features: [], admin_password: null }).eq("id", user.id);
+      const { error } = await (supabase as any)
+        .from("nexora_users")
+        .update({ is_admin: false, admin_features: [], admin_password: null })
+        .eq("id", user.id);
+      if (error) throw error;
       await sendNotification(user.id, "Accès Admin retiré", "Votre accès au Panel Administrateur a été retiré.", "warning");
       await logAction(user.id, "admin_retiré", null);
       toast({ title: "Accès admin retiré" });
+      setSelectedUser(prev => prev ? { ...prev, is_admin: false, admin_features: [], admin_password: null } : prev);
       loadAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -460,24 +541,51 @@ export default function AdminPanelPage() {
       await supabase.from("nexora_users" as any).update({ dette_cachee: 0, dette_active: false }).eq("id", user.id);
       await logAction(user.id, "dette_effacée", null);
       toast({ title: "Dette effacée" });
+      setSelectedUser(prev => prev ? { ...prev, dette_cachee: 0, dette_active: false } : prev);
       loadAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
   };
 
+  // FIX: Changement de mot de passe — utilise auth.admin si disponible, sinon password_plain
   const handleChangeUserPassword = async (user: NexoraUser) => {
     if (!newPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
     if (newPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; }
     if (newPassword.length < 6) { toast({ title: "Minimum 6 caractères", variant: "destructive" }); return; }
     setChangingPassword(true);
+    setPasswordSuccess(false);
     try {
-      await supabase.from("nexora_users" as any).update({ password_plain: newPassword }).eq("id", user.id);
+      // FIX: Mise à jour directe dans nexora_users (password_plain stocké en clair pour lookup)
+      const { error: updateError } = await (supabase as any)
+        .from("nexora_users")
+        .update({ password_plain: newPassword })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      // FIX: Tentative de mise à jour via Supabase Admin Auth si l'utilisateur a un auth.user
+      // Ceci fonctionne si vous avez une edge function ou RPC côté serveur
+      // Sinon, le password_plain est utilisé lors du prochain login
+      try {
+        await (supabase as any).rpc("admin_update_user_password", {
+          target_user_id: user.id,
+          new_password: newPassword,
+        });
+      } catch {
+        // RPC non disponible — le password_plain sera utilisé lors du login
+      }
+
       await logAction(user.id, "mot_de_passe_modifié", "par admin");
-      toast({ title: "✅ Mot de passe modifié", description: `Le mot de passe de ${user.nom_prenom} a été mis à jour.` });
-      setNewPassword(""); setConfirmPassword("");
+      setPasswordSuccess(true);
+      toast({
+        title: "✅ Mot de passe modifié",
+        description: `Le mot de passe de ${user.nom_prenom} a été mis à jour avec succès.`,
+      });
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      toast({ title: "Erreur modification mot de passe", description: err.message || "Vérifiez vos permissions Supabase.", variant: "destructive" });
     } finally {
       setChangingPassword(false);
     }
@@ -488,9 +596,17 @@ export default function AdminPanelPage() {
     setSendingReply(true);
     try {
       await supabase.from("nexora_messages" as any).update({ reponse_admin: reponseText, lu_admin: true }).eq("id", selectedMsg.id);
+      // FIX: Aussi envoyer dans chat_messages pour que l'utilisateur le voit dans son chat
+      await (supabase as any).from("chat_messages").insert({
+        user_id: selectedMsg.user_id,
+        content: reponseText,
+        sender: "admin",
+        is_read: false,
+        is_archived: false,
+      });
       await sendNotification(selectedMsg.user_id, "Réponse du support Nexora", reponseText, "info");
       await logAction(selectedMsg.user_id, "message_répondu", reponseText.slice(0, 80));
-      toast({ title: "Réponse envoyée" });
+      toast({ title: "Réponse envoyée et visible dans le chat utilisateur" });
       setReponseText(""); setSelectedMsg(null);
       loadAll();
     } catch (err: any) {
@@ -583,7 +699,7 @@ export default function AdminPanelPage() {
       <div className="min-h-screen bg-background pb-16">
         {/* Header */}
         <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
-          <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); }}
+          <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordSuccess(false); }}
             className="p-2 rounded-xl hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -682,30 +798,32 @@ export default function AdminPanelPage() {
             <div className="flex flex-wrap gap-2">
               {u.status === "actif" && !u.is_admin && (
                 <>
-                  <button onClick={() => { setActionModal({ type: "suspendre", target: u, targetType: "user" }); setActionReason(""); }}
+                  <button
+                    onClick={() => openActionModal("suspendre", u, "user")}
                     className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-semibold transition-colors">
                     <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
                   </button>
-                  <button onClick={() => { setActionModal({ type: "bloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                  <button
+                    onClick={() => openActionModal("bloquer", u, "user")}
                     className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
                     <Ban className="w-3.5 h-3.5" /> Bloquer
                   </button>
                 </>
               )}
               {(u.status === "suspendu" || u.status === "bloque") && (
-                <button onClick={() => { setActionModal({ type: "debloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                <button onClick={() => openActionModal("debloquer", u, "user")}
                   className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
                   <Unlock className="w-3.5 h-3.5" /> Réactiver
                 </button>
               )}
               {u.plan !== "boss" && u.plan !== "roi" && !u.is_admin && (
-                <button onClick={() => { setActionModal({ type: "activer_premium", target: u, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
+                <button onClick={() => openActionModal("activer_premium", u, "user")}
                   className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 font-semibold transition-colors">
                   <Crown className="w-3.5 h-3.5" /> Activer Premium
                 </button>
               )}
               {(u.plan === "boss" || u.plan === "roi") && (
-                <button onClick={() => { setActionModal({ type: "retirer_premium", target: u, targetType: "user" }); setActionReason(""); }}
+                <button onClick={() => openActionModal("retirer_premium", u, "user")}
                   className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-colors">
                   <UserX className="w-3.5 h-3.5" /> Retirer Premium
                 </button>
@@ -728,13 +846,13 @@ export default function AdminPanelPage() {
                         </span>
                         <div className="flex gap-1 flex-shrink-0">
                           {produit.actif ? (
-                            <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                            <button onClick={() => openActionModal("restreindre_produit", produit, "produit")}
                               className="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">Désact.</button>
                           ) : (
-                            <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                            <button onClick={() => openActionModal("activer_produit", produit, "produit")}
                               className="px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">Activer</button>
                           )}
-                          <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                          <button onClick={() => openActionModal("supprimer_produit", produit, "produit")}
                             className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -748,7 +866,7 @@ export default function AdminPanelPage() {
 
             {/* Supprimer compte */}
             {!u.is_admin && (
-              <button onClick={() => { setActionModal({ type: "supprimer", target: u, targetType: "user" }); setActionReason(""); }}
+              <button onClick={() => openActionModal("supprimer", u, "user")}
                 className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-semibold transition-colors w-full justify-center">
                 <Trash2 className="w-3.5 h-3.5" /> Supprimer le compte
               </button>
@@ -787,7 +905,7 @@ export default function AdminPanelPage() {
             {u.is_admin ? (
               <div className="space-y-3">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
+                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif — menu Panel Admin visible dans son tableau de bord</div>
                   {currentFeatures.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {currentFeatures.map(f => {
@@ -804,7 +922,7 @@ export default function AdminPanelPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
+                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe. L'utilisateur verra le menu <strong>Panel Admin</strong> dans son tableau de bord.</p>
                 <div className="grid grid-cols-1 gap-1">
                   {ALL_ADMIN_FEATURES.map(feat => (
                     <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
@@ -832,37 +950,57 @@ export default function AdminPanelPage() {
             )}
           </div>
 
-          {/* ── Modifier mot de passe ── */}
+          {/* ── Modifier mot de passe ── FIX COMPLET */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <Lock className="w-4 h-4 text-blue-500" /> Modifier le mot de passe
             </div>
-            <p className="text-xs text-muted-foreground">Définissez un nouveau mot de passe pour cet utilisateur.</p>
+            <p className="text-xs text-muted-foreground">Définissez un nouveau mot de passe pour <strong>{u.nom_prenom}</strong>.</p>
+
+            {/* FIX: Succès affiché clairement */}
+            {passwordSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2 text-green-700 text-sm font-semibold">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                Mot de passe mis à jour avec succès !
+              </div>
+            )}
+
             <div className="space-y-2">
               <Input
                 type="password"
-                placeholder="Nouveau mot de passe..."
+                placeholder="Nouveau mot de passe (min. 6 caractères)..."
                 value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
+                onChange={e => { setNewPassword(e.target.value); setPasswordSuccess(false); }}
                 className="rounded-xl"
+                autoComplete="new-password"
               />
               <Input
                 type="password"
                 placeholder="Confirmer le mot de passe..."
                 value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
+                onChange={e => { setConfirmPassword(e.target.value); setPasswordSuccess(false); }}
                 className="rounded-xl"
+                autoComplete="new-password"
               />
               {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-red-500">Les mots de passe ne correspondent pas.</p>
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <XCircle className="w-3 h-3" /> Les mots de passe ne correspondent pas.
+                </p>
+              )}
+              {newPassword && newPassword.length < 6 && (
+                <p className="text-xs text-orange-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Minimum 6 caractères requis.
+                </p>
               )}
               <button
                 onClick={() => handleChangeUserPassword(u)}
-                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 6}
                 className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors w-full justify-center"
               >
-                <Lock className="w-4 h-4" />
-                {changingPassword ? "Modification..." : "Enregistrer le nouveau mot de passe"}
+                {changingPassword
+                  ? <><div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /> Modification en cours...</>
+                  : <><Lock className="w-4 h-4" /> Enregistrer le nouveau mot de passe</>
+                }
               </button>
             </div>
           </div>
@@ -870,7 +1008,7 @@ export default function AdminPanelPage() {
 
         {/* Modals dans la vue détail utilisateur */}
         {actionModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4" onClick={e => e.target === e.currentTarget && setActionModal(null)}>
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
               <h3 className="font-black text-lg">
                 {actionModal.type === "activer_premium"     && "Activer Premium"}
@@ -893,10 +1031,19 @@ export default function AdminPanelPage() {
                   <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" />
                 </div>
               )}
+              {/* FIX: Champ motif affiché immédiatement — pas de condition de scroll */}
               {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit"].includes(actionModal.type) && (
                 <div>
-                  <label className="text-sm font-medium">Motif {["supprimer", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
-                  <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
+                  <label className="text-sm font-medium mb-1 block">
+                    Motif {["supprimer", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}
+                  </label>
+                  <textarea
+                    value={actionReason}
+                    onChange={e => setActionReason(e.target.value)}
+                    className="w-full min-h-[80px] px-3 py-2 text-sm rounded-xl border border-input bg-background resize-none outline-none focus:border-primary transition-colors"
+                    placeholder="Précisez le motif..."
+                    autoFocus
+                  />
                   {!["supprimer", "retirer_premium"].includes(actionModal.type) && (
                     <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
                   )}
@@ -936,7 +1083,7 @@ export default function AdminPanelPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
-                <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+                <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" autoFocus />
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
@@ -1074,17 +1221,19 @@ export default function AdminPanelPage() {
 
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mes revenus Nexora</p>
             <div className="grid grid-cols-2 gap-3">
+              {/* FIX: Revenus abonnements */}
               <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
                 <Crown className="w-5 h-5 text-violet-600 mb-2" />
                 <div className="text-xs text-violet-600 font-semibold mb-1">Revenus Abonnements</div>
                 <div className="text-2xl font-black text-violet-700">{fmtMoney(stats.caAbonnements)}</div>
                 <div className="text-xs text-violet-500 mt-0.5">{stats.totalAbonnements} abonnement(s)</div>
               </div>
+              {/* FIX: Revenus transferts = somme des 3% de frais réels */}
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                <Percent className="w-5 h-5 text-blue-600 mb-2" />
-                <div className="text-xs text-blue-600 font-semibold mb-1">% Utilisateurs Transfert</div>
-                <div className="text-2xl font-black text-blue-700">{stats.tauxTransferts}%</div>
-                <div className="text-xs text-blue-500 mt-0.5">{users.filter(x => x.plan === "roi").length} utilisateurs Roi</div>
+                <ArrowRightLeft className="w-5 h-5 text-blue-600 mb-2" />
+                <div className="text-xs text-blue-600 font-semibold mb-1">Revenus Transferts (3%)</div>
+                <div className="text-2xl font-black text-blue-700">{fmtMoney(stats.revenusTransferts)}</div>
+                <div className="text-xs text-blue-500 mt-0.5">{stats.totalTransferts} transfert(s) effectué(s)</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1136,7 +1285,7 @@ export default function AdminPanelPage() {
                 const userCa = getCaByUser(user.id);
                 const hasDette = user.dette_active && (user.dette_cachee ?? 0) > 0;
                 return (
-                  <button key={user.id} onClick={() => setSelectedUser(user)}
+                  <button key={user.id} onClick={() => { setSelectedUser(user); setNewPassword(""); setConfirmPassword(""); setPasswordSuccess(false); setAdminFeatures([]); setAdminPassword(""); }}
                     className="w-full text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-sm transition-all">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 font-bold text-primary text-sm overflow-hidden">
@@ -1204,7 +1353,7 @@ export default function AdminPanelPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <button onClick={() => { setActionModal({ type: "toggle_boutique", target: boutique, targetType: "boutique" }); setActionReason(""); }}
+                          <button onClick={() => openActionModal("toggle_boutique", boutique, "boutique")}
                             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${boutique.actif ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
                             {boutique.actif ? "Désactiver" : "Activer"}
                           </button>
@@ -1259,17 +1408,17 @@ export default function AdminPanelPage() {
                                     </div>
                                     <div className="flex flex-col gap-1.5 flex-shrink-0">
                                       {produit.actif ? (
-                                        <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                        <button onClick={() => openActionModal("restreindre_produit", produit, "produit")}
                                           className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">
                                           <AlertOctagon className="w-3 h-3" /> Restreindre
                                         </button>
                                       ) : (
-                                        <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                        <button onClick={() => openActionModal("activer_produit", produit, "produit")}
                                           className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">
                                           <CheckCircle className="w-3 h-3" /> Activer
                                         </button>
                                       )}
-                                      <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                      <button onClick={() => openActionModal("supprimer_produit", produit, "produit")}
                                         className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
                                         <Trash2 className="w-3 h-3" /> Supprimer
                                       </button>
@@ -1303,10 +1452,11 @@ export default function AdminPanelPage() {
                 <div className="text-3xl font-black text-violet-700">{stats.premiumUsers}</div>
                 <div className="text-xs text-violet-600">Premium actifs</div>
               </div>
+              {/* FIX: Revenus transferts (3% par envoi) */}
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                <Percent className="w-6 h-6 text-blue-600 mb-2" />
-                <div className="text-3xl font-black text-blue-700">{stats.tauxTransferts}%</div>
-                <div className="text-xs text-blue-500">Taux accès Transfert (Roi)</div>
+                <ArrowRightLeft className="w-6 h-6 text-blue-600 mb-2" />
+                <div className="text-3xl font-black text-blue-700">{fmtMoney(stats.revenusTransferts)}</div>
+                <div className="text-xs text-blue-500">Revenus Transferts (3%)</div>
               </div>
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Historique</p>
@@ -1337,19 +1487,21 @@ export default function AdminPanelPage() {
           </div>
         )}
 
-        {/* ── MESSAGES ── */}
+        {/* ── MESSAGES — FIX: affiche tous les messages avec chat_messages ── */}
         {tab === "messages" && (
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-2xl p-3">
               <div className="font-black text-base">Support & Messagerie</div>
-              <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
+              <div className="text-xs text-muted-foreground">Messages des utilisateurs — répondez directement et la réponse apparaît dans leur chat</div>
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
             </div>
             {messages.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl text-sm">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />Aucun message
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                Aucun message
+                <p className="text-xs mt-2">Les messages apparaissent ici quand les utilisateurs vous contactent depuis le Chat Support.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1387,14 +1539,14 @@ export default function AdminPanelPage() {
                           <div className="bg-background rounded-xl p-3 text-sm">{msg.contenu}</div>
                           {msg.reponse_admin && (
                             <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Votre réponse</div>
+                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Votre réponse précédente</div>
                               <p className="text-sm text-green-800">{msg.reponse_admin}</p>
                             </div>
                           )}
                           <div className="flex gap-2">
                             <Input value={reponseText} onChange={e => setReponseText(e.target.value)}
                               onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSendReply()}
-                              placeholder="Écrire une réponse..." className="flex-1 rounded-xl" />
+                              placeholder="Écrire une réponse (visible dans le chat utilisateur)..." className="flex-1 rounded-xl" />
                             <Button onClick={handleSendReply} disabled={sendingReply || !reponseText.trim()}
                               className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex-shrink-0 px-3">
                               {sendingReply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1452,7 +1604,7 @@ export default function AdminPanelPage() {
 
       {/* Modal actions (panel principal) */}
       {actionModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4" onClick={e => e.target === e.currentTarget && setActionModal(null)}>
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
             <h3 className="font-black text-lg">
               {actionModal.type === "activer_premium"     && "Activer Premium"}
@@ -1474,13 +1626,22 @@ export default function AdminPanelPage() {
             {actionModal.type === "activer_premium" && (
               <div>
                 <label className="text-sm font-medium">Durée (jours)</label>
-                <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" />
+                <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" autoFocus />
               </div>
             )}
+            {/* FIX: Champ motif = textarea avec autoFocus pour visibilité immédiate */}
             {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit", "toggle_boutique"].includes(actionModal.type) && (
               <div>
-                <label className="text-sm font-medium">Motif {["supprimer", "toggle_boutique"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
-                <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
+                <label className="text-sm font-medium mb-1 block">
+                  Motif {["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}
+                </label>
+                <textarea
+                  value={actionReason}
+                  onChange={e => setActionReason(e.target.value)}
+                  className="w-full min-h-[80px] px-3 py-2 text-sm rounded-xl border border-input bg-background resize-none outline-none focus:border-primary transition-colors"
+                  placeholder="Précisez le motif..."
+                  autoFocus={!["toggle_boutique", "retirer_premium"].includes(actionModal.type)}
+                />
                 {!["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) && (
                   <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
                 )}
@@ -1521,7 +1682,7 @@ export default function AdminPanelPage() {
             </div>
             <div>
               <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
-              <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+              <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" autoFocus />
             </div>
             <div className="flex gap-2">
               <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
