@@ -15,6 +15,7 @@ import NexoraNotifications from "@/components/NexoraNotifications";
 import ChatWidget from "@/components/ChatWidget";
 import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 
+
 const getNavItems = (isAdmin: boolean) => {
   const items = [
     { path: "/",                 icon: Home,            label: "Accueil",             color: "text-indigo-400",  bg: "bg-indigo-400/10"  },
