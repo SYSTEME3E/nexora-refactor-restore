@@ -12,56 +12,41 @@ interface Notification {
   created_at: string;
 }
 
-const TYPE_CONFIG: Record<string, { bg: string; icon: any; color: string }> = {
-  success:  { bg: "bg-green-50 border-green-200",   icon: CheckCircle,   color: "text-green-600"  },
-  warning:  { bg: "bg-yellow-50 border-yellow-200",  icon: AlertTriangle, color: "text-yellow-600" },
-  danger:   { bg: "bg-red-50 border-red-200",        icon: XCircle,       color: "text-red-600"    },
-  info:     { bg: "bg-blue-50 border-blue-200",       icon: Info,          color: "text-blue-600"   },
-  commande: { bg: "bg-pink-50 border-pink-200",       icon: ShoppingBag,   color: "text-pink-600"   },
+const TYPE_CONFIG: Record<string, { bg: string; icon: any; color: string; darkBg: string }> = {
+  success:  { bg: "bg-green-50 border-green-200",   darkBg: "dark:bg-green-950/50 dark:border-green-800",   icon: CheckCircle,   color: "text-green-600 dark:text-green-400"  },
+  warning:  { bg: "bg-yellow-50 border-yellow-200",  darkBg: "dark:bg-yellow-950/50 dark:border-yellow-800", icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400" },
+  danger:   { bg: "bg-red-50 border-red-200",        darkBg: "dark:bg-red-950/50 dark:border-red-800",       icon: XCircle,       color: "text-red-600 dark:text-red-400"    },
+  info:     { bg: "bg-blue-50 border-blue-200",      darkBg: "dark:bg-blue-950/50 dark:border-blue-800",     icon: Info,          color: "text-blue-600 dark:text-blue-400"    },
+  commande: { bg: "bg-pink-50 border-pink-200",      darkBg: "dark:bg-pink-950/50 dark:border-pink-800",     icon: ShoppingBag,   color: "text-pink-600 dark:text-pink-400"    },
 };
 
-// ── Son de notification commande ─────────────────────────
 function playOrderSound() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-
     const playTone = (freq: number, start: number, duration: number, volume = 0.3) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination); osc.type = "sine";
       osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
       gain.gain.setValueAtTime(0, ctx.currentTime + start);
       gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + start + 0.02);
       gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration + 0.05);
+      osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + duration + 0.05);
     };
-
-    // Mélodie joyeuse : Do-Mi-Sol-Do
-    playTone(523, 0.0,  0.15, 0.3);
-    playTone(659, 0.18, 0.15, 0.3);
-    playTone(784, 0.36, 0.15, 0.3);
-    playTone(1047, 0.54, 0.3, 0.4);
+    playTone(523, 0.0, 0.15, 0.3); playTone(659, 0.18, 0.15, 0.3);
+    playTone(784, 0.36, 0.15, 0.3); playTone(1047, 0.54, 0.3, 0.4);
   } catch {}
 }
 
-// ── Son générique notification ────────────────────────────
 function playNotifSound() {
   try {
-    const ctx  = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination); osc.type = "sine";
     osc.frequency.setValueAtTime(880, ctx.currentTime);
     osc.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35);
   } catch {}
 }
 
@@ -71,6 +56,7 @@ export default function NexoraNotifications() {
   const [open, setOpen]       = useState(false);
   const [visible, setVisible] = useState<Notification | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
 
   const loadNotifs = async () => {
     if (!user?.id) return;
@@ -83,62 +69,38 @@ export default function NexoraNotifications() {
     setNotifications((data as unknown as Notification[]) || []);
   };
 
-  // ── Écoute des nouvelles commandes en temps réel ─────────
   useEffect(() => {
     if (!user?.id) return;
     loadNotifs();
 
-    // Écoute notifications générales
     const notifChannel = supabase
       .channel("notifs_" + user.id)
       .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
+        event: "INSERT", schema: "public",
         table: "nexora_notifications",
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const notif = payload.new as Notification;
         setNotifications(prev => [notif, ...prev]);
         showToast(notif);
-        if (notif.type === "commande") {
-          playOrderSound();
-        } else {
-          playNotifSound();
-        }
+        if (notif.type === "commande") playOrderSound();
+        else playNotifSound();
       })
       .subscribe();
 
-    // Écoute des nouvelles commandes dans les boutiques du vendeur
     const commandeChannel = supabase
       .channel("commandes_vendeur_" + user.id)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "commandes",
-      }, async (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "commandes" }, async (payload) => {
         const cmd = payload.new as any;
-
-        // Vérifier que la commande appartient à une boutique de cet utilisateur
-        const { data: boutique } = await supabase
-          .from("boutiques" as any)
-          .select("id, nom")
-          .eq("id", cmd.boutique_id)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!boutique) return; // pas sa boutique
-
-        // Créer la notification en base
-        const newNotif = {
+        const { data: boutique } = await supabase.from("boutiques" as any)
+          .select("id, nom").eq("id", cmd.boutique_id).eq("user_id", user.id).maybeSingle();
+        if (!boutique) return;
+        await supabase.from("nexora_notifications" as any).insert({
           user_id: user.id,
           titre: "Nouvelle commande reçue !",
-          message: `${cmd.client_nom} vient de passer une commande de ${Math.round(cmd.total).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ${cmd.devise || "FCFA"} sur ${(boutique as any).nom}`,
-          type: "commande",
-          lu: false,
-        };
-
-        await supabase.from("nexora_notifications" as any).insert(newNotif);
-        // Le canal notifChannel ci-dessus détectera l'insertion et jouera le son
+          message: `${cmd.client_nom} vient de commander ${Math.round(cmd.total).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ${cmd.devise || "FCFA"} sur ${(boutique as any).nom}`,
+          type: "commande", lu: false,
+        });
       })
       .subscribe();
 
@@ -161,10 +123,7 @@ export default function NexoraNotifications() {
 
   const markAllRead = async () => {
     if (!user?.id) return;
-    await supabase.from("nexora_notifications" as any)
-      .update({ lu: true })
-      .eq("user_id", user.id)
-      .eq("lu", false);
+    await supabase.from("nexora_notifications" as any).update({ lu: true }).eq("user_id", user.id).eq("lu", false);
     setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
   };
 
@@ -178,25 +137,25 @@ export default function NexoraNotifications() {
 
   return (
     <>
-      {/* ── Toast flottant ── */}
+      {/* ── Toast flottant (au-dessus de tout) ── */}
       {visible && (() => {
-        const cfg  = TYPE_CONFIG[visible.type] || TYPE_CONFIG.info;
+        const cfg = TYPE_CONFIG[visible.type] || TYPE_CONFIG.info;
         const Icon = cfg.icon;
         return (
           <div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[92vw] max-w-sm border-2 rounded-2xl p-4 shadow-2xl flex items-start gap-3 ${cfg.bg}`}
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[92vw] max-w-sm border-2 rounded-2xl p-4 shadow-2xl flex items-start gap-3 ${cfg.bg} ${cfg.darkBg}`}
             style={{ animation: "slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1)" }}
           >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${visible.type === "commande" ? "bg-pink-100" : "bg-white"} shadow-sm`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${visible.type === "commande" ? "bg-pink-100 dark:bg-pink-900/50" : "bg-white dark:bg-gray-800"} shadow-sm`}>
               <Icon className={`w-5 h-5 ${cfg.color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-black text-sm text-gray-900">{visible.titre}</p>
-              <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{visible.message}</p>
+              <p className="font-black text-sm text-gray-900 dark:text-gray-100">{visible.titre}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">{visible.message}</p>
             </div>
             <button
               onClick={() => { if (toastTimer.current) clearTimeout(toastTimer.current); setVisible(null); }}
-              className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 transition-colors"
+              className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
             >
               <X className="w-4 h-4 text-gray-400" />
             </button>
@@ -215,9 +174,9 @@ export default function NexoraNotifications() {
       <div className="relative">
         <button
           onClick={() => { setOpen(!open); if (!open) loadNotifs(); }}
-          className="relative p-2 rounded-xl hover:bg-muted transition-colors"
+          className="relative p-2 rounded-xl hover:bg-muted dark:hover:bg-gray-800 transition-colors"
         >
-          <Bell className={`w-5 h-5 ${unreadCount > 0 ? "text-primary" : ""}`} />
+          <Bell className={`w-5 h-5 ${unreadCount > 0 ? "text-primary" : "dark:text-gray-300"}`} />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -225,27 +184,39 @@ export default function NexoraNotifications() {
           )}
         </button>
 
+        {/* ── Panel notifications — z-[9990] pour être AU-DESSUS du dashboard ── */}
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 top-12 z-50 w-80 max-h-[80vh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Overlay qui ferme le panel sans bloquer l'UI derrière */}
+            <div className="fixed inset-0 z-[9980]" onClick={() => setOpen(false)} />
 
-              {/* Header */}
-              <div className="p-4 border-b border-border flex items-center justify-between">
+            <div
+              ref={panelRef}
+              className="absolute right-0 top-12 z-[9990] w-80 max-h-[80vh] bg-card dark:bg-gray-900 border border-border dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              style={{ maxHeight: "min(80vh, 520px)" }}
+            >
+              {/* Header panel */}
+              <div className="p-4 border-b border-border dark:border-gray-700 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-primary" />
-                  <span className="font-black text-sm">Notifications</span>
+                  <span className="font-black text-sm dark:text-gray-100">Notifications</span>
                   {unreadCount > 0 && (
                     <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">
                       {unreadCount}
                     </span>
                   )}
                 </div>
-                {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-primary hover:underline font-medium">
-                    Tout lire
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-primary hover:underline font-medium">
+                      Tout lire
+                    </button>
+                  )}
+                  <button onClick={() => setOpen(false)}
+                    className="p-1 rounded-lg hover:bg-muted dark:hover:bg-gray-800 transition-colors">
+                    <X className="w-4 h-4 text-muted-foreground" />
                   </button>
-                )}
+                </div>
               </div>
 
               {/* Liste */}
@@ -262,15 +233,15 @@ export default function NexoraNotifications() {
                     <div
                       key={notif.id}
                       onClick={() => markAsRead(notif.id)}
-                      className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors group ${!notif.lu ? "bg-primary/5" : ""}`}
+                      className={`p-4 border-b border-border dark:border-gray-700 cursor-pointer hover:bg-muted/50 dark:hover:bg-gray-800 transition-colors group ${!notif.lu ? "bg-primary/5 dark:bg-primary/10" : ""}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border-2 ${cfg.bg} shadow-sm`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border-2 ${cfg.bg} ${cfg.darkBg} shadow-sm`}>
                           <Icon className={`w-4 h-4 ${cfg.color}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-1">
-                            <p className={`text-sm font-bold leading-tight ${!notif.lu ? "text-foreground" : "text-muted-foreground"}`}>
+                            <p className={`text-sm font-bold leading-tight ${!notif.lu ? "text-foreground dark:text-gray-100" : "text-muted-foreground dark:text-gray-400"}`}>
                               {notif.titre}
                             </p>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -283,8 +254,8 @@ export default function NexoraNotifications() {
                               </button>
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{notif.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5 leading-relaxed">{notif.message}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
                             {new Date(notif.created_at).toLocaleDateString("fr-FR", {
                               day: "2-digit", month: "short",
                               hour: "2-digit", minute: "2-digit"
@@ -296,7 +267,6 @@ export default function NexoraNotifications() {
                   );
                 })}
               </div>
-
             </div>
           </>
         )}
