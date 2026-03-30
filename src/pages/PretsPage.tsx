@@ -18,6 +18,7 @@ interface Pret {
   id: string;
   type: TypePret;
   nom_personne: string;
+  nom_preteur: string | null;
   montant: number;
   montant_rembourse: number;
   devise: Devise;
@@ -70,8 +71,14 @@ async function generatePDF(pret: Pret) {
 
   const user = getNexoraUser();
   const userName = user?.nom_prenom || "Utilisateur";
-  const preteur = pret.type === "pret" ? userName : pret.nom_personne;
-  const emprunteur = pret.type === "pret" ? pret.nom_personne : userName;
+
+  // Utilise nom_preteur saisi si disponible, sinon fallback
+  const preteur = pret.type === "pret"
+    ? (pret.nom_preteur || userName)
+    : pret.nom_personne;
+  const emprunteur = pret.type === "pret"
+    ? pret.nom_personne
+    : (pret.nom_preteur || userName);
 
   doc.setFillColor(...bleu);
   doc.rect(0, 0, W, 40, "F");
@@ -257,13 +264,22 @@ export default function PretsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showRembForm, setShowRembForm] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    nom_personne: "", montant: "", devise: "XOF" as Devise, objectif: "",
-    date_pret: new Date().toISOString().split("T")[0], date_echeance: "",
-    nom_temoin: "", note: "",
-    signature_preteur: "", signature_emprunteur: "", signature_temoin: "",
-  });
+  const emptyForm = {
+    nom_personne: "",
+    nom_preteur: "",
+    montant: "",
+    devise: "XOF" as Devise,
+    objectif: "",
+    date_pret: new Date().toISOString().split("T")[0],
+    date_echeance: "",
+    nom_temoin: "",
+    note: "",
+    signature_preteur: "",
+    signature_emprunteur: "",
+    signature_temoin: "",
+  };
 
+  const [form, setForm] = useState(emptyForm);
   const [rembForm, setRembForm] = useState({ montant: "", note: "" });
 
   const load = async () => {
@@ -281,7 +297,6 @@ export default function PretsPage() {
 
   useEffect(() => { load(); }, []);
 
-  // Compteurs par type
   const nbPrets = prets.filter(p => p.type === "pret").length;
   const nbDettes = prets.filter(p => p.type === "dette").length;
   const nbActuel = activeTab === "pret" ? nbPrets : nbDettes;
@@ -290,7 +305,6 @@ export default function PretsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Vérification quota gratuit
     if (!isPremium && nbActuel >= LIMITE_GRATUIT) {
       toast({
         title: "Limite atteinte",
@@ -300,16 +314,30 @@ export default function PretsPage() {
       return;
     }
 
-    if (!form.nom_personne || !form.montant || !form.objectif) {
-      toast({ title: "Champs requis", description: "Nom, montant et objectif sont obligatoires.", variant: "destructive" });
+    // Tous les champs obligatoires sauf note et nom_temoin
+    if (
+      !form.nom_preteur.trim() ||
+      !form.nom_personne.trim() ||
+      !form.montant ||
+      !form.objectif.trim() ||
+      !form.date_pret ||
+      !form.date_echeance
+    ) {
+      toast({
+        title: "Champs requis",
+        description: "Tous les champs sont obligatoires sauf la note.",
+        variant: "destructive",
+      });
       return;
     }
 
     const userId = getNexoraUser()?.id;
     if (!userId) return;
+
     const { error } = await supabase.from("prets" as any).insert({
       type: activeTab,
       nom_personne: form.nom_personne,
+      nom_preteur: form.nom_preteur,
       user_id: userId,
       montant: parseFloat(form.montant),
       devise: form.devise,
@@ -330,7 +358,7 @@ export default function PretsPage() {
 
     toast({ title: "Enregistré", description: `${activeTab === "pret" ? "Prêt" : "Dette"} ajouté avec succès.` });
     setShowForm(false);
-    setForm({ nom_personne: "", montant: "", devise: "XOF", objectif: "", date_pret: new Date().toISOString().split("T")[0], date_echeance: "", nom_temoin: "", note: "", signature_preteur: "", signature_emprunteur: "", signature_temoin: "" });
+    setForm(emptyForm);
     load();
   };
 
@@ -364,8 +392,14 @@ export default function PretsPage() {
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
   const currentUserName = getNexoraUser()?.nom_prenom || "Utilisateur";
-  const preteurLabel = activeTab === "pret" ? currentUserName : form.nom_personne || "...";
-  const emprunteurLabel = activeTab === "pret" ? form.nom_personne || "..." : currentUserName;
+
+  // Labels dynamiques basés sur les champs saisis
+  const preteurLabel = activeTab === "pret"
+    ? form.nom_preteur || "Prêteur"
+    : form.nom_personne || "Prêteur";
+  const emprunteurLabel = activeTab === "pret"
+    ? form.nom_personne || "Emprunteur"
+    : form.nom_preteur || "Emprunteur";
 
   return (
     <AppLayout>
@@ -444,7 +478,7 @@ export default function PretsPage() {
             </div>
             <button
               onClick={() => navigate("/abonnement")}
- className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all"
             >
               <Crown className="w-4 h-4" /> Passer à Premium
             </button>
@@ -458,6 +492,7 @@ export default function PretsPage() {
               {activeTab === "pret" ? "Nouveau prêt accordé" : "Nouvelle dette"}
             </h2>
 
+            {/* Aperçu prêteur → emprunteur */}
             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm">
               <span className="font-bold text-primary">{preteurLabel}</span>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -469,48 +504,119 @@ export default function PretsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
+
+                {/* Nom du Prêteur */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">
-                    {activeTab === "pret" ? "Nom de l'emprunteur *" : "Nom du prêteur *"}
+                    {activeTab === "pret" ? "Nom du Prêteur *" : "Nom du Prêteur *"}
                   </label>
-                  <Input value={form.nom_personne} onChange={e => setForm({ ...form, nom_personne: e.target.value })}
-                    placeholder="Ex: Jean Dupont" className="mt-1" />
+                  <Input
+                    value={form.nom_preteur}
+                    onChange={e => setForm({ ...form, nom_preteur: e.target.value })}
+                    placeholder={activeTab === "pret" ? "Votre nom complet" : "Nom de la personne qui prête"}
+                    className="mt-1"
+                    required
+                  />
                 </div>
+
+                {/* Nom de l'Emprunteur */}
+                <div className="col-span-2">
+                  <label className="text-sm font-medium">
+                    {activeTab === "pret" ? "Nom de l'Emprunteur *" : "Votre nom (Emprunteur) *"}
+                  </label>
+                  <Input
+                    value={form.nom_personne}
+                    onChange={e => setForm({ ...form, nom_personne: e.target.value })}
+                    placeholder={activeTab === "pret" ? "Nom de la personne qui emprunte" : "Votre nom complet"}
+                    className="mt-1"
+                    required
+                  />
+                </div>
+
+                {/* Montant */}
                 <div>
                   <label className="text-sm font-medium">Montant *</label>
-                  <Input type="number" value={form.montant} onChange={e => setForm({ ...form, montant: e.target.value })}
-                    placeholder="0" className="mt-1" />
+                  <Input
+                    type="number"
+                    value={form.montant}
+                    onChange={e => setForm({ ...form, montant: e.target.value })}
+                    placeholder="0"
+                    className="mt-1"
+                    required
+                    min="1"
+                  />
                 </div>
+
+                {/* Devise */}
                 <div>
-                  <label className="text-sm font-medium">Devise</label>
-                  <select value={form.devise} onChange={e => setForm({ ...form, devise: e.target.value as Devise })}
-                    className="mt-1 w-full h-10 px-3 rounded-md border border-input bg-background text-sm">
+                  <label className="text-sm font-medium">Devise *</label>
+                  <select
+                    value={form.devise}
+                    onChange={e => setForm({ ...form, devise: e.target.value as Devise })}
+                    className="mt-1 w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    required
+                  >
                     <option value="XOF">FCFA (XOF)</option>
                     <option value="USD">Dollar (USD)</option>
                   </select>
                 </div>
+
+                {/* Objectif */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Objectif du prêt *</label>
-                  <Input value={form.objectif} onChange={e => setForm({ ...form, objectif: e.target.value })}
-                    placeholder="Ex: Achat de matériel, frais médicaux..." className="mt-1" />
+                  <Input
+                    value={form.objectif}
+                    onChange={e => setForm({ ...form, objectif: e.target.value })}
+                    placeholder="Ex: Achat de matériel, frais médicaux..."
+                    className="mt-1"
+                    required
+                  />
                 </div>
+
+                {/* Date du prêt */}
                 <div>
                   <label className="text-sm font-medium">Date du prêt *</label>
-                  <Input type="date" value={form.date_pret} onChange={e => setForm({ ...form, date_pret: e.target.value })} className="mt-1" />
+                  <Input
+                    type="date"
+                    value={form.date_pret}
+                    onChange={e => setForm({ ...form, date_pret: e.target.value })}
+                    className="mt-1"
+                    required
+                  />
                 </div>
+
+                {/* Date d'échéance */}
                 <div>
-                  <label className="text-sm font-medium">Date d'échéance</label>
-                  <Input type="date" value={form.date_echeance} onChange={e => setForm({ ...form, date_echeance: e.target.value })} className="mt-1" />
+                  <label className="text-sm font-medium">Date d'échéance *</label>
+                  <Input
+                    type="date"
+                    value={form.date_echeance}
+                    onChange={e => setForm({ ...form, date_echeance: e.target.value })}
+                    className="mt-1"
+                    required
+                  />
                 </div>
+
+                {/* Témoin (optionnel) */}
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Nom du témoin (optionnel)</label>
-                  <Input value={form.nom_temoin} onChange={e => setForm({ ...form, nom_temoin: e.target.value })}
-                    placeholder="Nom du témoin" className="mt-1" />
+                  <Input
+                    value={form.nom_temoin}
+                    onChange={e => setForm({ ...form, nom_temoin: e.target.value })}
+                    placeholder="Nom du témoin"
+                    className="mt-1"
+                  />
                 </div>
+
+                {/* Note (optionnel) */}
                 <div className="col-span-2">
-                  <label className="text-sm font-medium">Note</label>
-                  <Input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
-                    placeholder="Note optionnelle..." className="mt-1" />
+                  <label className="text-sm font-medium">Note (optionnel)</label>
+                  <Input
+                    value={form.note}
+                    onChange={e => setForm({ ...form, note: e.target.value })}
+                    placeholder="Note optionnelle..."
+                    className="mt-1"
+                  />
                 </div>
               </div>
 
@@ -556,8 +662,13 @@ export default function PretsPage() {
               const pct = pret.montant > 0 ? Math.min(100, (pret.montant_rembourse / pret.montant) * 100) : 0;
               const isExpanded = expandedId === pret.id;
               const rembList = rembPour(pret.id);
-              const preteurNom = pret.type === "pret" ? currentUserName : pret.nom_personne;
-              const emprunteurNom = pret.type === "pret" ? pret.nom_personne : currentUserName;
+
+              const preteurNom = pret.type === "pret"
+                ? (pret.nom_preteur || currentUserName)
+                : pret.nom_personne;
+              const emprunteurNom = pret.type === "pret"
+                ? pret.nom_personne
+                : (pret.nom_preteur || currentUserName);
 
               return (
                 <div key={pret.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
