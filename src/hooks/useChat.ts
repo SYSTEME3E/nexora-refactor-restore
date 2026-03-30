@@ -17,6 +17,7 @@ export interface ChatMessage {
   _optimistic?: boolean;
 }
 
+
 // ─────────────────────────────────────────────────────────────
 // 30 RÉPONSES AUTOMATIQUES AVEC MOTS-CLÉS
 // ─────────────────────────────────────────────────────────────
