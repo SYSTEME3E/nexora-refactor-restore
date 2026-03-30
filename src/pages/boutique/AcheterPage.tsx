@@ -6,6 +6,7 @@ import {
   MessageCircle, Package, Phone, Truck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { initTheme } from "@/lib/theme";
 
 
 interface ProduitInfo {
@@ -58,6 +59,8 @@ export default function AcheterPage() {
   const [enregistrement, setEnregistrement] = useState(false);
   const [acheteurNom, setAcheteurNom] = useState("");
   const [acheteurTel, setAcheteurTel] = useState("");
+
+  useEffect(() => { initTheme(); }, []);
 
   useEffect(() => {
     const load = async () => {
