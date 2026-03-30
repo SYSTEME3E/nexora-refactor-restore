@@ -10,7 +10,6 @@ import { Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 
-
 // Auth
 import NexoraLoginPage from "@/pages/NexoraLoginPage";
 import LandingPage from "@/pages/LandingPage";
@@ -25,7 +24,6 @@ import MediasPage from "@/pages/MediasPage";
 import LiensPage from "@/pages/LiensPage";
 import ProfilPage from "@/pages/ProfilPage";
 import PretsPage from "@/pages/PretsPage";
-
 import FacturesPage from "@/pages/FacturesPage";
 import EntreesDepensesPage from "@/pages/EntreesDepensesPage";
 import TransfertPage from "@/pages/Transfertpage";
@@ -52,8 +50,6 @@ import PaymentCallbackPage from "@/pages/PaymentCallbackPage";
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
-
-import ChatPage from "@/pages/ChatPage";
 
 import NotFound from "@/pages/NotFound";
 
@@ -116,6 +112,116 @@ const PremiumPage = ({ children }: { children: React.ReactNode }) => (
   </NexoraAuthGuard>
 );
 
+// --- Bouton WhatsApp Flottant ---
+
+function WhatsAppFloatingButton() {
+  return (
+    <>
+      <style>{`
+        @keyframes wa-fadeSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wa-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.5); }
+          50%       { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
+        }
+        .wa-btn {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background-color: #25D366;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 4px 20px rgba(37, 211, 102, 0.45), 0 2px 8px rgba(0,0,0,0.15);
+          animation: wa-fadeSlideUp 0.6s cubic-bezier(.22,.68,0,1.2) both, wa-pulse 2.5s ease-in-out 1.5s infinite;
+          transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease;
+          z-index: 9999;
+          text-decoration: none;
+        }
+        .wa-btn:hover {
+          transform: scale(1.13);
+          box-shadow: 0 8px 32px rgba(37, 211, 102, 0.55), 0 4px 12px rgba(0,0,0,0.18);
+          animation: none;
+        }
+        .wa-btn:hover .wa-tooltip {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+        .wa-tooltip {
+          position: absolute;
+          bottom: 72px;
+          right: 0;
+          background: #fff;
+          color: #1a1a1a;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          padding: 9px 14px;
+          border-radius: 12px;
+          white-space: nowrap;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+          opacity: 0;
+          transform: translateY(6px);
+          pointer-events: none;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .wa-tooltip::after {
+          content: '';
+          position: absolute;
+          bottom: -7px;
+          right: 22px;
+          width: 13px;
+          height: 13px;
+          background: #fff;
+          transform: rotate(45deg);
+          border-radius: 2px;
+          box-shadow: 3px 3px 6px rgba(0,0,0,0.06);
+        }
+        @media (max-width: 640px) {
+          .wa-btn {
+            width: 50px;
+            height: 50px;
+            bottom: 18px;
+            right: 18px;
+          }
+          .wa-tooltip {
+            font-size: 12px;
+            bottom: 62px;
+          }
+        }
+      `}</style>
+
+      
+        href="https://chat.whatsapp.com/BCBOcRIFGr6LoRPyMiXRAp"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="wa-btn"
+        aria-label="Rejoindre la communauté WhatsApp"
+      >
+        <span className="wa-tooltip">💬 Rejoignez la communauté</span>
+        {/* Icône communauté WhatsApp (SVG officiel simplifié) */}
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Personnes - icône communauté */}
+          <circle cx="16" cy="10" r="4" fill="white"/>
+          <path d="M8 26c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+          <circle cx="7" cy="12" r="3" fill="white" opacity="0.75"/>
+          <path d="M1 26c0-3.314 2.686-6 6-6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.75"/>
+          <circle cx="25" cy="12" r="3" fill="white" opacity="0.75"/>
+          <path d="M31 26c0-3.314-2.686-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.75"/>
+        </svg>
+      </a>
+    </>
+  );
+}
+
 // --- Application Principale ---
 
 const App = () => (
@@ -134,9 +240,6 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/cgu" element={<CGUPage />} />
           <Route path="/confidentialite" element={<PrivacyPage />} />
-
-          {/* Chat */}
-          <Route path="/chat" element={<ProtectedPage><ChatPage /></ProtectedPage>} />
 
           {/* Routes Dashboard / Finance */}
           <Route path="/dashboard"         element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
@@ -180,6 +283,9 @@ const App = () => (
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+
+        {/* Bouton WhatsApp Flottant — visible sur toutes les pages */}
+        <WhatsAppFloatingButton />
       </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
