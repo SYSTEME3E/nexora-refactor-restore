@@ -61,8 +61,13 @@ export default function ChatPage() {
     markAdminMessagesRead();
   }, [markAdminMessagesRead]);
 
+  // FIX: Scroll vers le bas à chaque nouveau message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -72,8 +77,6 @@ export default function ChatPage() {
     }
   }, [text]);
 
-  // CORRECTION: handleSend simplifié — on retire le double optimistic update
-  // Le hook useChat gère déjà l'optimistic update
   const handleSend = async () => {
     const trimmedText = text.trim();
     if (!trimmedText || sending) return;
@@ -144,11 +147,12 @@ export default function ChatPage() {
               alt="Sophia"
               className="w-10 h-10 rounded-xl object-cover shadow-lg"
             />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-card" />
+            {/* FIX: Indicateur en ligne — vert vif */}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card shadow-sm shadow-green-400" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-foreground text-sm">Sophia — Support NEXORA</p>
-            <p className="text-xs text-emerald-500 font-semibold">En ligne · Répond automatiquement</p>
+            <p className="text-xs text-green-500 font-semibold">En ligne · Répond automatiquement</p>
           </div>
         </div>
 
@@ -285,8 +289,12 @@ export default function ChatPage() {
           {!operatorRequested ? (
             <button
               onClick={handleRequestOperator}
-              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-violet-300 dark:border-violet-700 text-violet-600 dark:text-violet-400 text-sm font-bold hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all">
-              <Phone className="w-4 h-4" /> Appeler un opérateur humain
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-green-400 dark:border-green-600 text-green-600 dark:text-green-400 text-sm font-bold hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all">
+              {/* FIX: Icône flottante chat en VERT */}
+              <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                <Phone className="w-3 h-3 text-white" />
+              </span>
+              Appeler un opérateur humain
             </button>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-semibold">
@@ -308,10 +316,10 @@ export default function ChatPage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-violet-100 dark:hover:bg-violet-900/30 text-muted-foreground hover:text-violet-600 transition-all flex-shrink-0"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-green-100 dark:hover:bg-green-900/30 text-muted-foreground hover:text-green-600 transition-all flex-shrink-0"
               title="Joindre un fichier">
               {uploading
-                ? <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
                 : <Paperclip className="w-4 h-4" />
               }
             </button>
@@ -329,7 +337,8 @@ export default function ChatPage() {
             <button
               onClick={handleSend}
               disabled={!text.trim() || sending}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white transition-all active:scale-95 flex-shrink-0 shadow-lg shadow-violet-300/30">
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white transition-all active:scale-95 flex-shrink-0 shadow-lg shadow-green-300/30">
+              {/* FIX: Bouton envoi en VERT */}
               {sending
                 ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <Send className="w-4 h-4" />
