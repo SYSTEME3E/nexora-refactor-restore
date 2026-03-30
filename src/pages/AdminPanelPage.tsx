@@ -1455,6 +1455,5 @@ export default function AdminPanelPage() {
           </div>
         </div>
       )}
-  
-    ); // Ferme le return (
-} // <--- C'est cette accolade qu'il manquait pour fermer la fonction du composant
+    );
+}
