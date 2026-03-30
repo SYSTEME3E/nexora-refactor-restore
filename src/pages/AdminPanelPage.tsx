@@ -297,7 +297,6 @@ export default function AdminPanelPage() {
     if (isAuthenticated) loadAll();
   }, [isAuthenticated]);
 
-  // Realtime messages
   useEffect(() => {
     if (!isAuthenticated) return;
     const channel = supabase
@@ -324,7 +323,6 @@ export default function AdminPanelPage() {
   const getCommandesByUser    = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
   const getCaByUser           = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
 
-  // ── Actions ───────────────────────────────────────────────
   const handleAction = async () => {
     if (!actionModal) return;
     const { type, target, targetType } = actionModal;
@@ -583,6 +581,7 @@ export default function AdminPanelPage() {
 
     return (
       <div className="min-h-screen bg-background pb-16">
+        {/* Header */}
         <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
           <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); }}
             className="p-2 rounded-xl hover:bg-muted transition-colors">
@@ -832,7 +831,6 @@ export default function AdminPanelPage() {
               </div>
             )}
           </div>
-        </div>
 
           {/* ── Modifier mot de passe ── */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -868,8 +866,88 @@ export default function AdminPanelPage() {
               </button>
             </div>
           </div>
+        </div>
 
-  
+        {/* Modals dans la vue détail utilisateur */}
+        {actionModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+              <h3 className="font-black text-lg">
+                {actionModal.type === "activer_premium"     && "Activer Premium"}
+                {actionModal.type === "retirer_premium"     && "Retirer Premium"}
+                {actionModal.type === "suspendre"           && "Suspendre le compte"}
+                {actionModal.type === "bloquer"             && "Bloquer le compte"}
+                {actionModal.type === "debloquer"           && "Débloquer le compte"}
+                {actionModal.type === "supprimer"           && "Supprimer le compte"}
+                {actionModal.type === "supprimer_produit"   && "Supprimer le produit"}
+                {actionModal.type === "restreindre_produit" && "Restreindre le produit"}
+                {actionModal.type === "activer_produit"     && "Réactiver le produit"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {actionModal.targetType === "user"    && <><span>Utilisateur : </span><span className="font-bold text-foreground">{actionModal.target.nom_prenom}</span></>}
+                {actionModal.targetType === "produit" && <><span>Produit : </span><span className="font-bold text-foreground">{actionModal.target.nom}</span></>}
+              </p>
+              {actionModal.type === "activer_premium" && (
+                <div>
+                  <label className="text-sm font-medium">Durée (jours)</label>
+                  <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" />
+                </div>
+              )}
+              {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit"].includes(actionModal.type) && (
+                <div>
+                  <label className="text-sm font-medium">Motif {["supprimer", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
+                  <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
+                  {!["supprimer", "retirer_premium"].includes(actionModal.type) && (
+                    <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
+                  )}
+                </div>
+              )}
+              {actionModal.type === "supprimer" && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
+              )}
+              <div className="flex gap-2">
+                <Button onClick={handleAction} className={`flex-1 text-white ${
+                  ["supprimer", "bloquer", "supprimer_produit"].includes(actionModal.type) ? "bg-red-600 hover:bg-red-700" :
+                  ["suspendre", "restreindre_produit"].includes(actionModal.type) ? "bg-yellow-600 hover:bg-yellow-700" :
+                  ["debloquer", "activer_premium", "activer_produit"].includes(actionModal.type) ? "bg-green-600 hover:bg-green-700" :
+                  "bg-gray-600 hover:bg-gray-700"
+                }`}>Confirmer</Button>
+                <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(""); }} className="flex-1">Annuler</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {detteModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <MinusCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Dette Cachée</h3>
+                  <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
+                </div>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+                <p className="font-semibold">⚠ Mode silencieux</p>
+                <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+                <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+                <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ════════════ PANEL PRINCIPAL ════════════
   return (
@@ -1262,12 +1340,9 @@ export default function AdminPanelPage() {
         {/* ── MESSAGES ── */}
         {tab === "messages" && (
           <div className="space-y-3">
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <img src="https://i.ibb.co/MvGFCkX/file-00000000b90c7246ab59b08eaba09eb0.png" alt="Support" className="w-full object-cover max-h-40" />
-              <div className="p-3">
-                <div className="font-black text-base">Support & Messagerie</div>
-                <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
-              </div>
+            <div className="bg-card border border-border rounded-2xl p-3">
+              <div className="font-black text-base">Support & Messagerie</div>
+              <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
@@ -1375,7 +1450,7 @@ export default function AdminPanelPage() {
         )}
       </div>
 
-      {/* Modal actions */}
+      {/* Modal actions (panel principal) */}
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
@@ -1427,7 +1502,7 @@ export default function AdminPanelPage() {
         </div>
       )}
 
-      {/* Modal dette cachée */}
+      {/* Modal dette cachée (panel principal) */}
       {detteModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
@@ -1455,4 +1530,6 @@ export default function AdminPanelPage() {
           </div>
         </div>
       )}
-    );
+    </div>
+  );
+}
