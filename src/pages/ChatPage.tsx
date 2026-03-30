@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Send, Paperclip, Image, Film, FileText,
-  Phone, MessageCircle, Bot, User, Clock, Download
+  Send, Paperclip, FileText,
+  Phone, Clock, Download
 } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { getNexoraUser } from "@/lib/nexora-auth";
@@ -19,7 +19,6 @@ function formatDate(iso: string) {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
   if (d.toDateString() === today.toDateString()) return "Aujourd'hui";
   if (d.toDateString() === yesterday.toDateString()) return "Hier";
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long" });
@@ -42,8 +41,12 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const user = getNexoraUser();
   const {
-    messages, loading, sendMessage, uploadFile,
-    markAdminMessagesRead, requestOperator, setMessages
+    messages,
+    loading,
+    sendMessage,
+    uploadFile,
+    markAdminMessagesRead,
+    requestOperator,
   } = useChat();
 
   const [text, setText] = useState("");
@@ -69,27 +72,15 @@ export default function ChatPage() {
     }
   }, [text]);
 
+  // CORRECTION: handleSend simplifié — on retire le double optimistic update
+  // Le hook useChat gère déjà l'optimistic update
   const handleSend = async () => {
     const trimmedText = text.trim();
-    if ((!trimmedText && !sending) || sending) return;
-
-    // --- AFFICHAGE AUTOMATIQUE (Optimistic Update) ---
-    const newMessage = {
-      id: Date.now().toString(), // ID temporaire
-      content: trimmedText,
-      sender: "user",
-      created_at: new Date().toISOString(),
-      status: "sending"
-    };
-    
-    // Ajout local immédiat pour l'utilisateur
-    if (setMessages) {
-      setMessages((prev: any) => [...prev, newMessage]);
-    }
+    if (!trimmedText || sending) return;
 
     setText("");
     setSending(true);
-    
+
     try {
       await sendMessage(trimmedText);
     } catch (error) {
@@ -129,6 +120,7 @@ export default function ChatPage() {
     return null;
   }
 
+  // Grouper les messages par date
   const grouped: { date: string; msgs: typeof messages }[] = [];
   messages.forEach(msg => {
     const d = formatDate(msg.created_at);
@@ -156,7 +148,7 @@ export default function ChatPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-foreground text-sm">Sophia — Support NEXORA</p>
-            <p className="text-xs text-emerald-500 font-semibold">En ligne</p>
+            <p className="text-xs text-emerald-500 font-semibold">En ligne · Répond automatiquement</p>
           </div>
         </div>
 
@@ -179,6 +171,17 @@ export default function ChatPage() {
               <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
                 Je suis Sophia, votre assistante virtuelle. Posez-moi toutes vos questions sur NEXORA !
               </p>
+              <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                {["Comment transférer de l'argent ?", "Prix abonnement", "Créer une boutique"].map(q => (
+                  <button
+                    key={q}
+                    onClick={() => { setText(q); textAreaRef.current?.focus(); }}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium hover:bg-violet-200 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -196,13 +199,14 @@ export default function ChatPage() {
                   const isBot = msg.sender === "bot";
                   const isAdmin = msg.sender === "admin";
                   const isExpired = msg.file_expires_at && new Date(msg.file_expires_at) < new Date();
+                  const isOptimistic = (msg as any)._optimistic;
 
                   return (
                     <div key={msg.id} className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
                       {!isUser && (
                         isAdmin ? (
                           <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center bg-blue-600">
-                            <User className="w-3.5 h-3.5 text-white" />
+                            <span className="text-white text-[10px] font-black">A</span>
                           </div>
                         ) : (
                           <img
@@ -220,7 +224,9 @@ export default function ChatPage() {
                           </span>
                         )}
 
-                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed transition-opacity ${
+                          isOptimistic ? "opacity-70" : "opacity-100"
+                        } ${
                           isUser
                             ? "bg-violet-600 text-white rounded-br-sm"
                             : isAdmin
@@ -256,9 +262,14 @@ export default function ChatPage() {
                           )}
                         </div>
 
-                        <span className={`text-[10px] text-muted-foreground ${isUser ? "mr-1" : "ml-1"}`}>
-                          {formatTime(msg.created_at)}
-                        </span>
+                        <div className={`flex items-center gap-1 ${isUser ? "mr-1 justify-end" : "ml-1"}`}>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatTime(msg.created_at)}
+                          </span>
+                          {isUser && isOptimistic && (
+                            <span className="text-[10px] text-muted-foreground">· Envoi...</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -325,9 +336,9 @@ export default function ChatPage() {
               }
             </button>
           </div>
-          
+
           <div className="flex items-center mt-1 px-1">
-             <span className="text-[10px] text-muted-foreground ml-auto uppercase tracking-wider font-bold opacity-50">Entrée pour envoyer</span>
+            <span className="text-[10px] text-muted-foreground ml-auto uppercase tracking-wider font-bold opacity-50">Entrée pour envoyer</span>
           </div>
         </div>
       </div>
