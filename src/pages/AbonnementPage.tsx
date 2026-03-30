@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// ── Constante secrète — CHANGEZ CETTE VALEUR ──────────────
+// C'est votre code personnel. Ne le partagez jamais.
+const SUPER_ADMIN_CODE = "NEXORA_SUPER_2025"; // ← modifiez ici
+
+// ── Fonctionnalités accordables aux sous-admins ────────────
+const ALL_ADMIN_FEATURES: { key: string; label: string }[] = [
+  { key: "stats",       label: "📊 Statistiques"    },
+  { key: "users",       label: "👥 Utilisateurs"    },
+  { key: "boutiques",   label: "🏪 Boutiques"       },
+  { key: "abonnements", label: "👑 Abonnements"     },
+  { key: "messages",    label: "💬 Messages Support" },
+  { key: "logs",        label: "📋 Logs"             },
+];
 
 // ── Types ──────────────────────────────────────────────────
 interface NexoraUser {
@@ -102,6 +115,9 @@ interface AdminMessage {
   user?: { nom_prenom: string; username: string; avatar_url: string | null };
 }
 
+// "super" = vous (code hardcodé), "sub" = sous-admin (code en DB)
+type AuthMode = "super" | "sub";
+
 type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
 
 // ── Helpers ────────────────────────────────────────────────
@@ -126,18 +142,27 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   gratuit: { label: "Gratuit", color: "text-gray-600",   bg: "bg-gray-100"   },
   boss:    { label: "Boss",    color: "text-blue-700",    bg: "bg-blue-100"   },
   roi:     { label: "Roi",     color: "text-violet-700",  bg: "bg-violet-100" },
-  
 };
-
 
 // ══════════════════════════════════════════════════════════
 export default function AdminPanelPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [codeInput, setCodeInput]     = useState("");
-  const [codeError, setCodeError]     = useState(false);
+  // ── Auth state ─────────────────────────────────────────
+  // Étape 1 : login (code ou username+password)
+  // Étape 2 (sous-admin seulement) : saisie username
+  const [authStep, setAuthStep]         = useState<"code" | "subadmin_user" | "subadmin_pass">("code");
+  const [codeInput, setCodeInput]       = useState("");
+  const [codeError, setCodeError]       = useState<string>("");
+  const [subUsername, setSubUsername]   = useState("");
+  const [subPassword, setSubPassword]   = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode]         = useState<AuthMode>("super");
+  // Fonctionnalités accordées au sous-admin connecté
+  const [grantedFeatures, setGrantedFeatures] = useState<string[]>([]);
+  // Utilisateur sous-admin connecté (pour logs)
+  const [subAdminUser, setSubAdminUser] = useState<NexoraUser | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<AdminTab>(() => {
@@ -175,27 +200,33 @@ export default function AdminPanelPage() {
   const [actionReason, setActionReason] = useState("");
   const [premiumDays,  setPremiumDays]  = useState("30");
 
-  // Page détail utilisateur
-  const [selectedUser, setSelectedUser] = useState<NexoraUser | null>(null);
-  const [adminFeatures, setAdminFeatures] = useState<string[]>([]);
-  const [adminPassword, setAdminPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedUser,     setSelectedUser]     = useState<NexoraUser | null>(null);
+  const [adminFeatures,    setAdminFeatures]    = useState<string[]>([]);
+  const [adminPassword,    setAdminPassword]    = useState("");
+  const [newPassword,      setNewPassword]      = useState("");
+  const [confirmPassword,  setConfirmPassword]  = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Dette cachée
   const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
   const [detteMontant, setDetteMontant] = useState("");
 
-  // Messages
   const [selectedMsg,  setSelectedMsg]  = useState<AdminMessage | null>(null);
   const [reponseText,  setReponseText]  = useState("");
   const [sendingReply, setSendingReply] = useState(false);
 
+  // ── Persistance session ────────────────────────────────
   useEffect(() => {
     try {
       const auth = sessionStorage.getItem("nexora_admin_auth");
-      if (auth === "true") setIsAuthenticated(true);
+      const mode = sessionStorage.getItem("nexora_admin_mode") as AuthMode | null;
+      const feat = sessionStorage.getItem("nexora_admin_features");
+      const sub  = sessionStorage.getItem("nexora_admin_sub");
+      if (auth === "true" && mode) {
+        setIsAuthenticated(true);
+        setAuthMode(mode);
+        if (feat) setGrantedFeatures(JSON.parse(feat));
+        if (sub)  setSubAdminUser(JSON.parse(sub));
+      }
     } catch {}
   }, []);
 
@@ -203,17 +234,139 @@ export default function AdminPanelPage() {
     try { localStorage.setItem("admin_tab", tab); } catch {}
   }, [tab]);
 
-  const handleLogin = () => {
-    if (codeInput.trim().toUpperCase() === ADMIN_CODE) {
-      try { sessionStorage.setItem("nexora_admin_auth", "true"); } catch {}
+  // ── Logique de connexion ───────────────────────────────
+  /**
+   * Cas 1 — Super admin : code hardcodé SUPER_ADMIN_CODE.
+   *   → Accès total, aucune vérification DB.
+   *
+   * Cas 2 — Sous-admin : doit avoir is_admin === true ET
+   *   un admin_password défini par vous dans le panel.
+   *   → Accès limité aux features accordées.
+   *
+   * PAS DE VÉRIFICATION DE PLAN. Un utilisateur premium
+   * n'a AUCUN accès sauf si vous lui avez explicitement
+   * accordé is_admin = true via le panel.
+   */
+  const handleLoginCode = () => {
+    const input = codeInput.trim().toUpperCase();
+    if (input === SUPER_ADMIN_CODE.toUpperCase()) {
+      // ✅ Super admin
+      try {
+        sessionStorage.setItem("nexora_admin_auth", "true");
+        sessionStorage.setItem("nexora_admin_mode", "super");
+        sessionStorage.setItem("nexora_admin_features", JSON.stringify([]));
+      } catch {}
+      setAuthMode("super");
+      setGrantedFeatures([]);
       setIsAuthenticated(true);
-      setCodeError(false);
+      setCodeError("");
+    } else if (input.length > 0) {
+      // Le code ne correspond pas au super admin → on bascule
+      // vers la saisie sous-admin (username + password DB)
+      setCodeError("");
+      setAuthStep("subadmin_user");
     } else {
-      setCodeError(true);
-      setCodeInput("");
+      setCodeError("Veuillez entrer un code.");
     }
   };
 
+  const handleLoginSubAdmin = async () => {
+    if (!subUsername.trim() || !subPassword.trim()) {
+      setCodeError("Username et mot de passe requis.");
+      return;
+    }
+    setLoading(true);
+    setCodeError("");
+    try {
+      // Cherche l'utilisateur par username
+      const { data, error } = await supabase
+        .from("nexora_users" as any)
+        .select("*")
+        .eq("username", subUsername.trim())
+        .single();
+
+      if (error || !data) {
+        setCodeError("Utilisateur introuvable.");
+        setLoading(false);
+        return;
+      }
+
+      const user = data as unknown as NexoraUser;
+
+      // Vérifications de sécurité
+      if (!user.is_admin) {
+        setCodeError("Accès refusé. Vous n'avez pas les droits admin.");
+        setLoading(false);
+        return;
+      }
+      if (user.status !== "actif") {
+        setCodeError("Compte suspendu ou bloqué.");
+        setLoading(false);
+        return;
+      }
+      if (!user.admin_password) {
+        setCodeError("Aucun mot de passe admin configuré pour ce compte.");
+        setLoading(false);
+        return;
+      }
+      if (user.admin_password !== subPassword.trim()) {
+        setCodeError("Mot de passe incorrect.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Sous-admin authentifié
+      const features: string[] = user.admin_features || [];
+      try {
+        sessionStorage.setItem("nexora_admin_auth", "true");
+        sessionStorage.setItem("nexora_admin_mode", "sub");
+        sessionStorage.setItem("nexora_admin_features", JSON.stringify(features));
+        sessionStorage.setItem("nexora_admin_sub", JSON.stringify(user));
+      } catch {}
+
+      setAuthMode("sub");
+      setGrantedFeatures(features);
+      setSubAdminUser(user);
+      setIsAuthenticated(true);
+
+      // Log la connexion
+      await supabase.from("nexora_logs" as any).insert({
+        user_id: user.id,
+        action: "admin_connexion",
+        details: `Sous-admin connecté : @${user.username}`,
+      });
+
+    } catch (err: any) {
+      setCodeError("Erreur lors de la vérification.");
+    }
+    setLoading(false);
+  };
+
+  // ── Vérifie si un onglet est accessible (sous-admin) ──
+  const canAccess = (tabId: string): boolean => {
+    if (authMode === "super") return true;
+    if (grantedFeatures.length === 0) return false;
+    return grantedFeatures.includes(tabId);
+  };
+
+  const handleLogout = () => {
+    try {
+      sessionStorage.removeItem("nexora_admin_auth");
+      sessionStorage.removeItem("nexora_admin_mode");
+      sessionStorage.removeItem("nexora_admin_features");
+      sessionStorage.removeItem("nexora_admin_sub");
+    } catch {}
+    setIsAuthenticated(false);
+    setAuthMode("super");
+    setGrantedFeatures([]);
+    setSubAdminUser(null);
+    setAuthStep("code");
+    setCodeInput("");
+    setSubUsername("");
+    setSubPassword("");
+  };
+
+  // ── Chargement données ─────────────────────────────────
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -257,23 +410,23 @@ export default function AdminPanelPage() {
       const roiCount = u.filter(x => x.plan === "roi").length;
 
       setStats({
-        totalUsers:          u.length,
-        premiumUsers:        u.filter(x => x.plan === "boss" || x.plan === "roi").length,
-        gratuitUsers:        u.filter(x => x.plan === "gratuit").length,
-        adminUsers:          u.filter(x => x.is_admin).length,
-        activeUsers:         u.filter(x => x.status === "actif").length,
-        suspendedUsers:      u.filter(x => x.status === "suspendu").length,
-        blockedUsers:        u.filter(x => x.status === "bloque").length,
-        totalBoutiques:      b.length,
-        boutiquesActives:    b.filter(x => x.actif).length,
-        totalProduits:       p.length,
-        totalCommandes:      c.length,
+        totalUsers:           u.length,
+        premiumUsers:         u.filter(x => x.plan === "boss" || x.plan === "roi").length,
+        gratuitUsers:         u.filter(x => x.plan === "gratuit").length,
+        adminUsers:           u.filter(x => x.is_admin).length,
+        activeUsers:          u.filter(x => x.status === "actif").length,
+        suspendedUsers:       u.filter(x => x.status === "suspendu").length,
+        blockedUsers:         u.filter(x => x.status === "bloque").length,
+        totalBoutiques:       b.length,
+        boutiquesActives:     b.filter(x => x.actif).length,
+        totalProduits:        p.length,
+        totalCommandes:       c.length,
         chiffreAffairesTotal: ca,
-        newUsersToday:       u.filter(x => new Date(x.created_at).toDateString() === today).length,
-        newPremiumToday:     u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
-        caAbonnements:       caAb,
-        totalAbonnements:    ab.length,
-        tauxTransferts:      u.length > 0 ? Math.round((roiCount / u.length) * 100) : 0,
+        newUsersToday:        u.filter(x => new Date(x.created_at).toDateString() === today).length,
+        newPremiumToday:      u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
+        caAbonnements:        caAb,
+        totalAbonnements:     ab.length,
+        tauxTransferts:       u.length > 0 ? Math.round((roiCount / u.length) * 100) : 0,
       });
     } catch {
       toast({ title: "Erreur de chargement", variant: "destructive" });
@@ -304,12 +457,12 @@ export default function AdminPanelPage() {
     } catch {}
   };
 
-  const getBoutiquesByUser    = (id: string) => boutiques.filter(b => b.user_id === id);
-  const getProduitsByBoutique = (id: string) => produits.filter(p => p.boutique_id === id);
+  const getBoutiquesByUser     = (id: string) => boutiques.filter(b => b.user_id === id);
+  const getProduitsByBoutique  = (id: string) => produits.filter(p => p.boutique_id === id);
   const getCommandesByBoutique = (id: string) => commandes.filter(c => c.boutique_id === id);
-  const getCaByBoutique       = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
-  const getCommandesByUser    = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
-  const getCaByUser           = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
+  const getCaByBoutique        = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
+  const getCommandesByUser     = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
+  const getCaByUser            = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
 
   const handleAction = async () => {
     if (!actionModal) return;
@@ -342,11 +495,14 @@ export default function AdminPanelPage() {
       if (targetType === "boutique" && type === "toggle_boutique") {
         const newActif = !target.actif;
         await supabase.from("boutiques" as any).update({ actif: newActif }).eq("id", target.id);
-        if (target.user_id) await sendNotification(target.user_id,
+        if (target.user_id) await sendNotification(
+          target.user_id,
           newActif ? "Boutique activée" : "Boutique désactivée",
-          newActif ? `Votre boutique "${target.nom}" a été réactivée.`
-                   : `Votre boutique "${target.nom}" a été désactivée.${actionReason ? " Motif : " + actionReason : ""}`,
-          newActif ? "success" : "warning");
+          newActif
+            ? `Votre boutique "${target.nom}" a été réactivée.`
+            : `Votre boutique "${target.nom}" a été désactivée.${actionReason ? " Motif : " + actionReason : ""}`,
+          newActif ? "success" : "warning"
+        );
         await logAction(target.user_id ?? null, newActif ? "boutique_activée" : "boutique_désactivée", target.nom);
         toast({ title: `Boutique ${newActif ? "activée" : "désactivée"}` });
       }
@@ -404,6 +560,7 @@ export default function AdminPanelPage() {
 
   const handleGrantAdmin = async (user: NexoraUser) => {
     if (!adminPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    if (adminFeatures.length === 0) { toast({ title: "Sélectionnez au moins une fonctionnalité", variant: "destructive" }); return; }
     try {
       await supabase.from("nexora_users" as any).update({ is_admin: true, admin_features: adminFeatures, admin_password: adminPassword }).eq("id", user.id);
       await sendNotification(user.id, "Accès Admin accordé", "Vous avez maintenant accès au Panel Administrateur avec des fonctionnalités limitées.", "success");
@@ -515,15 +672,15 @@ export default function AdminPanelPage() {
   const unreadMessages = messages.filter(m => !m.lu_admin).length;
 
   const TABS = [
-    { id: "stats",       label: "Statistiques", icon: BarChart3 },
-    { id: "users",       label: "Utilisateurs",  icon: Users     },
-    { id: "boutiques",   label: "Boutiques",     icon: Store     },
-    { id: "abonnements", label: "Abonnements",   icon: Crown     },
+    { id: "stats",       label: "Statistiques", icon: BarChart3     },
+    { id: "users",       label: "Utilisateurs",  icon: Users         },
+    { id: "boutiques",   label: "Boutiques",     icon: Store         },
+    { id: "abonnements", label: "Abonnements",   icon: Crown         },
     { id: "messages",    label: "Messages",      icon: MessageSquare, badge: unreadMessages },
-    { id: "logs",        label: "Logs",          icon: Activity  },
-  ];
+    { id: "logs",        label: "Logs",          icon: Activity      },
+  ].filter(t => canAccess(t.id)); // ← Filtre les onglets selon les droits
 
-  // ════════════ LOGIN ════════════
+  // ════════════ ÉCRAN DE CONNEXION ════════════
   if (!isAuthenticated) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
@@ -533,23 +690,76 @@ export default function AdminPanelPage() {
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-black text-gray-900">Espace Admin</h1>
-            <p className="text-gray-500 text-sm mt-1">Entrez votre code d'accès</p>
+            <p className="text-gray-500 text-sm mt-1">
+              {authStep === "code"
+                ? "Entrez votre code d'accès"
+                : "Connexion sous-admin"}
+            </p>
           </div>
-          <div className="space-y-3">
-            <Input type="password" value={codeInput}
-              onChange={e => { setCodeInput(e.target.value); setCodeError(false); }}
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
-              placeholder="Code d'accès"
-              className={`text-center text-lg font-bold tracking-widest h-14 rounded-xl ${codeError ? "border-red-500 bg-red-50" : ""}`}
-              autoFocus
-            />
-            {codeError && <p className="text-red-600 text-sm text-center font-medium">Code incorrect.</p>}
-            <Button onClick={handleLogin} className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-base">
-              Accéder au Panel
-            </Button>
-          </div>
+
+          {/* Étape 1 : code super admin */}
+          {authStep === "code" && (
+            <div className="space-y-3">
+              <Input
+                type="password"
+                value={codeInput}
+                onChange={e => { setCodeInput(e.target.value); setCodeError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleLoginCode()}
+                placeholder="Code d'accès"
+                className={`text-center text-lg font-bold tracking-widest h-14 rounded-xl ${codeError ? "border-red-500 bg-red-50" : ""}`}
+                autoFocus
+              />
+              {codeError && <p className="text-red-600 text-sm text-center font-medium">{codeError}</p>}
+              <Button
+                onClick={handleLoginCode}
+                className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-base"
+              >
+                Accéder au Panel
+              </Button>
+            </div>
+          )}
+
+          {/* Étape 2 : sous-admin (username + password) */}
+          {authStep === "subadmin_user" && (
+            <div className="space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 font-medium">
+                Connexion sous-administrateur — vos accès sont limités aux fonctionnalités accordées.
+              </div>
+              <Input
+                type="text"
+                value={subUsername}
+                onChange={e => { setSubUsername(e.target.value); setCodeError(""); }}
+                placeholder="Username"
+                className={`rounded-xl ${codeError ? "border-red-500 bg-red-50" : ""}`}
+                autoFocus
+              />
+              <Input
+                type="password"
+                value={subPassword}
+                onChange={e => { setSubPassword(e.target.value); setCodeError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleLoginSubAdmin()}
+                placeholder="Mot de passe admin"
+                className={`rounded-xl ${codeError ? "border-red-500 bg-red-50" : ""}`}
+              />
+              {codeError && <p className="text-red-600 text-sm text-center font-medium">{codeError}</p>}
+              <Button
+                onClick={handleLoginSubAdmin}
+                disabled={loading}
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold rounded-xl text-base"
+              >
+                {loading ? "Vérification..." : "Se connecter"}
+              </Button>
+              <button
+                onClick={() => { setAuthStep("code"); setCodeError(""); setSubUsername(""); setSubPassword(""); }}
+                className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ← Retour
+              </button>
+            </div>
+          )}
+
           <button onClick={() => navigate(-1)} className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Retour
+            <ArrowLeft className="w-4 h-4" /> Retour à l'app
           </button>
         </div>
       </div>
@@ -569,7 +779,6 @@ export default function AdminPanelPage() {
 
     return (
       <div className="min-h-screen bg-background pb-16">
-        {/* Header */}
         <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
           <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); }}
             className="p-2 rounded-xl hover:bg-muted transition-colors">
@@ -604,21 +813,19 @@ export default function AdminPanelPage() {
             </div>
           </div>
 
-          {/* Badge dette */}
           {hasDette && (
             <div className="bg-red-50 border border-red-300 rounded-xl p-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-red-700">
                 <MinusCircle className="w-4 h-4 flex-shrink-0" />
                 <div>
                   <div className="font-bold text-sm">Dette cachée active</div>
-                  <div className="text-xs">{fmtMoney(u.dette_cachee ?? 0)} — prélevé automatiquement à la prochaine recharge/abonnement</div>
+                  <div className="text-xs">{fmtMoney(u.dette_cachee ?? 0)} — prélevé automatiquement</div>
                 </div>
               </div>
               <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium flex-shrink-0">Effacer</button>
             </div>
           )}
 
-          {/* Premium */}
           {(u.plan === "boss" || u.plan === "roi") && (
             <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-violet-700 font-bold mb-2"><Crown className="w-4 h-4" /> Premium</div>
@@ -631,7 +838,6 @@ export default function AdminPanelPage() {
             </div>
           )}
 
-          {/* CA utilisateur */}
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
             <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</div>
             <div className="text-2xl font-black text-emerald-700 mb-2">{fmtMoney(userCa)}</div>
@@ -648,7 +854,6 @@ export default function AdminPanelPage() {
             )}
           </div>
 
-          {/* Abonnements user */}
           {userAbo.length > 0 && (
             <div className="bg-card border border-border rounded-xl p-4">
               <div className="font-bold text-sm mb-2 flex items-center gap-2"><Crown className="w-4 h-4 text-violet-500" /> Abonnements ({userAbo.length})</div>
@@ -664,199 +869,189 @@ export default function AdminPanelPage() {
             </div>
           )}
 
-          {/* ── Actions compte ── */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Actions compte</div>
-            <div className="flex flex-wrap gap-2">
-              {u.status === "actif" && !u.is_admin && (
-                <>
-                  <button onClick={() => { setActionModal({ type: "suspendre", target: u, targetType: "user" }); setActionReason(""); }}
-                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-semibold transition-colors">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
+          {/* Actions compte — désactivées pour sous-admins sans droit "users" */}
+          {canAccess("users") && (
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Actions compte</div>
+              <div className="flex flex-wrap gap-2">
+                {u.status === "actif" && !u.is_admin && (
+                  <>
+                    <button onClick={() => { setActionModal({ type: "suspendre", target: u, targetType: "user" }); setActionReason(""); }}
+                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-semibold transition-colors">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
+                    </button>
+                    <button onClick={() => { setActionModal({ type: "bloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
+                      <Ban className="w-3.5 h-3.5" /> Bloquer
+                    </button>
+                  </>
+                )}
+                {(u.status === "suspendu" || u.status === "bloque") && (
+                  <button onClick={() => { setActionModal({ type: "debloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
+                    <Unlock className="w-3.5 h-3.5" /> Réactiver
                   </button>
-                  <button onClick={() => { setActionModal({ type: "bloquer", target: u, targetType: "user" }); setActionReason(""); }}
-                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
-                    <Ban className="w-3.5 h-3.5" /> Bloquer
+                )}
+                {u.plan !== "boss" && u.plan !== "roi" && !u.is_admin && (
+                  <button onClick={() => { setActionModal({ type: "activer_premium", target: u, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 font-semibold transition-colors">
+                    <Crown className="w-3.5 h-3.5" /> Activer Premium
                   </button>
-                </>
-              )}
-              {(u.status === "suspendu" || u.status === "bloque") && (
-                <button onClick={() => { setActionModal({ type: "debloquer", target: u, targetType: "user" }); setActionReason(""); }}
-                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
-                  <Unlock className="w-3.5 h-3.5" /> Réactiver
-                </button>
-              )}
-              {u.plan !== "boss" && u.plan !== "roi" && !u.is_admin && (
-                <button onClick={() => { setActionModal({ type: "activer_premium", target: u, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
-                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 font-semibold transition-colors">
-                  <Crown className="w-3.5 h-3.5" /> Activer Premium
-                </button>
-              )}
-              {(u.plan === "boss" || u.plan === "roi") && (
-                <button onClick={() => { setActionModal({ type: "retirer_premium", target: u, targetType: "user" }); setActionReason(""); }}
-                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-colors">
-                  <UserX className="w-3.5 h-3.5" /> Retirer Premium
+                )}
+                {(u.plan === "boss" || u.plan === "roi") && (
+                  <button onClick={() => { setActionModal({ type: "retirer_premium", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-colors">
+                    <UserX className="w-3.5 h-3.5" /> Retirer Premium
+                  </button>
+                )}
+              </div>
+
+              {(() => {
+                const userProduits = userBoutiques.flatMap(b => getProduitsByBoutique(b.id));
+                if (userProduits.length === 0) return null;
+                return (
+                  <div>
+                    <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Produits boutique ({userProduits.length})</div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {userProduits.map(produit => (
+                        <div key={produit.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs gap-2">
+                          <span className="font-medium flex-1 truncate">{produit.nom}</span>
+                          <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${produit.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            {produit.actif ? "Actif" : "Restreint"}
+                          </span>
+                          <div className="flex gap-1 flex-shrink-0">
+                            {produit.actif ? (
+                              <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                className="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">Désact.</button>
+                            ) : (
+                              <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                className="px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">Activer</button>
+                            )}
+                            <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                              className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {!u.is_admin && (
+                <button onClick={() => { setActionModal({ type: "supprimer", target: u, targetType: "user" }); setActionReason(""); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-semibold transition-colors w-full justify-center">
+                  <Trash2 className="w-3.5 h-3.5" /> Supprimer le compte
                 </button>
               )}
             </div>
+          )}
 
-            {/* Produits de l'utilisateur */}
-            {(() => {
-              const userProduits = userBoutiques.flatMap(b => getProduitsByBoutique(b.id));
-              if (userProduits.length === 0) return null;
-              return (
-                <div>
-                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Produits boutique ({userProduits.length})</div>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {userProduits.map(produit => (
-                      <div key={produit.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs gap-2">
-                        <span className="font-medium flex-1 truncate">{produit.nom}</span>
-                        <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${produit.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                          {produit.actif ? "Actif" : "Restreint"}
-                        </span>
-                        <div className="flex gap-1 flex-shrink-0">
-                          {produit.actif ? (
-                            <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                              className="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">Désact.</button>
-                          ) : (
-                            <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                              className="px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">Activer</button>
-                          )}
-                          <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                            className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+          {/* Dette cachée — super admin seulement */}
+          {authMode === "super" && (
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <MinusCircle className="w-4 h-4 text-red-500" /> Gestion Dette Cachée
+              </div>
+              <p className="text-xs text-muted-foreground">Mode silencieux — aucune notification.</p>
+              {hasDette ? (
+                <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-3">
+                  <div>
+                    <div className="text-sm font-bold text-red-700">Dette : {fmtMoney(u.dette_cachee ?? 0)}</div>
+                    <div className="text-xs text-red-500">Active</div>
+                  </div>
+                  <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium">Effacer</button>
+                </div>
+              ) : (
+                <button onClick={() => setDetteModal(u)}
+                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors w-full justify-center">
+                  <MinusCircle className="w-4 h-4" /> Appliquer une dette cachée
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Accès Panel Admin — super admin seulement */}
+          {authMode === "super" && (
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-500" /> Accès Panel Admin
+              </div>
+              {u.is_admin ? (
+                <div className="space-y-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
+                    {currentFeatures.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {currentFeatures.map(f => {
+                          const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
+                          return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
+                        })}
                       </div>
+                    )}
+                  </div>
+                  <button onClick={() => handleRevokeAdmin(u)}
+                    className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 font-semibold transition-colors w-full justify-center">
+                    <Lock className="w-4 h-4" /> Retirer l'accès admin
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
+                  <div className="grid grid-cols-1 gap-1">
+                    {ALL_ADMIN_FEATURES.map(feat => (
+                      <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
+                        <input type="checkbox" checked={adminFeatures.includes(feat.key)}
+                          onChange={e => {
+                            if (e.target.checked) setAdminFeatures(prev => [...prev, feat.key]);
+                            else setAdminFeatures(prev => prev.filter(k => k !== feat.key));
+                          }}
+                          className="w-4 h-4 rounded accent-amber-500"
+                        />
+                        <span className="text-sm">{feat.label}</span>
+                      </label>
                     ))}
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* Supprimer compte */}
-            {!u.is_admin && (
-              <button onClick={() => { setActionModal({ type: "supprimer", target: u, targetType: "user" }); setActionReason(""); }}
-                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-semibold transition-colors w-full justify-center">
-                <Trash2 className="w-3.5 h-3.5" /> Supprimer le compte
-              </button>
-            )}
-          </div>
-
-          {/* ── Dette cachée ── */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <MinusCircle className="w-4 h-4 text-red-500" /> Gestion Dette Cachée
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Mode silencieux — aucune notification. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement ne s'active pas tant que la dette n'est pas remboursée.
-            </p>
-            {hasDette ? (
-              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-3">
-                <div>
-                  <div className="text-sm font-bold text-red-700">Dette : {fmtMoney(u.dette_cachee ?? 0)}</div>
-                  <div className="text-xs text-red-500">Active — prélevée automatiquement</div>
-                </div>
-                <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium">Effacer</button>
-              </div>
-            ) : (
-              <button onClick={() => setDetteModal(u)}
-                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors w-full justify-center">
-                <MinusCircle className="w-4 h-4" /> Appliquer une dette cachée
-              </button>
-            )}
-          </div>
-
-          {/* ── Accès Panel Admin ── */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-amber-500" /> Accès Panel Admin
-            </div>
-            {u.is_admin ? (
-              <div className="space-y-3">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
-                  {currentFeatures.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentFeatures.map(f => {
-                        const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
-                        return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
-                      })}
+                  {adminFeatures.length > 0 && (
+                    <div className="space-y-2">
+                      <Input type="password" placeholder="Mot de passe d'accès admin..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className="rounded-xl" />
+                      <button onClick={() => handleGrantAdmin(u)}
+                        className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold transition-colors w-full justify-center">
+                        <ShieldCheck className="w-4 h-4" /> Accorder l'accès admin
+                      </button>
                     </div>
                   )}
                 </div>
-                <button onClick={() => handleRevokeAdmin(u)}
-                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 font-semibold transition-colors w-full justify-center">
-                  <Lock className="w-4 h-4" /> Retirer l'accès admin
+              )}
+            </div>
+          )}
+
+          {/* Modifier mot de passe */}
+          {authMode === "super" && (
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Lock className="w-4 h-4 text-blue-500" /> Modifier le mot de passe
+              </div>
+              <div className="space-y-2">
+                <Input type="password" placeholder="Nouveau mot de passe..." value={newPassword} onChange={e => setNewPassword(e.target.value)} className="rounded-xl" />
+                <Input type="password" placeholder="Confirmer le mot de passe..." value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="rounded-xl" />
+                {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-xs text-red-500">Les mots de passe ne correspondent pas.</p>
+                )}
+                <button
+                  onClick={() => handleChangeUserPassword(u)}
+                  disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors w-full justify-center"
+                >
+                  <Lock className="w-4 h-4" />
+                  {changingPassword ? "Modification..." : "Enregistrer le nouveau mot de passe"}
                 </button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
-                <div className="grid grid-cols-1 gap-1">
-                  {ALL_ADMIN_FEATURES.map(feat => (
-                    <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
-                      <input type="checkbox" checked={adminFeatures.includes(feat.key)}
-                        onChange={e => {
-                          if (e.target.checked) setAdminFeatures(prev => [...prev, feat.key]);
-                          else setAdminFeatures(prev => prev.filter(k => k !== feat.key));
-                        }}
-                        className="w-4 h-4 rounded accent-amber-500"
-                      />
-                      <span className="text-sm">{feat.label}</span>
-                    </label>
-                  ))}
-                </div>
-                {adminFeatures.length > 0 && (
-                  <div className="space-y-2">
-                    <Input type="password" placeholder="Mot de passe d'accès admin..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className="rounded-xl" />
-                    <button onClick={() => handleGrantAdmin(u)}
-                      className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold transition-colors w-full justify-center">
-                      <ShieldCheck className="w-4 h-4" /> Accorder l'accès admin
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Modifier mot de passe ── */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Lock className="w-4 h-4 text-blue-500" /> Modifier le mot de passe
             </div>
-            <p className="text-xs text-muted-foreground">Définissez un nouveau mot de passe pour cet utilisateur.</p>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Nouveau mot de passe..."
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                className="rounded-xl"
-              />
-              <Input
-                type="password"
-                placeholder="Confirmer le mot de passe..."
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                className="rounded-xl"
-              />
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-red-500">Les mots de passe ne correspondent pas.</p>
-              )}
-              <button
-                onClick={() => handleChangeUserPassword(u)}
-                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors w-full justify-center"
-              >
-                <Lock className="w-4 h-4" />
-                {changingPassword ? "Modification..." : "Enregistrer le nouveau mot de passe"}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Modals dans la vue détail utilisateur */}
         {actionModal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
@@ -885,20 +1080,16 @@ export default function AdminPanelPage() {
                 <div>
                   <label className="text-sm font-medium">Motif {["supprimer", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
                   <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
-                  {!["supprimer", "retirer_premium"].includes(actionModal.type) && (
-                    <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
-                  )}
                 </div>
               )}
               {actionModal.type === "supprimer" && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible.</div>
               )}
               <div className="flex gap-2">
                 <Button onClick={handleAction} className={`flex-1 text-white ${
                   ["supprimer", "bloquer", "supprimer_produit"].includes(actionModal.type) ? "bg-red-600 hover:bg-red-700" :
                   ["suspendre", "restreindre_produit"].includes(actionModal.type) ? "bg-yellow-600 hover:bg-yellow-700" :
-                  ["debloquer", "activer_premium", "activer_produit"].includes(actionModal.type) ? "bg-green-600 hover:bg-green-700" :
-                  "bg-gray-600 hover:bg-gray-700"
+                  "bg-green-600 hover:bg-green-700"
                 }`}>Confirmer</Button>
                 <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(""); }} className="flex-1">Annuler</Button>
               </div>
@@ -909,25 +1100,17 @@ export default function AdminPanelPage() {
         {detteModal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <MinusCircle className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="font-black text-lg">Dette Cachée</h3>
-                  <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
-                </div>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+              <h3 className="font-black text-lg">Dette Cachée — {detteModal.nom_prenom}</h3>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
                 <p className="font-semibold">⚠ Mode silencieux</p>
-                <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge.</p>
+                <p>Aucune notification envoyée.</p>
               </div>
               <div>
-                <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+                <label className="text-sm font-medium">Montant (FCFA) *</label>
                 <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+                <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer</Button>
                 <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
               </div>
             </div>
@@ -940,15 +1123,18 @@ export default function AdminPanelPage() {
   // ════════════ PANEL PRINCIPAL ════════════
   return (
     <div className="min-h-screen bg-background">
-
       {menuOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setMenuOpen(false)} />}
 
-      {/* Menu burger */}
       <div className={`fixed top-0 left-0 h-full z-50 w-72 bg-card border-r border-border shadow-2xl transform transition-transform duration-300 flex flex-col ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="p-5 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-amber-500" />
-            <span className="font-black text-lg">Panel Admin</span>
+            <div>
+              <span className="font-black text-lg block">Panel Admin</span>
+              {authMode === "sub" && subAdminUser && (
+                <span className="text-xs text-muted-foreground">@{subAdminUser.username}</span>
+              )}
+            </div>
           </div>
           <button onClick={() => setMenuOpen(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
         </div>
@@ -969,21 +1155,23 @@ export default function AdminPanelPage() {
           <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
-          <button onClick={() => { try { sessionStorage.removeItem("nexora_admin_auth"); } catch {} setIsAuthenticated(false); }}
+          <button onClick={handleLogout}
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
             <XCircle className="w-4 h-4" /> Déconnexion admin
           </button>
         </div>
       </div>
 
-      {/* Header */}
       <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => setMenuOpen(true)} className="p-2 rounded-xl hover:bg-muted transition-colors"><Menu className="w-5 h-5" /></button>
         <div className="flex items-center gap-2 flex-1">
           <ShieldCheck className="w-5 h-5 text-amber-500" />
           <span className="font-black text-base">{TABS.find(t => t.id === tab)?.label}</span>
+          {authMode === "sub" && (
+            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold">Sous-admin</span>
+          )}
         </div>
-        {unreadMessages > 0 && tab !== "messages" && (
+        {unreadMessages > 0 && tab !== "messages" && canAccess("messages") && (
           <button onClick={() => setTab("messages")}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-100 text-red-700 font-bold animate-pulse">
             <MessageSquare className="w-3.5 h-3.5" /> {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""}
@@ -995,11 +1183,10 @@ export default function AdminPanelPage() {
         </Button>
       </div>
 
-      {/* Contenu */}
       <div className="p-4 space-y-5 pb-16 max-w-3xl mx-auto">
 
         {/* ── STATS ── */}
-        {tab === "stats" && (
+        {tab === "stats" && canAccess("stats") && (
           <div className="space-y-4">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Utilisateurs</p>
             <div className="grid grid-cols-2 gap-3">
@@ -1036,10 +1223,10 @@ export default function AdminPanelPage() {
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Boutiques & Commerce</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Boutiques", value: stats.totalBoutiques,   icon: Store,        color: "text-pink-600"   },
-                { label: "Actives",   value: stats.boutiquesActives,  icon: CheckCircle,  color: "text-green-600"  },
-                { label: "Produits",  value: stats.totalProduits,     icon: Package,      color: "text-blue-600"   },
-                { label: "Commandes", value: stats.totalCommandes,    icon: ShoppingCart, color: "text-purple-600" },
+                { label: "Boutiques", value: stats.totalBoutiques,  icon: Store,        color: "text-pink-600"   },
+                { label: "Actives",   value: stats.boutiquesActives, icon: CheckCircle,  color: "text-green-600"  },
+                { label: "Produits",  value: stats.totalProduits,    icon: Package,      color: "text-blue-600"   },
+                { label: "Commandes", value: stats.totalCommandes,   icon: ShoppingCart, color: "text-purple-600" },
               ].map(s => { const Icon = s.icon; return (
                 <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
                   <Icon className={`w-6 h-6 ${s.color} flex-shrink-0`} />
@@ -1060,7 +1247,7 @@ export default function AdminPanelPage() {
               </div>
             </div>
 
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mes revenus Nexora</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Revenus Nexora</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
                 <Crown className="w-5 h-5 text-violet-600 mb-2" />
@@ -1070,9 +1257,8 @@ export default function AdminPanelPage() {
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                 <Percent className="w-5 h-5 text-blue-600 mb-2" />
-                <div className="text-xs text-blue-600 font-semibold mb-1">% Utilisateurs Transfert</div>
+                <div className="text-xs text-blue-600 font-semibold mb-1">% Utilisateurs Roi</div>
                 <div className="text-2xl font-black text-blue-700">{stats.tauxTransferts}%</div>
-                <div className="text-xs text-blue-500 mt-0.5">{users.filter(x => x.plan === "roi").length} utilisateurs Roi</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1095,33 +1281,30 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── UTILISATEURS ── */}
-        {tab === "users" && (
+        {tab === "users" && canAccess("users") && (
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input value={searchUser} onChange={e => setSearchUser(e.target.value)} placeholder="Nom, username, email..." className="pl-9" />
               </div>
-              <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
-                className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)} className="h-10 px-3 rounded-md border border-input bg-background text-sm">
                 <option value="">Tous les plans</option>
                 <option value="gratuit">Gratuit</option>
                 <option value="boss">Boss</option>
                 <option value="roi">Roi</option>
               </select>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-10 px-3 rounded-md border border-input bg-background text-sm">
                 <option value="">Tous statuts</option>
                 <option value="actif">Actif</option>
                 <option value="suspendu">Suspendu</option>
                 <option value="bloque">Bloqué</option>
               </select>
             </div>
-            <p className="text-xs text-muted-foreground">{filteredUsers.length} utilisateur(s) — Cliquez pour voir les détails</p>
+            <p className="text-xs text-muted-foreground">{filteredUsers.length} utilisateur(s)</p>
             <div className="space-y-2">
               {filteredUsers.map(user => {
                 const StatusIcon = STATUS_CONFIG[user.status]?.icon || CheckCircle;
-                const userCa = getCaByUser(user.id);
                 const hasDette = user.dette_active && (user.dette_cachee ?? 0) > 0;
                 return (
                   <button key={user.id} onClick={() => setSelectedUser(user)}
@@ -1134,7 +1317,7 @@ export default function AdminPanelPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm">{user.nom_prenom}</span>
                           {user.is_admin && <BadgeCheck className="w-4 h-4 text-amber-500 flex-shrink-0" />}
-                          {hasDette && <MinusCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Dette cachée active" />}
+                          {hasDette && authMode === "super" && <MinusCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Dette cachée active" />}
                           <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[user.plan]?.bg} ${PLAN_CONFIG[user.plan]?.color}`}>{PLAN_CONFIG[user.plan]?.label}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${STATUS_CONFIG[user.status]?.bg} ${STATUS_CONFIG[user.status]?.color}`}>
                             <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[user.status]?.label}
@@ -1143,7 +1326,7 @@ export default function AdminPanelPage() {
                         <div className="text-xs text-muted-foreground mt-0.5">@{user.username} · {user.email}</div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(user.created_at)}</span>
-                          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
+                          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><DollarSign className="w-3 h-3" />{fmtMoney(getCaByUser(user.id))}</span>
                         </div>
                       </div>
                       <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
@@ -1156,7 +1339,7 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── BOUTIQUES ── */}
-        {tab === "boutiques" && (
+        {tab === "boutiques" && canAccess("boutiques") && (
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1186,8 +1369,8 @@ export default function AdminPanelPage() {
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5">/{boutique.slug} · {owner?.nom_prenom || "Inconnu"}</div>
                           <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
-                            <span className="text-muted-foreground flex items-center gap-1"><Package className="w-3 h-3" />{produitsBoutique.length} produits</span>
-                            <span className="text-muted-foreground flex items-center gap-1"><ShoppingCart className="w-3 h-3" />{commandesBoutique.length} commandes</span>
+                            <span className="text-muted-foreground flex items-center gap-1"><Package className="w-3 h-3" />{produitsBoutique.length}</span>
+                            <span className="text-muted-foreground flex items-center gap-1"><ShoppingCart className="w-3 h-3" />{commandesBoutique.length}</span>
                             <span className="text-emerald-600 font-bold flex items-center gap-1"><DollarSign className="w-3 h-3" />{fmtMoney(ca)}</span>
                           </div>
                         </div>
@@ -1248,17 +1431,17 @@ export default function AdminPanelPage() {
                                     <div className="flex flex-col gap-1.5 flex-shrink-0">
                                       {produit.actif ? (
                                         <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">
+                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium">
                                           <AlertOctagon className="w-3 h-3" /> Restreindre
                                         </button>
                                       ) : (
                                         <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">
+                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium">
                                           <CheckCircle className="w-3 h-3" /> Activer
                                         </button>
                                       )}
                                       <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
-                                        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
+                                        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium">
                                         <Trash2 className="w-3 h-3" /> Supprimer
                                       </button>
                                     </div>
@@ -1278,12 +1461,12 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── ABONNEMENTS ── */}
-        {tab === "abonnements" && (
+        {tab === "abonnements" && canAccess("abonnements") && (
           <div className="space-y-4">
             <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">
               <div className="text-sm font-semibold opacity-80 mb-1">Revenus Abonnements Nexora</div>
               <div className="text-3xl font-black">{fmtMoney(stats.caAbonnements)}</div>
-              <div className="text-xs opacity-70 mt-1">{stats.totalAbonnements} abonnement(s) enregistré(s)</div>
+              <div className="text-xs opacity-70 mt-1">{stats.totalAbonnements} abonnement(s)</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
@@ -1294,7 +1477,7 @@ export default function AdminPanelPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                 <Percent className="w-6 h-6 text-blue-600 mb-2" />
                 <div className="text-3xl font-black text-blue-700">{stats.tauxTransferts}%</div>
-                <div className="text-xs text-blue-500">Taux accès Transfert (Roi)</div>
+                <div className="text-xs text-blue-500">Taux Roi</div>
               </div>
             </div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Historique</p>
@@ -1326,14 +1509,11 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── MESSAGES ── */}
-        {tab === "messages" && (
+        {tab === "messages" && canAccess("messages") && (
           <div className="space-y-3">
             <div className="bg-card border border-border rounded-2xl p-3">
               <div className="font-black text-base">Support & Messagerie</div>
-              <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
+              <div className="text-xs text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</div>
             </div>
             {messages.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl text-sm">
@@ -1375,7 +1555,7 @@ export default function AdminPanelPage() {
                           <div className="bg-background rounded-xl p-3 text-sm">{msg.contenu}</div>
                           {msg.reponse_admin && (
                             <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Votre réponse</div>
+                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Réponse envoyée</div>
                               <p className="text-sm text-green-800">{msg.reponse_admin}</p>
                             </div>
                           )}
@@ -1388,9 +1568,9 @@ export default function AdminPanelPage() {
                               {sendingReply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             </Button>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex justify-end">
                             <button onClick={() => handleDeleteMessage(msg)}
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors ml-auto">
+                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
                               <Trash2 className="w-3.5 h-3.5" /> Supprimer
                             </button>
                           </div>
@@ -1405,17 +1585,19 @@ export default function AdminPanelPage() {
         )}
 
         {/* ── LOGS ── */}
-        {tab === "logs" && (
+        {tab === "logs" && canAccess("logs") && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{logs.length} entrées</p>
-              <Button variant="outline" size="sm" onClick={() => {
-                if (window.confirm("Vider tous les logs ?")) {
-                  supabase.from("nexora_logs" as any).delete()
-                    .neq("id", "00000000-0000-0000-0000-000000000000")
-                    .then(() => { toast({ title: "Logs vidés" }); loadAll(); });
-                }
-              }} className="gap-1 text-xs"><Trash2 className="w-3.5 h-3.5" /> Vider</Button>
+              {authMode === "super" && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  if (window.confirm("Vider tous les logs ?")) {
+                    supabase.from("nexora_logs" as any).delete()
+                      .neq("id", "00000000-0000-0000-0000-000000000000")
+                      .then(() => { toast({ title: "Logs vidés" }); loadAll(); });
+                  }
+                }} className="gap-1 text-xs"><Trash2 className="w-3.5 h-3.5" /> Vider</Button>
+              )}
             </div>
             {logs.map(log => (
               <div key={log.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-start gap-3">
@@ -1436,9 +1618,18 @@ export default function AdminPanelPage() {
             ))}
           </div>
         )}
+
+        {/* Message si l'onglet actif n'est pas accessible */}
+        {!canAccess(tab) && (
+          <div className="text-center py-20 space-y-3">
+            <Lock className="w-12 h-12 mx-auto text-muted-foreground opacity-30" />
+            <p className="text-muted-foreground font-medium">Accès non autorisé</p>
+            <p className="text-xs text-muted-foreground">Vous n'avez pas les droits pour accéder à cette section.</p>
+          </div>
+        )}
       </div>
 
-      {/* Modal actions (panel principal) */}
+      {/* Modals panel principal */}
       {actionModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
@@ -1467,15 +1658,12 @@ export default function AdminPanelPage() {
             )}
             {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit", "toggle_boutique"].includes(actionModal.type) && (
               <div>
-                <label className="text-sm font-medium">Motif {["supprimer", "toggle_boutique"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
+                <label className="text-sm font-medium">Motif {["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
                 <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
-                {!["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) && (
-                  <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
-                )}
               </div>
             )}
             {actionModal.type === "supprimer" && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible.</div>
             )}
             <div className="flex gap-2">
               <Button onClick={handleAction} className={`flex-1 text-white ${
@@ -1490,29 +1678,20 @@ export default function AdminPanelPage() {
         </div>
       )}
 
-      {/* Modal dette cachée (panel principal) */}
       {detteModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
-                <MinusCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-black text-lg">Dette Cachée</h3>
-                <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
-              </div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+            <h3 className="font-black text-lg">Dette Cachée — {detteModal.nom_prenom}</h3>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
               <p className="font-semibold">⚠ Mode silencieux</p>
-              <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement reste bloqué jusqu'au remboursement complet.</p>
+              <p>Aucune notification envoyée.</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+              <label className="text-sm font-medium">Montant (FCFA) *</label>
               <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+              <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer</Button>
               <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
             </div>
           </div>
