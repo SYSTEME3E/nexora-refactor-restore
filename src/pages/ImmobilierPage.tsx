@@ -46,7 +46,7 @@ const STATUTS = [
 ];
 
 function formatPrix(prix: number) {
-  return prix.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " $";
+  return prix.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FCFA";
 }
 
 function CopyBtn({ text }: { text: string }) {
