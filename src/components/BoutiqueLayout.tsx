@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, ShoppingBag, Settings,
-  Eye, ChevronRight, Menu, X, ArrowLeft, Store, Wallet,
+  Eye, ChevronRight, Menu, X, ArrowLeft, Store, Sun, Moon
 } from "lucide-react";
+import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 
+// ⚠️ "Finances & Retraits" retiré du menu utilisateur (désactivé côté vendeur)
 const boutiqueNav = [
-  { path: "/boutique",           icon: LayoutDashboard, label: "Dashboard",          color: "text-blue-400",   bg: "bg-blue-400/10"   },
-  { path: "/boutique/produits",  icon: Package,         label: "Produits",           color: "text-purple-400", bg: "bg-purple-400/10" },
-  { path: "/boutique/commandes", icon: ShoppingBag,     label: "Commandes",          color: "text-orange-400", bg: "bg-orange-400/10" },
-  { path: "/boutique/finances",  icon: Wallet,          label: "Finances & Retraits", color: "text-rose-400",  bg: "bg-rose-400/10"   },
-  { path: "/boutique/parametres",icon: Settings,        label: "Paramètres",         color: "text-gray-400",   bg: "bg-gray-400/10"   },
+  { path: "/boutique",           icon: LayoutDashboard, label: "Dashboard",   color: "text-blue-400",   bg: "bg-blue-400/10"   },
+  { path: "/boutique/produits",  icon: Package,         label: "Produits",    color: "text-purple-400", bg: "bg-purple-400/10" },
+  { path: "/boutique/commandes", icon: ShoppingBag,     label: "Commandes",   color: "text-orange-400", bg: "bg-orange-400/10" },
+  { path: "/boutique/parametres",icon: Settings,        label: "Paramètres",  color: "text-gray-400",   bg: "bg-gray-400/10"   },
 ];
 
 interface BoutiqueLayoutProps {
@@ -24,6 +25,18 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  /* ── Applique le thème sauvegardé dès le montage (vitrine + boutique vendeur) ── */
+  useEffect(() => {
+    initTheme();
+    setDarkMode(getTheme() === "dark");
+  }, []);
+
+  const handleToggleTheme = () => {
+    const next = toggleTheme();
+    setDarkMode(next === "dark");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex overflow-x-hidden">
@@ -39,16 +52,14 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
         fixed top-0 left-0 h-full z-30
         bg-white dark:bg-gray-900
         border-r border-gray-200 dark:border-gray-800
-        shadow-sm flex flex-col
-        transition-all duration-300
+        shadow-sm flex flex-col transition-all duration-300
         ${sidebarOpen ? "w-56" : "w-[68px]"}
         ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
 
-        {/* Barre colorée top */}
         <div className="h-1 w-full bg-gradient-to-r from-pink-500 via-purple-500 to-orange-400 flex-shrink-0" />
 
-        {/* Logo + Nom boutique */}
+        {/* Logo */}
         <div className={`flex items-center gap-2.5 px-3 py-3.5 border-b border-gray-100 dark:border-gray-800 ${!sidebarOpen ? "justify-center" : ""}`}>
           <div className="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
             <Store className="w-4 h-4 text-white" />
@@ -67,7 +78,7 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
           </button>
         </div>
 
-        {/* Nav items */}
+        {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
           {boutiqueNav.map(({ path, icon: Icon, label, color, bg }) => {
             const active = location.pathname === path;
@@ -99,14 +110,9 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
             );
           })}
 
-          {/* Voir vitrine */}
           {boutiqueSlug && sidebarOpen && (
-            <a
-              href={`/shop/${boutiqueSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-2.5 py-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 hover:text-pink-600 dark:hover:text-pink-400 transition-colors mt-1"
-            >
+            <a href={`/shop/${boutiqueSlug}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-2.5 py-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 hover:text-pink-600 dark:hover:text-pink-400 transition-colors mt-1">
               <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-pink-50 dark:bg-pink-950/50">
                 <Eye className="w-4 h-4 text-pink-400" />
               </div>
@@ -114,13 +120,7 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
             </a>
           )}
           {boutiqueSlug && !sidebarOpen && (
-            <a
-              href={`/shop/${boutiqueSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Voir la vitrine"
-              className="flex justify-center py-2"
-            >
+            <a href={`/shop/${boutiqueSlug}`} target="_blank" rel="noopener noreferrer" title="Voir la vitrine" className="flex justify-center py-2">
               <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-pink-50 dark:bg-pink-950/50">
                 <Eye className="w-5 h-5 text-pink-400" />
               </div>
@@ -128,25 +128,28 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
           )}
         </nav>
 
-        {/* Retour vers l'app principale */}
-        <div className="p-2.5 border-t border-gray-100 dark:border-gray-800">
+        {/* Thème + Retour */}
+        <div className="p-2.5 border-t border-gray-100 dark:border-gray-800 space-y-1">
+          <button
+            onClick={handleToggleTheme}
+            title={darkMode ? "Mode clair" : "Mode sombre"}
+            className={`w-full flex items-center gap-3 rounded-xl transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}`}
+          >
+            <div className={`flex items-center justify-center rounded-lg flex-shrink-0 ${darkMode ? "bg-yellow-400/20" : "bg-indigo-400/20"} ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}`}>
+              {darkMode
+                ? <Sun className={`text-yellow-400 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
+                : <Moon className={`text-indigo-400 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
+              }
+            </div>
+            {sidebarOpen && <span className="text-sm">{darkMode ? "Mode clair" : "Mode sombre"}</span>}
+          </button>
+
           <button
             onClick={() => navigate("/dashboard")}
             title="Retour au tableau de bord"
-            className={`
-              w-full flex items-center gap-3 rounded-xl
-              text-gray-500 dark:text-gray-400
-              hover:bg-gray-100 dark:hover:bg-gray-800
-              hover:text-gray-800 dark:hover:text-gray-200
-              transition-colors
-              ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
-            `}
+            className={`w-full flex items-center gap-3 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200 transition-colors ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}`}
           >
-            <div className={`
-              flex items-center justify-center rounded-lg flex-shrink-0
-              bg-gray-100 dark:bg-gray-800
-              ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}
-            `}>
+            <div className={`flex items-center justify-center rounded-lg flex-shrink-0 bg-gray-100 dark:bg-gray-800 ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}`}>
               <ArrowLeft className={`text-gray-500 dark:text-gray-400 flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
             </div>
             {sidebarOpen && <span className="text-sm">Retour</span>}
@@ -157,15 +160,11 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
       {/* ── Zone principale ── */}
       <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden min-w-0 w-0 ${sidebarOpen ? "lg:ml-56" : "lg:ml-[68px]"}`}>
 
-        {/* Header mobile uniquement */}
+        {/* Header mobile */}
         <header className="lg:hidden sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm px-4 h-14 flex items-center gap-3">
-          <button
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            {mobileSidebarOpen
-              ? <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-              : <Menu className="w-5 h-5 text-gray-700 dark:text-gray-200" />}
+          <button onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            {mobileSidebarOpen ? <X className="w-5 h-5 text-gray-700 dark:text-gray-200" /> : <Menu className="w-5 h-5 text-gray-700 dark:text-gray-200" />}
           </button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
@@ -173,9 +172,12 @@ export default function BoutiqueLayout({ children, boutiqueName = "Ma Boutique",
             </div>
             <p className="font-black text-sm text-gray-800 dark:text-gray-100 truncate">{boutiqueName}</p>
           </div>
+          <button onClick={handleToggleTheme}
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            {darkMode ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+          </button>
         </header>
 
-        {/* Contenu */}
         <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
           {children}
         </main>
