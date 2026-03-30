@@ -25,6 +25,159 @@ function getDateStr() {
   });
 }
 
+// ── BOUTON WHATSAPP FLOTTANT ──────────────────────────────────────────────────
+function WhatsAppFloatingButton() {
+  const [visible, setVisible] = useState(false);
+
+  // Apparition différée pour un effet "slide-up" après le chargement de la page
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <>
+      <style>{`
+        @keyframes wa-slideUp {
+          from { opacity: 0; transform: translateY(30px) scale(0.85); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    }
+        }
+        @keyframes wa-pulse {
+          0%, 100% { box-shadow: 0 0 0 0   rgba(37,211,102,0.55), 0 6px 24px rgba(37,211,102,0.35); }
+          60%       { box-shadow: 0 0 0 14px rgba(37,211,102,0),   0 6px 24px rgba(37,211,102,0.35); }
+        }
+        @keyframes wa-tooltipIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
+
+        .wa-wrapper {
+          position: fixed;
+          bottom: 28px;
+          right: 24px;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 10px;
+          pointer-events: none;
+        }
+        .wa-wrapper.is-visible { pointer-events: auto; }
+
+        /* ── Tooltip ── */
+        .wa-tooltip {
+          background: #ffffff;
+          color: #1a1a1a;
+          font-size: 12.5px;
+          font-weight: 700;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          padding: 8px 14px;
+          border-radius: 14px;
+          white-space: nowrap;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+          opacity: 0;
+          transform: translateY(6px);
+          transition: opacity 0.22s ease, transform 0.22s ease;
+          position: relative;
+          margin-right: 4px;
+          letter-spacing: 0.01em;
+        }
+        /* Petite flèche */
+        .wa-tooltip::after {
+          content: '';
+          position: absolute;
+          bottom: -6px;
+          right: 24px;
+          width: 12px;
+          height: 12px;
+          background: #ffffff;
+          transform: rotate(45deg);
+          border-radius: 2px;
+          box-shadow: 2px 2px 5px rgba(0,0,0,0.06);
+        }
+
+        /* ── Bouton principal ── */
+        .wa-btn {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #25D366 0%, #128C5E 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          border: none;
+          text-decoration: none;
+          flex-shrink: 0;
+          animation: wa-pulse 2.4s ease-in-out 1.8s infinite;
+          transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+          position: relative;
+          overflow: visible;
+        }
+
+        /* Anneau blanc subtil */
+        .wa-btn::before {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          border: 2px solid rgba(37,211,102,0.3);
+          pointer-events: none;
+        }
+
+        .wa-btn:hover {
+          transform: scale(1.12);
+          animation: none;
+          box-shadow: 0 8px 32px rgba(37,211,102,0.5), 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .wa-btn:hover + .wa-tooltip,
+        .wa-wrapper:hover .wa-tooltip {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        /* Apparition globale du wrapper */
+        .wa-wrapper.is-visible .wa-btn {
+          animation: wa-slideUp 0.55s cubic-bezier(.22,.68,0,1.15) both,
+                     wa-pulse   2.4s ease-in-out 2.4s infinite;
+        }
+
+        /* Responsive mobile */
+        @media (max-width: 640px) {
+          .wa-wrapper { bottom: 20px; right: 16px; }
+          .wa-btn     { width: 52px; height: 52px; }
+          .wa-tooltip { font-size: 11.5px; padding: 7px 12px; }
+        }
+      `}</style>
+
+      <div className={`wa-wrapper${visible ? " is-visible" : ""}`}>
+        {/* Tooltip au-dessus */}
+        <div className="wa-tooltip">💬 Rejoignez la communauté</div>
+
+        {/* Bouton */}
+        
+          href="https://chat.whatsapp.com/BCBOcRIFGr6LoRPyMiXRAp"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="wa-btn"
+          aria-label="Rejoindre la communauté WhatsApp"
+        >
+          {/* Icône communauté (groupe de personnes) */}
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="9.5" r="4" fill="white"/>
+            <path d="M8 27c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="white" strokeWidth="2.3" strokeLinecap="round"/>
+            <circle cx="6.5"  cy="12" r="3" fill="white" opacity="0.72"/>
+            <path d="M1 27c0-3.314 2.686-6 5.5-6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.72"/>
+            <circle cx="25.5" cy="12" r="3" fill="white" opacity="0.72"/>
+            <path d="M31 27c0-3.314-2.686-6-5.5-6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.72"/>
+          </svg>
+        </a>
+      </div>
+    </>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const [devise, setDevise]   = useState<"XOF" | "USD">("XOF");
   const [time, setTime]       = useState(new Date());
@@ -77,11 +230,6 @@ export default function DashboardPage() {
     formatAmount(devise === "XOF" ? v : convertAmount(v, "XOF", "USD"), devise);
   const solde = stats.totalEntrees - stats.totalDepenses;
 
-  /*
-   * On injecte uniquement le bouton Refresh dans le header.
-   * Le toggle mode sombre/clair est géré dans AppLayout (en haut
-   * à côté des notifications) — on ne le duplique PAS ici.
-   */
   const headerActions = (
     <button
       onClick={loadStats}
@@ -93,13 +241,6 @@ export default function DashboardPage() {
   );
 
   return (
-    /*
-     * CORRECTION z-index / superposition :
-     * Aucun élément dans cette page n'a de position sticky/fixed
-     * ni de z-index élevé. AppLayout gère son propre header sticky.
-     * Le contenu défile normalement en dessous sans jamais
-     * chevaucher les panneaux de notifications ou autres overlays.
-     */
     <AppLayout headerActions={headerActions}>
       <div className="w-full flex flex-col gap-4 pb-6">
 
@@ -169,8 +310,6 @@ export default function DashboardPage() {
 
         {/* ── 3. CARTES ACTIONS ── */}
         <div className="grid grid-cols-2 gap-3">
-
-          {/* Entrées — Vert émeraude */}
           <Link
             to="/entrees-depenses"
             className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-3xl shadow-lg shadow-emerald-500/25 hover:scale-[1.02] hover:shadow-emerald-500/40 transition-all active:scale-[0.98]"
@@ -182,7 +321,6 @@ export default function DashboardPage() {
             <p className="text-white font-black text-xl truncate">{loading ? "..." : fmt(stats.totalEntrees)}</p>
           </Link>
 
-          {/* Dépenses — Rouge */}
           <Link
             to="/entrees-depenses"
             className="bg-gradient-to-br from-rose-500 to-red-600 p-4 rounded-3xl shadow-lg shadow-rose-500/25 hover:scale-[1.02] hover:shadow-rose-500/40 transition-all active:scale-[0.98]"
@@ -194,7 +332,6 @@ export default function DashboardPage() {
             <p className="text-white font-black text-xl truncate">{loading ? "..." : fmt(stats.totalDepenses)}</p>
           </Link>
 
-          {/* Transfert — Ambre/Orange */}
           <Link
             to="/transfert"
             className="bg-gradient-to-br from-amber-400 to-orange-500 p-4 rounded-3xl shadow-lg shadow-amber-500/25 hover:scale-[1.02] hover:shadow-amber-500/40 transition-all active:scale-[0.98]"
@@ -206,7 +343,6 @@ export default function DashboardPage() {
             <p className="text-white font-black text-xl">Suivi →</p>
           </Link>
 
-          {/* Boutique — Violet/Indigo */}
           <Link
             to="/boutique"
             className="bg-gradient-to-br from-violet-600 to-indigo-700 p-4 rounded-3xl shadow-lg shadow-violet-500/25 hover:scale-[1.02] hover:shadow-violet-500/40 transition-all active:scale-[0.98]"
@@ -279,6 +415,9 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* ── BOUTON WHATSAPP FLOTTANT ── */}
+      <WhatsAppFloatingButton />
     </AppLayout>
   );
 }
