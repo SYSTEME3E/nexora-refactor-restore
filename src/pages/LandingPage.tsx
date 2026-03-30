@@ -888,7 +888,7 @@ export default function LandingPage() {
               <div className="mt-4">
                 <p className="text-white font-black text-xs mb-2 uppercase tracking-wider">Pays actifs</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {["🇧🇯","🇨🇮","🇹🇬","🇸🇳","🇳🇪"].map((f,i) => (
+                  {["🇧🇯","🇨🇮","🇹🇬","🇸🇳","🇳🇪","🇧🇫","🇨🇲","🇨🇩..."].map((f,i) => (
                     <span key={i} className="text-lg">{f}</span>
                   ))}
                 </div>
