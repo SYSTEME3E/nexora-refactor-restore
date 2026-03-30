@@ -185,15 +185,15 @@ export default function NexoraNotifications() {
           )}
         </button>
 
-        {/* ── Panel notifications — z-[9990] pour être AU-DESSUS du dashboard ── */}
+        {/* ── Panel notifications — fixed pour éviter tout chevauchement ── */}
         {open && (
           <>
-            {/* Overlay qui ferme le panel sans bloquer l'UI derrière */}
+            {/* Overlay plein écran pour fermer */}
             <div className="fixed inset-0 z-[9980]" onClick={() => setOpen(false)} />
 
             <div
               ref={panelRef}
-              className="absolute right-0 top-12 z-[9990] w-80 max-h-[80vh] bg-card dark:bg-gray-900 border border-border dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed right-4 top-16 z-[9990] w-80 max-h-[80vh] bg-card dark:bg-gray-900 border border-border dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
               style={{ maxHeight: "min(80vh, 520px)" }}
             >
               {/* Header panel */}
