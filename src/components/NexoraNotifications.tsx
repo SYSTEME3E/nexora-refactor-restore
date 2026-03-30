@@ -12,6 +12,7 @@ interface Notification {
   created_at: string;
 }
 
+
 const TYPE_CONFIG: Record<string, { bg: string; icon: any; color: string; darkBg: string }> = {
   success:  { bg: "bg-green-50 border-green-200",   darkBg: "dark:bg-green-950/50 dark:border-green-800",   icon: CheckCircle,   color: "text-green-600 dark:text-green-400"  },
   warning:  { bg: "bg-yellow-50 border-yellow-200",  darkBg: "dark:bg-yellow-950/50 dark:border-yellow-800", icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400" },
