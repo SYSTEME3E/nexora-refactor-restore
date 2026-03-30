@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 import {
   ArrowRight, Zap, ShieldCheck, Globe, BarChart3, Receipt,
   Store, Home, Lock, Send, Star, TrendingUp, FileText,
   CreditCard, Wallet, ChevronDown, Menu, X, Sparkles,
   Users, ArrowDownLeft, ArrowUpRight, Facebook, Twitter,
-  CheckCircle2, Clock, Play, MessageSquare
+  CheckCircle2, Clock, Play, MessageSquare, Sun, Moon
 } from "lucide-react";
 
 // ─── CONSTANTES ───────────────────────────────────────────────────────────────
@@ -39,8 +40,8 @@ const FEATURES = [
   {
     icon: Send, color: "#0ea5e9", bg: "#f0f9ff",
     title: "Transfert d'Argent Africa", tag: "Disponible",
-    desc: "Envoyez de l'argent partout en Afrique via Mobile Money en quelques secondes. Rechargez votre compte gratuitement, transférez vers 5 pays actifs avec seulement 3% de frais.",
-    points: ["Recharge 100% gratuite", "5 pays actifs", "3% de frais seulement", "Facture PDF automatique"],
+    desc: "Envoyez de l'argent partout en Afrique via Mobile Money en quelques secondes. Rechargez votre compte gratuitement, transférez vers 24 pays actifs avec seulement 3% de frais.",
+    points: ["Recharge 100% gratuite", "24 pays actifs", "3% de frais seulement", "Facture PDF automatique"],
   },
   {
     icon: Home, color: "#8b5cf6", bg: "#f5f3ff",
@@ -72,7 +73,7 @@ const ROADMAP = [
   { title: "Carte NEXORA Virtuelle", desc: "Payez partout dans le monde avec votre carte virtuelle NEXORA. Compatible avec les paiements en ligne internationaux.", status: "soon", pct: 65 },
   { title: "Wallet Multi-devises", desc: "Gérez XOF, GHS, NGN, KES et d'autres devises africaines depuis un seul portefeuille unifié.", status: "soon", pct: 40 },
   { title: "NEXORA Business", desc: "Tableau de bord entreprise avec multi-utilisateurs, rôles, permissions et reporting avancé.", status: "soon", pct: 20 },
-  { title: "Expansion 19 pays", desc: "Mali, Burkina, Cameroun, Ghana, Nigéria, Kenya et 13 autres pays africains bientôt disponibles.", status: "soon", pct: 30 },
+  { title: "24 pays couverts", desc: "Mali, Burkina, Cameroun, Ghana, Nigéria, Kenya, Tanzanie, Ouganda, Rwanda, Guinée, RD Congo, Gabon, Congo, Maroc, Gambie, Sierra Leone, Liberia, Mozambique, Zambie et plus.", status: "soon", pct: 30 },
 ];
 
 const STATS = [
@@ -151,6 +152,12 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    initTheme();
+    setDarkMode(document.documentElement.classList.contains("dark"));
+  }, []);
   const [reviewForm, setReviewForm] = useState({ name: "", country: "", text: "", stars: 5 });
   const [reviews, setReviews] = useState<{name:string;country:string;text:string;stars:number}[]>([
     { name: "Aïcha Koné", country: "🇧🇯 Bénin", text: "NEXORA m'a permis de gérer ma boutique et mes factures depuis mon téléphone. Un vrai gain de temps au quotidien !", stars: 5 },
@@ -182,7 +189,12 @@ export default function LandingPage() {
   };
 
   const submitReview = async () => {
-    if (!reviewForm.name.trim() || !reviewForm.text.trim()) return;
+    const nameParts = reviewForm.name.trim().split(/\s+/);
+    if (nameParts.length < 2 || !nameParts[1] || nameParts[1].length < 2) {
+      alert("Veuillez entrer votre nom complet (prénom et nom de famille).");
+      return;
+    }
+    if (!reviewForm.text.trim()) return;
     const newReview = { name: reviewForm.name, country: reviewForm.country, text: reviewForm.text, stars: reviewForm.stars };
     setReviews(prev => [newReview, ...prev]);
     try {
@@ -256,6 +268,13 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => { const t = toggleTheme(); setDarkMode(t === "dark"); }}
+              className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+              title={darkMode ? "Mode clair" : "Mode sombre"}
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <button onClick={() => navigate("/login")} className="text-[13.5px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 transition-colors">
               Connexion
             </button>
@@ -736,7 +755,7 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Nom complet *</label>
+                <label className="block text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Nom complet * <span className="normal-case font-normal text-gray-400">(prénom + nom requis)</span></label>
                 <input
                   type="text"
                   value={reviewForm.name}
@@ -770,7 +789,7 @@ export default function LandingPage() {
 
             <button
               onClick={submitReview}
-              disabled={!reviewForm.name || !reviewForm.text}
+              disabled={reviewForm.name.trim().split(/\s+/).length < 2 || !reviewForm.name.trim().split(/\s+/)[1] || !reviewForm.text}
               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
               <Star className="w-4 h-4 fill-white" /> Publier mon avis
             </button>
