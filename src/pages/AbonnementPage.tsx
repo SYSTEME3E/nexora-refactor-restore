@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 
 // ── Constante secrète — CHANGEZ CETTE VALEUR ──────────────
 // C'est votre code personnel. Ne le partagez jamais.
-const SUPER_ADMIN_CODE = "NEXORA_SUPER_2025"; // ← modifiez ici
+const SUPER_ADMIN_CODE = "ERIC"; // ← modifiez ici
 
 // ── Fonctionnalités accordables aux sous-admins ────────────
 const ALL_ADMIN_FEATURES: { key: string; label: string }[] = [
@@ -145,32 +145,9 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 };
 
 // ══════════════════════════════════════════════════════════
-export default function AdminPanelPage() {
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
-  // ── Auth state ─────────────────────────────────────────
-  // Étape 1 : login (code ou username+password)
-  // Étape 2 (sous-admin seulement) : saisie username
-  const [authStep, setAuthStep]         = useState<"code" | "subadmin_user" | "subadmin_pass">("code");
-  const [codeInput, setCodeInput]       = useState("");
-  const [codeError, setCodeError]       = useState<string>("");
-  const [subUsername, setSubUsername]   = useState("");
-  const [subPassword, setSubPassword]   = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authMode, setAuthMode]         = useState<AuthMode>("super");
-  // Fonctionnalités accordées au sous-admin connecté
-  const [grantedFeatures, setGrantedFeatures] = useState<string[]>([]);
-  // Utilisateur sous-admin connecté (pour logs)
-  const [subAdminUser, setSubAdminUser] = useState<NexoraUser | null>(null);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [tab, setTab] = useState<AdminTab>(() => {
-    try { return (localStorage.getItem("admin_tab") as AdminTab) || "stats"; }
-    catch { return "stats"; }
-  });
-  const [loading, setLoading] = useState(false);
-
+  
   const [stats, setStats] = useState({
     totalUsers: 0, premiumUsers: 0, gratuitUsers: 0, adminUsers: 0,
     activeUsers: 0, suspendedUsers: 0, blockedUsers: 0,
