@@ -153,7 +153,6 @@ const App = () => (
 
           {/* Routes Premium */}
           <Route path="/immobilier"             element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
-          <Route path="/immobilier/annonce/:id" element={<PremiumPage><AnnonceDetailPage /></PremiumPage>} />
           <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
           <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
           <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
