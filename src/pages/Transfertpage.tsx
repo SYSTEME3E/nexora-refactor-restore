@@ -11,37 +11,36 @@ import { getNexoraUser } from "@/lib/nexora-auth";
 
 const LOGO_URL = "https://i.postimg.cc/c1QgbZsG/ei_1773937801458_removebg_preview.png";
 
-// ─── PAYS ACTIFS ───
+// ─── PAYS ACTIFS (24 pays) ───
 const ACTIVE_COUNTRIES = [
   { code: "BJ", flag: "🇧🇯", name: "Bénin",         currency: "XOF", networks: ["MTN MoMo", "Moov Money"] },
   { code: "CI", flag: "🇨🇮", name: "Côte d'Ivoire", currency: "XOF", networks: ["Orange Money", "MTN MoMo", "Wave", "Moov Money"] },
   { code: "TG", flag: "🇹🇬", name: "Togo",           currency: "XOF", networks: ["Flooz", "T-Money"] },
   { code: "SN", flag: "🇸🇳", name: "Sénégal",        currency: "XOF", networks: ["Orange Money", "Wave", "Free Money"] },
   { code: "NE", flag: "🇳🇪", name: "Niger",          currency: "XOF", networks: ["Airtel Money", "Moov Money"] },
+  { code: "ML", flag: "🇲🇱", name: "Mali",           currency: "XOF", networks: ["Orange Money", "Moov Money", "Wave"] },
+  { code: "BF", flag: "🇧🇫", name: "Burkina Faso",   currency: "XOF", networks: ["Orange Money", "Moov Money"] },
+  { code: "GN", flag: "🇬🇳", name: "Guinée",         currency: "GNF", networks: ["Orange Money", "MTN MoMo"] },
+  { code: "CM", flag: "🇨🇲", name: "Cameroun",       currency: "XAF", networks: ["MTN MoMo", "Orange Money"] },
+  { code: "CD", flag: "🇨🇩", name: "RD Congo",       currency: "CDF", networks: ["Vodacom", "Airtel Money"] },
+  { code: "GA", flag: "🇬🇦", name: "Gabon",          currency: "XAF", networks: ["Airtel Money", "MTN MoMo"] },
+  { code: "CG", flag: "🇨🇬", name: "Congo",          currency: "XAF", networks: ["MTN MoMo", "Airtel Money"] },
+  { code: "GH", flag: "🇬🇭", name: "Ghana",          currency: "GHS", networks: ["MTN MoMo", "Vodafone Cash", "AirtelTigo Money"] },
+  { code: "NG", flag: "🇳🇬", name: "Nigéria",        currency: "NGN", networks: ["MTN MoMo", "Airtel Money", "Glo Pay"] },
+  { code: "KE", flag: "🇰🇪", name: "Kenya",          currency: "KES", networks: ["M-Pesa", "Airtel Money"] },
+  { code: "TZ", flag: "🇹🇿", name: "Tanzanie",       currency: "TZS", networks: ["M-Pesa", "Tigo Pesa", "Airtel Money"] },
+  { code: "UG", flag: "🇺🇬", name: "Ouganda",        currency: "UGX", networks: ["MTN MoMo", "Airtel Money"] },
+  { code: "RW", flag: "🇷🇼", name: "Rwanda",         currency: "RWF", networks: ["MTN MoMo", "Airtel Money"] },
+  { code: "MA", flag: "🇲🇦", name: "Maroc",          currency: "MAD", networks: ["Orange Money", "Maroc Telecom"] },
+  { code: "GM", flag: "🇬🇲", name: "Gambie",         currency: "GMD", networks: ["Africell Money", "QCell"] },
+  { code: "SL", flag: "🇸🇱", name: "Sierra Leone",   currency: "SLL", networks: ["Orange Money", "Africell Money"] },
+  { code: "LR", flag: "🇱🇷", name: "Liberia",        currency: "LRD", networks: ["MTN MoMo", "Lonestar Money"] },
+  { code: "MZ", flag: "🇲🇿", name: "Mozambique",     currency: "MZN", networks: ["M-Pesa", "Airtel Money"] },
+  { code: "ZM", flag: "🇿🇲", name: "Zambie",         currency: "ZMW", networks: ["MTN MoMo", "Airtel Money"] },
 ];
 
-// ─── PAYS BIENTÔT DISPONIBLES ───
-const COMING_SOON = [
-  { code: "ML", flag: "🇲🇱", name: "Mali" },
-  { code: "BF", flag: "🇧🇫", name: "Burkina Faso" },
-  { code: "GN", flag: "🇬🇳", name: "Guinée" },
-  { code: "CM", flag: "🇨🇲", name: "Cameroun" },
-  { code: "CD", flag: "🇨🇩", name: "RD Congo" },
-  { code: "GA", flag: "🇬🇦", name: "Gabon" },
-  { code: "CG", flag: "🇨🇬", name: "Congo" },
-  { code: "GH", flag: "🇬🇭", name: "Ghana" },
-  { code: "NG", flag: "🇳🇬", name: "Nigéria" },
-  { code: "KE", flag: "🇰🇪", name: "Kenya" },
-  { code: "TZ", flag: "🇹🇿", name: "Tanzanie" },
-  { code: "UG", flag: "🇺🇬", name: "Ouganda" },
-  { code: "RW", flag: "🇷🇼", name: "Rwanda" },
-  { code: "ZM", flag: "🇿🇲", name: "Zambie" },
-  { code: "MW", flag: "🇲🇼", name: "Malawi" },
-  { code: "MZ", flag: "🇲🇿", name: "Mozambique" },
-  { code: "SL", flag: "🇸🇱", name: "Sierra Leone" },
-  { code: "ET", flag: "🇪🇹", name: "Éthiopie" },
-  { code: "LS", flag: "🇱🇸", name: "Lesotho" },
-];
+// ─── PLUS DE PAYS BIENTÔT ───
+const COMING_SOON: { code: string; flag: string; name: string }[] = [];
 
 // ─── TYPES ───
 type ActiveCountry = typeof ACTIVE_COUNTRIES[0];
