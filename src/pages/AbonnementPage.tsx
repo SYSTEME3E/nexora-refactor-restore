@@ -1,204 +1,1535 @@
-import { useState } from "react";
-import AppLayout from "@/components/AppLayout"; // Corrigé: import au lieu de importer
-import { getNexoraUser } from "@/lib/nexora-auth";
-import { payAndRedirect } from "@/lib/Moneroo";
-import {
-  Crown, Check, X, Zap, ShieldCheck, Star, Sparkles,
-  TrendingUp, Store, PiggyBank, ArrowLeftRight, Home,
-  BadgeCheck, ChevronDown, ChevronUp, Lock, Wallet
-} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Users, Crown, ShieldCheck, Ban, Activity, BarChart3,
+  Store, RefreshCw, Search, ChevronDown, ChevronUp,
+  CheckCircle, XCircle, AlertTriangle,
+  Trash2, Menu, X, ArrowLeft,
+  UserCheck, UserX, Clock, Calendar, DollarSign,
+  Unlock, BadgeCheck, Bell,
+  Package, ShoppingCart, AlertOctagon,
+  MessageSquare, Send,
+  TrendingUp, Percent, Key, Lock,
+  MinusCircle, Image as ImageIcon
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
-// ─────────────────────────────────────────────
-// DONNÉES DE COMPARAISON
-// ─────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────
+interface NexoraUser {
+  id: string;
+  nom_prenom: string;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  is_admin: boolean;
+  plan: "gratuit" | "boss" | "roi" | "admin";
+  badge_premium: boolean;
+  is_active: boolean;
+  status: "actif" | "suspendu" | "bloque";
+  suspended_reason: string | null;
+  blocked_reason: string | null;
+  last_login: string | null;
+  premium_since: string | null;
+  premium_expires_at: string | null;
+  created_at: string;
+  dette_cachee?: number;
+  dette_active?: boolean;
+  admin_features?: string[];
+  admin_password?: string | null;
+}
 
-const FEATURES_COMPARE = [
-  {
-    categorie: "Finance personnelle",
-    icon: TrendingUp,
-    items: [
-      { label: "Entrées & Dépenses",     gratuit: "10 / mois",       premium: "Illimité" },
-      { label: "Historique financier",   gratuit: "7 jours",        premium: "Illimité" },
-      { label: "Factures",               gratuit: "10 factures",    premium: "Illimité" },
-      { label: "Prêts & Dettes",         gratuit: "10 prêts",        premium: "Illimité" },
-    ],
-  },
-  {
-    categorie: "Nexora Shop",
-    icon: Store,
-    items: [
-      { label: "Accès boutique",         gratuit: true,              premium: true },
-      { label: "Produits physiques",     gratuit: true,      premium: "Illimité" },
-      { label: "Produits digitaux",      gratuit: true,             premium: true },
-      { label: "Gestion commandes",      gratuit: true,             premium: true },
-      { label: "Facebook Pixel",         gratuit: true,             premium: true },
-      { label: "Domaine personnalisé",   gratuit: true,             premium: true },
-    ],
-  },
-  {
-    categorie: "Nexora Transfert",
-    icon: ArrowLeftRight,
-    items: [
-      { label: "Transfert inter-pays",   gratuit: false,             premium: true },
-      { label: "24 pays africains",      gratuit: false,             premium: true },
-      { label: "Tous réseaux Mobile Money", gratuit: false,          premium: true },
-      { label: "Factures PDF",           gratuit: false,             premium: true },
-    ],
-  },
+interface Boutique {
+  id: string;
+  nom: string;
+  slug: string;
+  description: string | null;
+  actif: boolean;
+  created_at: string;
+  user_id: string;
+}
+
+interface Produit {
+  id: string;
+  boutique_id: string;
+  nom: string;
+  description: string | null;
+  prix: number;
+  prix_promo: number | null;
+  categorie: string | null;
+  stock: number;
+  stock_illimite: boolean;
+  photos: any;
+  actif: boolean;
+  created_at: string;
+}
+
+interface Commande {
+  id: string;
+  boutique_id: string;
+  numero: string;
+  client_nom: string;
+  total: number;
+  devise: string;
+  statut: string;
+  statut_paiement: string;
+  created_at: string;
+}
+
+interface Abonnement {
+  id: string;
+  user_id: string | null;
+  plan: string;
+  montant: number;
+  devise: string;
+  statut: string;
+  created_at: string;
+  date_debut: string;
+  date_fin: string | null;
+}
+
+interface AdminMessage {
+  id: string;
+  user_id: string;
+  contenu: string;
+  fichier_url?: string | null;
+  lu_admin: boolean;
+  reponse_admin?: string | null;
+  created_at: string;
+  user?: { nom_prenom: string; username: string; avatar_url: string | null };
+}
+
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
+
+// ── Helpers ────────────────────────────────────────────────
+const fmtDate = (d: string | null) => d
+  ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })
+  : "—";
+
+const fmtDatetime = (d: string | null) => d
+  ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  : "—";
+
+const fmtMoney = (n: number, devise = "FCFA") =>
+  `${(n || 0).toLocaleString("fr-FR")} ${devise}`;
+
+const STATUS_CONFIG = {
+  actif:    { label: "Actif",    color: "text-green-700",  bg: "bg-green-100",  icon: CheckCircle   },
+  suspendu: { label: "Suspendu", color: "text-yellow-700", bg: "bg-yellow-100", icon: AlertTriangle },
+  bloque:   { label: "Bloqué",   color: "text-red-700",    bg: "bg-red-100",    icon: XCircle       },
+};
+
+const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  gratuit: { label: "Gratuit", color: "text-gray-600",   bg: "bg-gray-100"   },
+  boss:    { label: "Boss",    color: "text-blue-700",    bg: "bg-blue-100"   },
+  roi:     { label: "Roi",     color: "text-violet-700",  bg: "bg-violet-100" },
+  admin:   { label: "Admin",   color: "text-amber-700",  bg: "bg-amber-100"  },
+};
+
+const ALL_ADMIN_FEATURES = [
+  { key: "stats",       label: "Statistiques générales" },
+  { key: "users_view",  label: "Voir les utilisateurs" },
+  { key: "users_edit",  label: "Modifier les utilisateurs" },
+  { key: "boutiques",   label: "Gérer les boutiques" },
+  { key: "produits",    label: "Gérer les produits" },
+  { key: "abonnements", label: "Voir les abonnements" },
+  { key: "messages",    label: "Messagerie Support" },
+  { key: "logs",        label: "Voir les logs" },
+  { key: "transferts",  label: "Gestion transferts / dettes" },
 ];
 
-// ─────────────────────────────────────────────
-// COMPOSANTS INTERNES
-// ─────────────────────────────────────────────
+const ADMIN_CODE = "ERIC";
 
-function FeatureValue({ value }: { value: boolean | string }) {
-  if (value === true)  return <Check className="w-5 h-5 text-emerald-500 mx-auto" />;
-  if (value === false) return <X className="w-4 h-4 text-muted-foreground/40 mx-auto" />;
-  return <span className="text-xs font-semibold text-foreground">{value}</span>;
-}
+// ══════════════════════════════════════════════════════════
+export default function AdminPanelPage() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-function FAQItem({ question, reponse }: { question: string; reponse: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden mb-3">
-      <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-muted/40 transition-colors">
-        <span className="font-semibold text-sm text-foreground">{question}</span>
-        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </button>
-      {open && (
-        <div className="px-5 pb-4 border-t border-border pt-3">
-          <p className="text-sm text-muted-foreground leading-relaxed">{reponse}</p>
-        </div>
-      )}
-    </div>
-  );
-}
+  const [codeInput, setCodeInput]     = useState("");
+  const [codeError, setCodeError]     = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-// ─────────────────────────────────────────────
-// PAGE PRINCIPALE
-// ─────────────────────────────────────────────
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tab, setTab] = useState<AdminTab>(() => {
+    try { return (localStorage.getItem("admin_tab") as AdminTab) || "stats"; }
+    catch { return "stats"; }
+  });
+  const [loading, setLoading] = useState(false);
 
-export default function AbonnementPage() {
-  const navigate    = useNavigate();
-  const user        = getNexoraUser();
-  const currentPlan = user?.plan || "gratuit";
-  const isPremium   = currentPlan !== "gratuit";
-  const [openCat, setOpenCat] = useState<string | null>("Finance personnelle");
+  const [stats, setStats] = useState({
+    totalUsers: 0, premiumUsers: 0, gratuitUsers: 0, adminUsers: 0,
+    activeUsers: 0, suspendedUsers: 0, blockedUsers: 0,
+    totalBoutiques: 0, boutiquesActives: 0,
+    totalProduits: 0, totalCommandes: 0,
+    chiffreAffairesTotal: 0,
+    newUsersToday: 0, newPremiumToday: 0,
+    caAbonnements: 0, totalAbonnements: 0,
+    tauxTransferts: 0,
+  });
 
-  // Fonction pour gérer l'achat
-  const handleUpgrade = async () => {
+  const [users,       setUsers]       = useState<NexoraUser[]>([]);
+  const [boutiques,   setBoutiques]   = useState<Boutique[]>([]);
+  const [produits,    setProduits]    = useState<Produit[]>([]);
+  const [commandes,   setCommandes]   = useState<Commande[]>([]);
+  const [abonnements, setAbonnements] = useState<Abonnement[]>([]);
+  const [messages,    setMessages]    = useState<AdminMessage[]>([]);
+  const [logs,        setLogs]        = useState<any[]>([]);
+
+  const [searchUser,       setSearchUser]       = useState("");
+  const [filterPlan,       setFilterPlan]       = useState("");
+  const [filterStatus,     setFilterStatus]     = useState("");
+  const [searchBoutique,   setSearchBoutique]   = useState("");
+  const [expandedBoutique, setExpandedBoutique] = useState<string | null>(null);
+
+  const [actionModal,  setActionModal]  = useState<{ type: string; target: any; targetType: "user" | "produit" | "boutique" } | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [premiumDays,  setPremiumDays]  = useState("30");
+
+  // Page détail utilisateur
+  const [selectedUser, setSelectedUser] = useState<NexoraUser | null>(null);
+  const [adminFeatures, setAdminFeatures] = useState<string[]>([]);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Dette cachée
+  const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
+  const [detteMontant, setDetteMontant] = useState("");
+
+  // Messages
+  const [selectedMsg,  setSelectedMsg]  = useState<AdminMessage | null>(null);
+  const [reponseText,  setReponseText]  = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+
+  useEffect(() => {
     try {
-      await payAndRedirect({
-        type: "abonnement_premium",
-        amount: 7440, // 12$ en FCFA (Taux 620)
-      });
-    } catch (error) {
-      console.error("Erreur d'initialisation du paiement:", error);
+      const auth = sessionStorage.getItem("nexora_admin_auth");
+      if (auth === "true") setIsAuthenticated(true);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem("admin_tab", tab); } catch {}
+  }, [tab]);
+
+  const handleLogin = () => {
+    if (codeInput.trim().toUpperCase() === ADMIN_CODE) {
+      try { sessionStorage.setItem("nexora_admin_auth", "true"); } catch {}
+      setIsAuthenticated(true);
+      setCodeError(false);
+    } else {
+      setCodeError(true);
+      setCodeInput("");
     }
   };
 
-  return (
-    <AppLayout>
-      <div className="max-w-3xl mx-auto space-y-8 pb-20">
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [
+        { data: usersData },
+        { data: boutiquesData },
+        { data: produitsData },
+        { data: commandesData },
+        { data: abonnementsData },
+        { data: logsData },
+        { data: messagesData },
+      ] = await Promise.all([
+        supabase.from("nexora_users" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("boutiques" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("produits" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("commandes" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("abonnements" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("nexora_logs" as any).select("*, nexora_users(nom_prenom, username)").order("created_at", { ascending: false }).limit(100),
+        supabase.from("nexora_messages" as any).select("*, nexora_users(nom_prenom, username, avatar_url)").order("created_at", { ascending: false }),
+      ]);
 
-        {/* HERO SECTION */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 p-8 text-white text-center shadow-2xl">
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-black uppercase mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              Nexora Premium
+      const u  = (usersData as unknown as NexoraUser[]) || [];
+      const b  = (boutiquesData as unknown as Boutique[]) || [];
+      const p  = (produitsData as unknown as Produit[]) || [];
+      const c  = (commandesData as unknown as Commande[]) || [];
+      const ab = (abonnementsData as unknown as Abonnement[]) || [];
+      const today = new Date().toDateString();
+
+      setUsers(u);
+      setBoutiques(b);
+      setProduits(p);
+      setCommandes(c);
+      setAbonnements(ab);
+      setLogs((logsData as any[]) || []);
+
+      const rawMsgs = (messagesData as any[]) || [];
+      setMessages(rawMsgs.map((m: any) => ({ ...m, user: m.nexora_users || null })));
+
+      const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
+      const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
+      const roiCount = u.filter(x => x.plan === "roi").length;
+
+      setStats({
+        totalUsers:          u.length,
+        premiumUsers:        u.filter(x => x.plan === "boss" || x.plan === "roi").length,
+        gratuitUsers:        u.filter(x => x.plan === "gratuit").length,
+        adminUsers:          u.filter(x => x.is_admin).length,
+        activeUsers:         u.filter(x => x.status === "actif").length,
+        suspendedUsers:      u.filter(x => x.status === "suspendu").length,
+        blockedUsers:        u.filter(x => x.status === "bloque").length,
+        totalBoutiques:      b.length,
+        boutiquesActives:    b.filter(x => x.actif).length,
+        totalProduits:       p.length,
+        totalCommandes:      c.length,
+        chiffreAffairesTotal: ca,
+        newUsersToday:       u.filter(x => new Date(x.created_at).toDateString() === today).length,
+        newPremiumToday:     u.filter(x => (x.plan === "boss" || x.plan === "roi") && x.premium_since && new Date(x.premium_since).toDateString() === today).length,
+        caAbonnements:       caAb,
+        totalAbonnements:    ab.length,
+        tauxTransferts:      u.length > 0 ? Math.round((roiCount / u.length) * 100) : 0,
+      });
+    } catch {
+      toast({ title: "Erreur de chargement", variant: "destructive" });
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) loadAll();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const channel = supabase
+      .channel("admin-messages")
+      .on("postgres_changes", { event: "*", schema: "public", table: "nexora_messages" }, () => loadAll())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAuthenticated]);
+
+  const logAction = async (userId: string | null, action: string, details: string | null) => {
+    try { await supabase.from("nexora_logs" as any).insert({ user_id: userId, action, details }); } catch {}
+  };
+
+  const sendNotification = async (userId: string, titre: string, message: string, type = "warning") => {
+    try {
+      await supabase.from("nexora_notifications" as any).insert({ user_id: userId, titre, message, type, lu: false });
+    } catch {}
+  };
+
+  const getBoutiquesByUser    = (id: string) => boutiques.filter(b => b.user_id === id);
+  const getProduitsByBoutique = (id: string) => produits.filter(p => p.boutique_id === id);
+  const getCommandesByBoutique = (id: string) => commandes.filter(c => c.boutique_id === id);
+  const getCaByBoutique       = (id: string) => getCommandesByBoutique(id).reduce((a, c) => a + (Number(c.total) || 0), 0);
+  const getCommandesByUser    = (id: string) => getBoutiquesByUser(id).flatMap(b => getCommandesByBoutique(b.id));
+  const getCaByUser           = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
+
+  const handleAction = async () => {
+    if (!actionModal) return;
+    const { type, target, targetType } = actionModal;
+    try {
+      if (targetType === "produit") {
+        const boutique = boutiques.find(b => b.id === target.boutique_id);
+        const userId = boutique?.user_id;
+        if (type === "supprimer_produit") {
+          if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
+          await supabase.from("produits" as any).delete().eq("id", target.id);
+          if (userId) await sendNotification(userId, "Produit supprimé", `Votre produit "${target.nom}" a été supprimé. Motif : ${actionReason}`);
+          await logAction(userId ?? null, "produit_supprimé", `${target.nom} | ${actionReason}`);
+          toast({ title: "Produit supprimé" });
+        }
+        if (type === "restreindre_produit") {
+          if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
+          await supabase.from("produits" as any).update({ actif: false }).eq("id", target.id);
+          if (userId) await sendNotification(userId, "Produit restreint", `Votre produit "${target.nom}" a été restreint. Motif : ${actionReason}`, "danger");
+          await logAction(userId ?? null, "produit_restreint", `${target.nom} | ${actionReason}`);
+          toast({ title: "Produit restreint" });
+        }
+        if (type === "activer_produit") {
+          await supabase.from("produits" as any).update({ actif: true }).eq("id", target.id);
+          await logAction(null, "produit_activé", target.nom);
+          toast({ title: "Produit réactivé" });
+        }
+      }
+
+      if (targetType === "boutique" && type === "toggle_boutique") {
+        const newActif = !target.actif;
+        await supabase.from("boutiques" as any).update({ actif: newActif }).eq("id", target.id);
+        if (target.user_id) await sendNotification(target.user_id,
+          newActif ? "Boutique activée" : "Boutique désactivée",
+          newActif ? `Votre boutique "${target.nom}" a été réactivée.`
+                   : `Votre boutique "${target.nom}" a été désactivée.${actionReason ? " Motif : " + actionReason : ""}`,
+          newActif ? "success" : "warning");
+        await logAction(target.user_id ?? null, newActif ? "boutique_activée" : "boutique_désactivée", target.nom);
+        toast({ title: `Boutique ${newActif ? "activée" : "désactivée"}` });
+      }
+
+      if (targetType === "user") {
+        if (type === "activer_premium") {
+          const days = parseInt(premiumDays) || 30;
+          const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+          await supabase.from("nexora_users" as any).update({ plan: "roi", badge_premium: true, premium_since: new Date().toISOString(), premium_expires_at: expiresAt }).eq("id", target.id);
+          await sendNotification(target.id, "Premium activé !", `Félicitations ! Votre compte est Premium pour ${days} jours.`, "success");
+          await logAction(target.id, "premium_activé", `${days} jours`);
+          toast({ title: "Premium activé" });
+        }
+        if (type === "retirer_premium") {
+          await supabase.from("nexora_users" as any).update({ plan: "gratuit", badge_premium: false, premium_since: null, premium_expires_at: null }).eq("id", target.id);
+          await sendNotification(target.id, "Premium retiré", `Votre abonnement Premium a été retiré.${actionReason ? " Motif : " + actionReason : ""}`, "warning");
+          await logAction(target.id, "premium_retiré", actionReason || null);
+          toast({ title: "Premium retiré" });
+        }
+        if (type === "suspendre") {
+          if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
+          await supabase.from("nexora_users" as any).update({ status: "suspendu", is_active: false, suspended_at: new Date().toISOString(), suspended_reason: actionReason }).eq("id", target.id);
+          await sendNotification(target.id, "Compte suspendu", `Votre compte a été suspendu. Motif : ${actionReason}`, "danger");
+          await logAction(target.id, "compte_suspendu", actionReason);
+          toast({ title: "Compte suspendu" });
+        }
+        if (type === "bloquer") {
+          if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
+          await supabase.from("nexora_users" as any).update({ status: "bloque", is_active: false, blocked_at: new Date().toISOString(), blocked_reason: actionReason }).eq("id", target.id);
+          await sendNotification(target.id, "Compte bloqué", `Votre compte a été bloqué. Motif : ${actionReason}`, "danger");
+          await logAction(target.id, "compte_bloqué", actionReason);
+          toast({ title: "Compte bloqué" });
+        }
+        if (type === "debloquer") {
+          await supabase.from("nexora_users" as any).update({ status: "actif", is_active: true, suspended_at: null, suspended_reason: null, blocked_at: null, blocked_reason: null }).eq("id", target.id);
+          await sendNotification(target.id, "Compte réactivé", "Votre compte a été réactivé. Bienvenue !", "success");
+          await logAction(target.id, "compte_débloqué", null);
+          toast({ title: "Compte débloqué" });
+        }
+        if (type === "supprimer") {
+          await supabase.from("nexora_users" as any).delete().eq("id", target.id);
+          await logAction(null, "compte_supprimé", `${target.nom_prenom} (${target.email})`);
+          toast({ title: "Compte supprimé" });
+          setSelectedUser(null);
+        }
+      }
+
+      setActionModal(null);
+      setActionReason("");
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleGrantAdmin = async (user: NexoraUser) => {
+    if (!adminPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    try {
+      await supabase.from("nexora_users" as any).update({ is_admin: true, admin_features: adminFeatures, admin_password: adminPassword }).eq("id", user.id);
+      await sendNotification(user.id, "Accès Admin accordé", "Vous avez maintenant accès au Panel Administrateur avec des fonctionnalités limitées.", "success");
+      await logAction(user.id, "admin_accordé", adminFeatures.join(", "));
+      toast({ title: "Accès admin accordé !" });
+      setAdminFeatures([]); setAdminPassword("");
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleRevokeAdmin = async (user: NexoraUser) => {
+    try {
+      await supabase.from("nexora_users" as any).update({ is_admin: false, admin_features: [], admin_password: null }).eq("id", user.id);
+      await sendNotification(user.id, "Accès Admin retiré", "Votre accès au Panel Administrateur a été retiré.", "warning");
+      await logAction(user.id, "admin_retiré", null);
+      toast({ title: "Accès admin retiré" });
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSetDette = async () => {
+    if (!detteModal) return;
+    const montant = parseFloat(detteMontant);
+    if (isNaN(montant) || montant <= 0) { toast({ title: "Montant invalide", variant: "destructive" }); return; }
+    try {
+      await supabase.from("nexora_users" as any).update({ dette_cachee: montant, dette_active: true }).eq("id", detteModal.id);
+      await logAction(detteModal.id, "dette_cachée_appliquée", `${montant} FCFA`);
+      toast({ title: "Dette appliquée silencieusement" });
+      setDetteModal(null); setDetteMontant("");
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleClearDette = async (user: NexoraUser) => {
+    try {
+      await supabase.from("nexora_users" as any).update({ dette_cachee: 0, dette_active: false }).eq("id", user.id);
+      await logAction(user.id, "dette_effacée", null);
+      toast({ title: "Dette effacée" });
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleChangeUserPassword = async (user: NexoraUser) => {
+    if (!newPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    if (newPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; }
+    if (newPassword.length < 6) { toast({ title: "Minimum 6 caractères", variant: "destructive" }); return; }
+    setChangingPassword(true);
+    try {
+      await supabase.from("nexora_users" as any).update({ password_plain: newPassword }).eq("id", user.id);
+      await logAction(user.id, "mot_de_passe_modifié", "par admin");
+      toast({ title: "✅ Mot de passe modifié", description: `Le mot de passe de ${user.nom_prenom} a été mis à jour.` });
+      setNewPassword(""); setConfirmPassword("");
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedMsg || !reponseText.trim()) return;
+    setSendingReply(true);
+    try {
+      await supabase.from("nexora_messages" as any).update({ reponse_admin: reponseText, lu_admin: true }).eq("id", selectedMsg.id);
+      await sendNotification(selectedMsg.user_id, "Réponse du support Nexora", reponseText, "info");
+      await logAction(selectedMsg.user_id, "message_répondu", reponseText.slice(0, 80));
+      toast({ title: "Réponse envoyée" });
+      setReponseText(""); setSelectedMsg(null);
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+    setSendingReply(false);
+  };
+
+  const handleMarkRead = async (msg: AdminMessage) => {
+    try { await supabase.from("nexora_messages" as any).update({ lu_admin: true }).eq("id", msg.id); loadAll(); } catch {}
+  };
+
+  const handleDeleteMessage = async (msg: AdminMessage) => {
+    if (!window.confirm("Supprimer ce message définitivement ?")) return;
+    try {
+      await supabase.from("nexora_messages" as any).delete().eq("id", msg.id);
+      toast({ title: "Message supprimé" });
+      setSelectedMsg(null); loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const filteredUsers = users.filter(u => {
+    const q = searchUser.toLowerCase();
+    return (
+      (u.nom_prenom.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+      (filterPlan ? u.plan === filterPlan : true) &&
+      (filterStatus ? u.status === filterStatus : true)
+    );
+  });
+
+  const filteredBoutiques = boutiques.filter(b => b.nom.toLowerCase().includes(searchBoutique.toLowerCase()));
+  const unreadMessages = messages.filter(m => !m.lu_admin).length;
+
+  const TABS = [
+    { id: "stats",       label: "Statistiques", icon: BarChart3 },
+    { id: "users",       label: "Utilisateurs",  icon: Users     },
+    { id: "boutiques",   label: "Boutiques",     icon: Store     },
+    { id: "abonnements", label: "Abonnements",   icon: Crown     },
+    { id: "messages",    label: "Messages",      icon: MessageSquare, badge: unreadMessages },
+    { id: "logs",        label: "Logs",          icon: Activity  },
+  ];
+
+  // ════════════ LOGIN ════════════
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-black mb-3">Passez à la vitesse supérieure</h1>
-            <p className="text-white/60 text-sm max-w-sm mx-auto">
-              Un seul abonnement pour débloquer l'immobilier, le transfert et la boutique illimitée.
-            </p>
+            <h1 className="text-2xl font-black text-gray-900">Espace Admin</h1>
+            <p className="text-gray-500 text-sm mt-1">Entrez votre code d'accès</p>
           </div>
+          <div className="space-y-3">
+            <Input type="password" value={codeInput}
+              onChange={e => { setCodeInput(e.target.value); setCodeError(false); }}
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              placeholder="Code d'accès"
+              className={`text-center text-lg font-bold tracking-widest h-14 rounded-xl ${codeError ? "border-red-500 bg-red-50" : ""}`}
+              autoFocus
+            />
+            {codeError && <p className="text-red-600 text-sm text-center font-medium">Code incorrect.</p>}
+            <Button onClick={handleLogin} className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl text-base">
+              Accéder au Panel
+            </Button>
+          </div>
+          <button onClick={() => navigate(-1)} className="w-full flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════ PAGE DÉTAIL UTILISATEUR ════════════
+  if (selectedUser) {
+    const u = selectedUser;
+    const userBoutiques = getBoutiquesByUser(u.id);
+    const userCommandes = getCommandesByUser(u.id);
+    const userCa        = getCaByUser(u.id);
+    const userAbo       = abonnements.filter(a => a.user_id === u.id);
+    const StatusIcon    = STATUS_CONFIG[u.status]?.icon || CheckCircle;
+    const hasDette      = u.dette_active && (u.dette_cachee ?? 0) > 0;
+    const currentFeatures: string[] = u.admin_features || [];
+
+    return (
+      <div className="min-h-screen bg-background pb-16">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+          <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); }}
+            className="p-2 rounded-xl hover:bg-muted transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-base truncate">{u.nom_prenom}</div>
+            <div className="text-xs text-muted-foreground">@{u.username}</div>
+          </div>
+          <span className={`text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 ${STATUS_CONFIG[u.status]?.bg} ${STATUS_CONFIG[u.status]?.color}`}>
+            <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[u.status]?.label}
+          </span>
         </div>
 
-        {/* CARTES DE PRIX */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Plan Gratuit */}
-          <div className="bg-card border-2 border-border rounded-3xl p-6 flex flex-col opacity-80">
-            <h3 className="text-lg font-black mb-1 text-foreground">Gratuit</h3>
-            <p className="text-xs text-muted-foreground mb-4">Découverte de l'écosystème</p>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-foreground">0</span>
-              <span className="text-sm text-muted-foreground ml-1">FCFA / mois</span>
+        <div className="p-4 max-w-xl mx-auto space-y-4">
+          {/* Profil */}
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-xl overflow-hidden flex-shrink-0">
+              {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" alt="" /> : u.nom_prenom.slice(0, 2).toUpperCase()}
             </div>
-            <button disabled className="w-full py-3 bg-muted text-muted-foreground font-bold rounded-xl text-sm mb-4">
-              {currentPlan === "gratuit" ? "Plan actuel" : "Inclus par défaut"}
-            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-lg">{u.nom_prenom}</span>
+                {u.is_admin && <BadgeCheck className="w-5 h-5 text-amber-500" />}
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[u.plan]?.bg} ${PLAN_CONFIG[u.plan]?.color}`}>{PLAN_CONFIG[u.plan]?.label}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-0.5">{u.email}</div>
+              <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(u.created_at)}</span>
+                <span className="flex items-center gap-1 text-emerald-600 font-bold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Plan Premium */}
-          <div className="relative bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 flex flex-col shadow-xl border-2 border-indigo-500/30">
-            <div className="absolute top-4 right-4 bg-yellow-400 text-black text-[10px] font-black px-2 py-1 rounded-md">HOT</div>
-            <h3 className="text-lg font-black text-white mb-1">Premium</h3>
-            <p className="text-xs text-white/50 mb-4">Puissance & Liberté</p>
-            <div className="mb-6">
-              <span className="text-4xl font-black text-white">12</span>
-              <span className="text-sm text-white/50 ml-1">$ / mois</span>
-              <p className="text-[10px] text-white/30 mt-1">≈ 7 440 FCFA via Mobile Money</p>
+          {/* Badge dette */}
+          {hasDette && (
+            <div className="bg-red-50 border border-red-300 rounded-xl p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-red-700">
+                <MinusCircle className="w-4 h-4 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-sm">Dette cachée active</div>
+                  <div className="text-xs">{fmtMoney(u.dette_cachee ?? 0)} — prélevé automatiquement à la prochaine recharge/abonnement</div>
+                </div>
+              </div>
+              <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium flex-shrink-0">Effacer</button>
             </div>
-            <button
-              onClick={handleUpgrade}
-              disabled={isPremium}
-              className={`w-full py-4 font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
-                isPremium 
-                ? "bg-white/10 text-white/40 cursor-default" 
-                : "bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:scale-[1.02] shadow-lg shadow-orange-500/20"
-              }`}
-            >
-              {isPremium ? <><BadgeCheck className="w-4 h-4" /> Plan Actif</> : <><Zap className="w-4 h-4" /> Devenir Premium</>}
-            </button>
-          </div>
-        </div>
+          )}
 
-        {/* COMPARAISON DÉTAILLÉE (ACCORDÉON) */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-black text-center">Ce qui est inclus</h2>
-          {FEATURES_COMPARE.map(cat => {
-            const Icon = cat.icon;
-            const isOpen = openCat === cat.categorie;
-            return (
-              <div key={cat.categorie} className="bg-card border border-border rounded-2xl overflow-hidden">
-                <button onClick={() => setOpenCat(isOpen ? null : cat.categorie)}
-                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors">
-                  <Icon className="w-5 h-5 text-indigo-500" />
-                  <span className="font-bold text-sm flex-1 text-left">{cat.categorie}</span>
-                  {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {/* Premium */}
+          {(u.plan === "boss" || u.plan === "roi") && (
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-violet-700 font-bold mb-2"><Crown className="w-4 h-4" /> Premium</div>
+              <div className="text-xs text-violet-600 space-y-1">
+                <div>Depuis : {fmtDate(u.premium_since)}</div>
+                <div className={u.premium_expires_at && new Date(u.premium_expires_at) < new Date() ? "text-red-500 font-semibold" : ""}>
+                  Expire : {fmtDate(u.premium_expires_at)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CA utilisateur */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</div>
+            <div className="text-2xl font-black text-emerald-700 mb-2">{fmtMoney(userCa)}</div>
+            <div className="text-xs text-emerald-600">{userCommandes.length} commande(s) · {userBoutiques.length} boutique(s)</div>
+            {userBoutiques.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {userBoutiques.map(b => (
+                  <div key={b.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-xs">
+                    <span className="font-medium">{b.nom}</span>
+                    <span className="text-emerald-600 font-bold">{fmtMoney(getCaByBoutique(b.id))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Abonnements user */}
+          {userAbo.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="font-bold text-sm mb-2 flex items-center gap-2"><Crown className="w-4 h-4 text-violet-500" /> Abonnements ({userAbo.length})</div>
+              <div className="space-y-1">
+                {userAbo.map(a => (
+                  <div key={a.id} className="flex items-center justify-between text-xs bg-muted rounded-lg px-3 py-2">
+                    <span className="font-semibold capitalize">{a.plan}</span>
+                    <span className="text-emerald-600 font-bold">{fmtMoney(a.montant, a.devise)}</span>
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${a.statut === "actif" || a.statut === "paye" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{a.statut}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Actions compte ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Actions compte</div>
+            <div className="flex flex-wrap gap-2">
+              {u.status === "actif" && !u.is_admin && (
+                <>
+                  <button onClick={() => { setActionModal({ type: "suspendre", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-semibold transition-colors">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Suspendre
+                  </button>
+                  <button onClick={() => { setActionModal({ type: "bloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
+                    <Ban className="w-3.5 h-3.5" /> Bloquer
+                  </button>
+                </>
+              )}
+              {(u.status === "suspendu" || u.status === "bloque") && (
+                <button onClick={() => { setActionModal({ type: "debloquer", target: u, targetType: "user" }); setActionReason(""); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
+                  <Unlock className="w-3.5 h-3.5" /> Réactiver
                 </button>
-                {isOpen && (
-                  <div className="border-t border-border bg-muted/10">
-                    {cat.items.map((item, i) => (
-                      <div key={item.label} className={`grid grid-cols-3 gap-2 px-5 py-3 text-xs items-center ${i % 2 === 0 ? "bg-muted/20" : ""}`}>
-                        <span className="text-muted-foreground">{item.label}</span>
-                        <div className="text-center"><FeatureValue value={item.gratuit} /></div>
-                        <div className="text-center font-bold text-indigo-600"><FeatureValue value={item.premium} /></div>
+              )}
+              {u.plan !== "boss" && u.plan !== "roi" && !u.is_admin && (
+                <button onClick={() => { setActionModal({ type: "activer_premium", target: u, targetType: "user" }); setActionReason(""); setPremiumDays("30"); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-violet-100 text-violet-700 hover:bg-violet-200 font-semibold transition-colors">
+                  <Crown className="w-3.5 h-3.5" /> Activer Premium
+                </button>
+              )}
+              {(u.plan === "boss" || u.plan === "roi") && (
+                <button onClick={() => { setActionModal({ type: "retirer_premium", target: u, targetType: "user" }); setActionReason(""); }}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold transition-colors">
+                  <UserX className="w-3.5 h-3.5" /> Retirer Premium
+                </button>
+              )}
+            </div>
+
+            {/* Produits de l'utilisateur */}
+            {(() => {
+              const userProduits = userBoutiques.flatMap(b => getProduitsByBoutique(b.id));
+              if (userProduits.length === 0) return null;
+              return (
+                <div>
+                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Produits boutique ({userProduits.length})</div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {userProduits.map(produit => (
+                      <div key={produit.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs gap-2">
+                        <span className="font-medium flex-1 truncate">{produit.nom}</span>
+                        <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${produit.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          {produit.actif ? "Actif" : "Restreint"}
+                        </span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {produit.actif ? (
+                            <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                              className="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">Désact.</button>
+                          ) : (
+                            <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                              className="px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">Activer</button>
+                          )}
+                          <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                            className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              );
+            })()}
+
+            {/* Supprimer compte */}
+            {!u.is_admin && (
+              <button onClick={() => { setActionModal({ type: "supprimer", target: u, targetType: "user" }); setActionReason(""); }}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-500 hover:text-white font-semibold transition-colors w-full justify-center">
+                <Trash2 className="w-3.5 h-3.5" /> Supprimer le compte
+              </button>
+            )}
+          </div>
+
+          {/* ── Dette cachée ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <MinusCircle className="w-4 h-4 text-red-500" /> Gestion Dette Cachée
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mode silencieux — aucune notification. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement ne s'active pas tant que la dette n'est pas remboursée.
+            </p>
+            {hasDette ? (
+              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-3">
+                <div>
+                  <div className="text-sm font-bold text-red-700">Dette : {fmtMoney(u.dette_cachee ?? 0)}</div>
+                  <div className="text-xs text-red-500">Active — prélevée automatiquement</div>
+                </div>
+                <button onClick={() => handleClearDette(u)} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium">Effacer</button>
+              </div>
+            ) : (
+              <button onClick={() => setDetteModal(u)}
+                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors w-full justify-center">
+                <MinusCircle className="w-4 h-4" /> Appliquer une dette cachée
+              </button>
+            )}
+          </div>
+
+          {/* ── Accès Panel Admin ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-500" /> Accès Panel Admin
+            </div>
+            {u.is_admin ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
+                  {currentFeatures.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentFeatures.map(f => {
+                        const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
+                        return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => handleRevokeAdmin(u)}
+                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 font-semibold transition-colors w-full justify-center">
+                  <Lock className="w-4 h-4" /> Retirer l'accès admin
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
+                <div className="grid grid-cols-1 gap-1">
+                  {ALL_ADMIN_FEATURES.map(feat => (
+                    <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
+                      <input type="checkbox" checked={adminFeatures.includes(feat.key)}
+                        onChange={e => {
+                          if (e.target.checked) setAdminFeatures(prev => [...prev, feat.key]);
+                          else setAdminFeatures(prev => prev.filter(k => k !== feat.key));
+                        }}
+                        className="w-4 h-4 rounded accent-amber-500"
+                      />
+                      <span className="text-sm">{feat.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {adminFeatures.length > 0 && (
+                  <div className="space-y-2">
+                    <Input type="password" placeholder="Mot de passe d'accès admin..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className="rounded-xl" />
+                    <button onClick={() => handleGrantAdmin(u)}
+                      className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold transition-colors w-full justify-center">
+                      <ShieldCheck className="w-4 h-4" /> Accorder l'accès admin
+                    </button>
+                  </div>
                 )}
               </div>
-            );
-          })}
+            )}
+          </div>
+
+          {/* ── Modifier mot de passe ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Lock className="w-4 h-4 text-blue-500" /> Modifier le mot de passe
+            </div>
+            <p className="text-xs text-muted-foreground">Définissez un nouveau mot de passe pour cet utilisateur.</p>
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Nouveau mot de passe..."
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="rounded-xl"
+              />
+              <Input
+                type="password"
+                placeholder="Confirmer le mot de passe..."
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                className="rounded-xl"
+              />
+              {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-500">Les mots de passe ne correspondent pas.</p>
+              )}
+              <button
+                onClick={() => handleChangeUserPassword(u)}
+                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors w-full justify-center"
+              >
+                <Lock className="w-4 h-4" />
+                {changingPassword ? "Modification..." : "Enregistrer le nouveau mot de passe"}
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* FAQ */}
-        <div className="pt-8">
-          <h2 className="text-xl font-black text-center mb-6">Questions fréquentes</h2>
-          <FAQItem 
-            question="Comment payer l'abonnement ?" 
-            reponse="Le paiement s'effectue par Mobile Money (MTN, Moov, Orange, Wave). Une fois le paiement validé sur votre téléphone, votre compte passe Premium instantanément." 
-          />
-          <FAQItem 
-            question="Puis-je annuler mon abonnement ?" 
-            reponse="Oui, Nexora est sans engagement. Vous pouvez arrêter quand vous voulez depuis votre profil." 
-          />
+        {/* Modals dans la vue détail utilisateur */}
+        {actionModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+              <h3 className="font-black text-lg">
+                {actionModal.type === "activer_premium"     && "Activer Premium"}
+                {actionModal.type === "retirer_premium"     && "Retirer Premium"}
+                {actionModal.type === "suspendre"           && "Suspendre le compte"}
+                {actionModal.type === "bloquer"             && "Bloquer le compte"}
+                {actionModal.type === "debloquer"           && "Débloquer le compte"}
+                {actionModal.type === "supprimer"           && "Supprimer le compte"}
+                {actionModal.type === "supprimer_produit"   && "Supprimer le produit"}
+                {actionModal.type === "restreindre_produit" && "Restreindre le produit"}
+                {actionModal.type === "activer_produit"     && "Réactiver le produit"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {actionModal.targetType === "user"    && <><span>Utilisateur : </span><span className="font-bold text-foreground">{actionModal.target.nom_prenom}</span></>}
+                {actionModal.targetType === "produit" && <><span>Produit : </span><span className="font-bold text-foreground">{actionModal.target.nom}</span></>}
+              </p>
+              {actionModal.type === "activer_premium" && (
+                <div>
+                  <label className="text-sm font-medium">Durée (jours)</label>
+                  <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" />
+                </div>
+              )}
+              {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit"].includes(actionModal.type) && (
+                <div>
+                  <label className="text-sm font-medium">Motif {["supprimer", "retirer_premium"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
+                  <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
+                  {!["supprimer", "retirer_premium"].includes(actionModal.type) && (
+                    <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
+                  )}
+                </div>
+              )}
+              {actionModal.type === "supprimer" && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
+              )}
+              <div className="flex gap-2">
+                <Button onClick={handleAction} className={`flex-1 text-white ${
+                  ["supprimer", "bloquer", "supprimer_produit"].includes(actionModal.type) ? "bg-red-600 hover:bg-red-700" :
+                  ["suspendre", "restreindre_produit"].includes(actionModal.type) ? "bg-yellow-600 hover:bg-yellow-700" :
+                  ["debloquer", "activer_premium", "activer_produit"].includes(actionModal.type) ? "bg-green-600 hover:bg-green-700" :
+                  "bg-gray-600 hover:bg-gray-700"
+                }`}>Confirmer</Button>
+                <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(""); }} className="flex-1">Annuler</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {detteModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <MinusCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg">Dette Cachée</h3>
+                  <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
+                </div>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+                <p className="font-semibold">⚠ Mode silencieux</p>
+                <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+                <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+                <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ════════════ PANEL PRINCIPAL ════════════
+  return (
+    <div className="min-h-screen bg-background">
+
+      {menuOpen && <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setMenuOpen(false)} />}
+
+      {/* Menu burger */}
+      <div className={`fixed top-0 left-0 h-full z-50 w-72 bg-card border-r border-border shadow-2xl transform transition-transform duration-300 flex flex-col ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-amber-500" />
+            <span className="font-black text-lg">Panel Admin</span>
+          </div>
+          <button onClick={() => setMenuOpen(false)} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.id} onClick={() => { setTab(t.id as AdminTab); setMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${tab === t.id ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                <Icon className="w-4 h-4" />
+                {t.label}
+                {t.badge ? <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{t.badge}</span> : null}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="p-4 border-t border-border space-y-2">
+          <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Retour
+          </button>
+          <button onClick={() => { try { sessionStorage.removeItem("nexora_admin_auth"); } catch {} setIsAuthenticated(false); }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+            <XCircle className="w-4 h-4" /> Déconnexion admin
+          </button>
         </div>
       </div>
-    </AppLayout>
+
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+        <button onClick={() => setMenuOpen(true)} className="p-2 rounded-xl hover:bg-muted transition-colors"><Menu className="w-5 h-5" /></button>
+        <div className="flex items-center gap-2 flex-1">
+          <ShieldCheck className="w-5 h-5 text-amber-500" />
+          <span className="font-black text-base">{TABS.find(t => t.id === tab)?.label}</span>
+        </div>
+        {unreadMessages > 0 && tab !== "messages" && (
+          <button onClick={() => setTab("messages")}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-100 text-red-700 font-bold animate-pulse">
+            <MessageSquare className="w-3.5 h-3.5" /> {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""}
+          </button>
+        )}
+        <Button onClick={loadAll} disabled={loading} variant="outline" size="sm" className="gap-1.5">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          <span className="hidden sm:inline">Actualiser</span>
+        </Button>
+      </div>
+
+      {/* Contenu */}
+      <div className="p-4 space-y-5 pb-16 max-w-3xl mx-auto">
+
+        {/* ── STATS ── */}
+        {tab === "stats" && (
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Utilisateurs</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Total",   value: stats.totalUsers,   icon: Users,       color: "text-blue-600",   bg: "bg-blue-50"   },
+                { label: "Premium", value: stats.premiumUsers, icon: Crown,       color: "text-violet-600", bg: "bg-violet-50" },
+                { label: "Gratuit", value: stats.gratuitUsers, icon: UserCheck,   color: "text-gray-600",   bg: "bg-gray-50"   },
+                { label: "Admins",  value: stats.adminUsers,   icon: ShieldCheck, color: "text-amber-600",  bg: "bg-amber-50"  },
+              ].map(s => { const Icon = s.icon; return (
+                <div key={s.label} className={`${s.bg} border border-border rounded-2xl p-4 flex items-center gap-3`}>
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                    <Icon className={`w-5 h-5 ${s.color}`} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                    <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
+                  </div>
+                </div>
+              ); })}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Actifs",    value: stats.activeUsers,    color: "text-green-700",  bg: "bg-green-50"  },
+                { label: "Suspendus", value: stats.suspendedUsers, color: "text-yellow-700", bg: "bg-yellow-50" },
+                { label: "Bloqués",   value: stats.blockedUsers,   color: "text-red-700",    bg: "bg-red-50"    },
+              ].map(s => (
+                <div key={s.label} className={`${s.bg} border border-border rounded-xl p-3 text-center`}>
+                  <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Boutiques & Commerce</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Boutiques", value: stats.totalBoutiques,   icon: Store,        color: "text-pink-600"   },
+                { label: "Actives",   value: stats.boutiquesActives,  icon: CheckCircle,  color: "text-green-600"  },
+                { label: "Produits",  value: stats.totalProduits,     icon: Package,      color: "text-blue-600"   },
+                { label: "Commandes", value: stats.totalCommandes,    icon: ShoppingCart, color: "text-purple-600" },
+              ].map(s => { const Icon = s.icon; return (
+                <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                  <Icon className={`w-6 h-6 ${s.color} flex-shrink-0`} />
+                  <div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                    <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
+                  </div>
+                </div>
+              ); })}
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <DollarSign className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-xs text-emerald-600 font-semibold">CA total Boutiques</div>
+                <div className="text-2xl font-black text-emerald-700">{fmtMoney(stats.chiffreAffairesTotal)}</div>
+              </div>
+            </div>
+
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mes revenus Nexora</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+                <Crown className="w-5 h-5 text-violet-600 mb-2" />
+                <div className="text-xs text-violet-600 font-semibold mb-1">Revenus Abonnements</div>
+                <div className="text-2xl font-black text-violet-700">{fmtMoney(stats.caAbonnements)}</div>
+                <div className="text-xs text-violet-500 mt-0.5">{stats.totalAbonnements} abonnement(s)</div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <Percent className="w-5 h-5 text-blue-600 mb-2" />
+                <div className="text-xs text-blue-600 font-semibold mb-1">% Utilisateurs Transfert</div>
+                <div className="text-2xl font-black text-blue-700">{stats.tauxTransferts}%</div>
+                <div className="text-xs text-blue-500 mt-0.5">{users.filter(x => x.plan === "roi").length} utilisateurs Roi</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                <Calendar className="w-8 h-8 text-blue-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">Nouveaux aujourd'hui</div>
+                  <div className="text-2xl font-black text-blue-600">{stats.newUsersToday}</div>
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                <Crown className="w-8 h-8 text-violet-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">Nouveaux premium</div>
+                  <div className="text-2xl font-black text-violet-600">{stats.newPremiumToday}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── UTILISATEURS ── */}
+        {tab === "users" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input value={searchUser} onChange={e => setSearchUser(e.target.value)} placeholder="Nom, username, email..." className="pl-9" />
+              </div>
+              <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <option value="">Tous les plans</option>
+                <option value="gratuit">Gratuit</option>
+                <option value="boss">Boss</option>
+                <option value="roi">Roi</option>
+              </select>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <option value="">Tous statuts</option>
+                <option value="actif">Actif</option>
+                <option value="suspendu">Suspendu</option>
+                <option value="bloque">Bloqué</option>
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">{filteredUsers.length} utilisateur(s) — Cliquez pour voir les détails</p>
+            <div className="space-y-2">
+              {filteredUsers.map(user => {
+                const StatusIcon = STATUS_CONFIG[user.status]?.icon || CheckCircle;
+                const userCa = getCaByUser(user.id);
+                const hasDette = user.dette_active && (user.dette_cachee ?? 0) > 0;
+                return (
+                  <button key={user.id} onClick={() => setSelectedUser(user)}
+                    className="w-full text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-sm transition-all">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 font-bold text-primary text-sm overflow-hidden">
+                        {user.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" alt="" /> : user.nom_prenom.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm">{user.nom_prenom}</span>
+                          {user.is_admin && <BadgeCheck className="w-4 h-4 text-amber-500 flex-shrink-0" />}
+                          {hasDette && <MinusCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Dette cachée active" />}
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PLAN_CONFIG[user.plan]?.bg} ${PLAN_CONFIG[user.plan]?.color}`}>{PLAN_CONFIG[user.plan]?.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${STATUS_CONFIG[user.status]?.bg} ${STATUS_CONFIG[user.status]?.color}`}>
+                            <StatusIcon className="w-3 h-3" />{STATUS_CONFIG[user.status]?.label}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">@{user.username} · {user.email}</div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(user.created_at)}</span>
+                          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><DollarSign className="w-3 h-3" />{fmtMoney(userCa)}</span>
+                        </div>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── BOUTIQUES ── */}
+        {tab === "boutiques" && (
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input value={searchBoutique} onChange={e => setSearchBoutique(e.target.value)} placeholder="Rechercher une boutique..." className="pl-9" />
+            </div>
+            <p className="text-xs text-muted-foreground">{filteredBoutiques.length} boutique(s)</p>
+            <div className="space-y-3">
+              {filteredBoutiques.map(boutique => {
+                const isExpanded = expandedBoutique === boutique.id;
+                const produitsBoutique = getProduitsByBoutique(boutique.id);
+                const commandesBoutique = getCommandesByBoutique(boutique.id);
+                const ca = getCaByBoutique(boutique.id);
+                const owner = users.find(u => u.id === boutique.user_id);
+                return (
+                  <div key={boutique.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center flex-shrink-0">
+                          <Store className="w-5 h-5 text-pink-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm">{boutique.nom}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${boutique.actif ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                              {boutique.actif ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">/{boutique.slug} · {owner?.nom_prenom || "Inconnu"}</div>
+                          <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
+                            <span className="text-muted-foreground flex items-center gap-1"><Package className="w-3 h-3" />{produitsBoutique.length} produits</span>
+                            <span className="text-muted-foreground flex items-center gap-1"><ShoppingCart className="w-3 h-3" />{commandesBoutique.length} commandes</span>
+                            <span className="text-emerald-600 font-bold flex items-center gap-1"><DollarSign className="w-3 h-3" />{fmtMoney(ca)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => { setActionModal({ type: "toggle_boutique", target: boutique, targetType: "boutique" }); setActionReason(""); }}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${boutique.actif ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
+                            {boutique.actif ? "Désactiver" : "Activer"}
+                          </button>
+                          <button onClick={() => setExpandedBoutique(isExpanded ? null : boutique.id)} className="p-1.5 rounded-lg hover:bg-muted">
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="border-t border-border bg-muted/30 p-4 space-y-4">
+                        {commandesBoutique.length > 0 && (
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Commandes ({commandesBoutique.length})</p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {commandesBoutique.map(c => (
+                                <div key={c.id} className="flex items-center justify-between bg-background rounded-lg px-3 py-2 text-xs gap-2">
+                                  <span className="font-mono text-muted-foreground shrink-0">{c.numero}</span>
+                                  <span className="flex-1 truncate">{c.client_nom}</span>
+                                  <span className="font-bold text-emerald-600 shrink-0">{fmtMoney(c.total, c.devise)}</span>
+                                  <span className={`px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.statut === "livre" ? "bg-green-100 text-green-700" : c.statut === "annule" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{c.statut}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Produits ({produitsBoutique.length})</p>
+                          {produitsBoutique.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">Aucun produit</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {produitsBoutique.map(produit => {
+                                const photos = produit.photos;
+                                const photo = Array.isArray(photos) && photos.length > 0 ? photos[0] : null;
+                                return (
+                                  <div key={produit.id} className="bg-background border border-border rounded-xl p-3 flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
+                                      {photo ? <img src={photo} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Package className="w-5 h-5 text-muted-foreground" /></div>}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold text-sm truncate">{produit.nom}</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${produit.actif ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                          {produit.actif ? "Actif" : "Restreint"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                        <span className="font-bold text-foreground">{fmtMoney(produit.prix)}</span>
+                                        {produit.stock_illimite ? <span>Illimité</span> : <span>Stock: {produit.stock}</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                                      {produit.actif ? (
+                                        <button onClick={() => { setActionModal({ type: "restreindre_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 font-medium transition-colors">
+                                          <AlertOctagon className="w-3 h-3" /> Restreindre
+                                        </button>
+                                      ) : (
+                                        <button onClick={() => { setActionModal({ type: "activer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors">
+                                          <CheckCircle className="w-3 h-3" /> Activer
+                                        </button>
+                                      )}
+                                      <button onClick={() => { setActionModal({ type: "supprimer_produit", target: produit, targetType: "produit" }); setActionReason(""); }}
+                                        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors">
+                                        <Trash2 className="w-3 h-3" /> Supprimer
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── ABONNEMENTS ── */}
+        {tab === "abonnements" && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">
+              <div className="text-sm font-semibold opacity-80 mb-1">Revenus Abonnements Nexora</div>
+              <div className="text-3xl font-black">{fmtMoney(stats.caAbonnements)}</div>
+              <div className="text-xs opacity-70 mt-1">{stats.totalAbonnements} abonnement(s) enregistré(s)</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+                <Crown className="w-6 h-6 text-violet-600 mb-2" />
+                <div className="text-3xl font-black text-violet-700">{stats.premiumUsers}</div>
+                <div className="text-xs text-violet-600">Premium actifs</div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <Percent className="w-6 h-6 text-blue-600 mb-2" />
+                <div className="text-3xl font-black text-blue-700">{stats.tauxTransferts}%</div>
+                <div className="text-xs text-blue-500">Taux accès Transfert (Roi)</div>
+              </div>
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Historique</p>
+            {abonnements.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl text-sm">Aucun abonnement</div>
+            ) : (
+              <div className="space-y-2">
+                {abonnements.map(a => {
+                  const u = users.find(us => us.id === a.user_id);
+                  return (
+                    <div key={a.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-sm flex-shrink-0">
+                        {u ? u.nom_prenom.slice(0, 2).toUpperCase() : "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">{u?.nom_prenom || "Inconnu"}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{a.plan} · {fmtDate(a.date_debut)}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="font-black text-emerald-600">{fmtMoney(a.montant, a.devise)}</div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.statut === "actif" || a.statut === "paye" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{a.statut}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MESSAGES ── */}
+        {tab === "messages" && (
+          <div className="space-y-3">
+            <div className="bg-card border border-border rounded-2xl p-3">
+              <div className="font-black text-base">Support & Messagerie</div>
+              <div className="text-xs text-muted-foreground">Messages utilisateurs — conservés jusqu'à suppression manuelle</div>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
+            </div>
+            {messages.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl text-sm">
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />Aucun message
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {messages.map(msg => {
+                  const isSelected = selectedMsg?.id === msg.id;
+                  return (
+                    <div key={msg.id} className={`bg-card border rounded-2xl overflow-hidden transition-all ${!msg.lu_admin ? "border-blue-400 shadow-sm" : "border-border"}`}>
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-sm flex-shrink-0 overflow-hidden">
+                            {msg.user?.avatar_url ? <img src={msg.user.avatar_url} className="w-full h-full object-cover" alt="" /> : (msg.user?.nom_prenom?.slice(0, 2).toUpperCase() || "?")}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm">{msg.user?.nom_prenom || "Inconnu"}</span>
+                              {!msg.lu_admin && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">Nouveau</span>}
+                              {msg.reponse_admin && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold">Répondu</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">@{msg.user?.username} · {fmtDatetime(msg.created_at)}</div>
+                            <p className="text-sm mt-1.5 line-clamp-2">{msg.contenu}</p>
+                            {msg.fichier_url && (
+                              <a href={msg.fichier_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 mt-1 hover:underline">
+                                <ImageIcon className="w-3 h-3" /> Fichier joint
+                              </a>
+                            )}
+                          </div>
+                          <button onClick={() => { setSelectedMsg(isSelected ? null : msg); if (!msg.lu_admin) handleMarkRead(msg); }}
+                            className="p-1.5 rounded-lg hover:bg-muted flex-shrink-0">
+                            {isSelected ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="border-t border-border bg-muted/30 p-4 space-y-3">
+                          <div className="bg-background rounded-xl p-3 text-sm">{msg.contenu}</div>
+                          {msg.reponse_admin && (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                              <div className="text-xs font-bold text-green-700 mb-1 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> Votre réponse</div>
+                              <p className="text-sm text-green-800">{msg.reponse_admin}</p>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Input value={reponseText} onChange={e => setReponseText(e.target.value)}
+                              onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSendReply()}
+                              placeholder="Écrire une réponse..." className="flex-1 rounded-xl" />
+                            <Button onClick={handleSendReply} disabled={sendingReply || !reponseText.trim()}
+                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex-shrink-0 px-3">
+                              {sendingReply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleDeleteMessage(msg)}
+                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors ml-auto">
+                              <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── LOGS ── */}
+        {tab === "logs" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{logs.length} entrées</p>
+              <Button variant="outline" size="sm" onClick={() => {
+                if (window.confirm("Vider tous les logs ?")) {
+                  supabase.from("nexora_logs" as any).delete()
+                    .neq("id", "00000000-0000-0000-0000-000000000000")
+                    .then(() => { toast({ title: "Logs vidés" }); loadAll(); });
+                }
+              }} className="gap-1 text-xs"><Trash2 className="w-3.5 h-3.5" /> Vider</Button>
+            </div>
+            {logs.map(log => (
+              <div key={log.id} className="bg-card border border-border rounded-xl px-4 py-3 flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-primary">{log.action}</span>
+                    {log.nexora_users && <span className="text-xs text-muted-foreground">@{(log.nexora_users as any).username}</span>}
+                  </div>
+                  {log.details && <p className="text-xs text-muted-foreground mt-0.5 truncate">{log.details}</p>}
+                </div>
+                <div className="text-xs text-muted-foreground flex-shrink-0 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />{fmtDatetime(log.created_at)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal actions (panel principal) */}
+      {actionModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <h3 className="font-black text-lg">
+              {actionModal.type === "activer_premium"     && "Activer Premium"}
+              {actionModal.type === "retirer_premium"     && "Retirer Premium"}
+              {actionModal.type === "suspendre"           && "Suspendre le compte"}
+              {actionModal.type === "bloquer"             && "Bloquer le compte"}
+              {actionModal.type === "debloquer"           && "Débloquer le compte"}
+              {actionModal.type === "supprimer"           && "Supprimer le compte"}
+              {actionModal.type === "supprimer_produit"   && "Supprimer le produit"}
+              {actionModal.type === "restreindre_produit" && "Restreindre le produit"}
+              {actionModal.type === "activer_produit"     && "Réactiver le produit"}
+              {actionModal.type === "toggle_boutique"     && (actionModal.target.actif ? "Désactiver la boutique" : "Activer la boutique")}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {actionModal.targetType === "user"     && <><span>Utilisateur : </span><span className="font-bold text-foreground">{actionModal.target.nom_prenom}</span></>}
+              {actionModal.targetType === "produit"  && <><span>Produit : </span><span className="font-bold text-foreground">{actionModal.target.nom}</span></>}
+              {actionModal.targetType === "boutique" && <><span>Boutique : </span><span className="font-bold text-foreground">{actionModal.target.nom}</span></>}
+            </p>
+            {actionModal.type === "activer_premium" && (
+              <div>
+                <label className="text-sm font-medium">Durée (jours)</label>
+                <Input type="number" value={premiumDays} onChange={e => setPremiumDays(e.target.value)} className="mt-1" placeholder="30" />
+              </div>
+            )}
+            {["retirer_premium", "suspendre", "bloquer", "supprimer", "supprimer_produit", "restreindre_produit", "toggle_boutique"].includes(actionModal.type) && (
+              <div>
+                <label className="text-sm font-medium">Motif {["supprimer", "toggle_boutique"].includes(actionModal.type) ? "(optionnel)" : "*"}</label>
+                <Input value={actionReason} onChange={e => setActionReason(e.target.value)} className="mt-1" placeholder="Précisez le motif..." />
+                {!["supprimer", "toggle_boutique", "retirer_premium"].includes(actionModal.type) && (
+                  <p className="text-xs text-muted-foreground mt-1">Ce motif sera envoyé en notification à l'utilisateur.</p>
+                )}
+              </div>
+            )}
+            {actionModal.type === "supprimer" && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">Action irréversible. Toutes les données seront supprimées.</div>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={handleAction} className={`flex-1 text-white ${
+                ["supprimer", "bloquer", "supprimer_produit"].includes(actionModal.type) ? "bg-red-600 hover:bg-red-700" :
+                ["suspendre", "restreindre_produit"].includes(actionModal.type) ? "bg-yellow-600 hover:bg-yellow-700" :
+                ["debloquer", "activer_premium", "activer_produit"].includes(actionModal.type) ? "bg-green-600 hover:bg-green-700" :
+                "bg-gray-600 hover:bg-gray-700"
+              }`}>Confirmer</Button>
+              <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(""); }} className="flex-1">Annuler</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal dette cachée (panel principal) */}
+      {detteModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <MinusCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">Dette Cachée</h3>
+                <p className="text-xs text-muted-foreground">{detteModal.nom_prenom}</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+              <p className="font-semibold">⚠ Mode silencieux</p>
+              <p>Aucune notification envoyée. Le montant est prélevé automatiquement à la prochaine recharge. L'abonnement reste bloqué jusqu'au remboursement complet.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Montant de la dette (FCFA) *</label>
+              <Input type="number" value={detteMontant} onChange={e => setDetteMontant(e.target.value)} className="mt-1" placeholder="Ex: 25000" />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSetDette} className="flex-1 bg-red-600 hover:bg-red-700 text-white">Appliquer silencieusement</Button>
+              <Button variant="outline" onClick={() => { setDetteModal(null); setDetteMontant(""); }} className="flex-1">Annuler</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
