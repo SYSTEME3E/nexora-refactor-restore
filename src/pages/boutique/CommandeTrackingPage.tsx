@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, Clock, MessageCircle, Package, ArrowLeft, ExternalLink } from "lucide-react";
+import { CheckCircle, Clock, MessageCircle, Package, ArrowLeft, ExternalLink, Truck } from "lucide-react";
+import { initTheme } from "@/lib/theme";
 
 interface Commande {
   id: string;
@@ -39,6 +40,7 @@ export default function CommandeTrackingPage() {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
+    initTheme();
     loadCommande();
   }, [commandeId]);
 
@@ -125,14 +127,16 @@ export default function CommandeTrackingPage() {
   const isDigital = items.some((item: any) => item.type === "digital" || item.type === "numerique");
 
   const STATUT_STEPS = [
-    { key: "en_attente", label: "Commande passée", icon: Clock },
-    { key: "whatsapp", label: "Contacter le vendeur", icon: MessageCircle },
-    { key: "confirme", label: "Réception confirmée", icon: CheckCircle },
+    { key: "en_attente",  label: "En cours",                icon: Clock,          color: "text-yellow-600", bg: "bg-yellow-100" },
+    { key: "confirme",    label: "Confirmée",               icon: CheckCircle,    color: "text-blue-600",   bg: "bg-blue-100"   },
+    { key: "en_route",    label: "En route pour livraison", icon: Truck,          color: "text-indigo-600", bg: "bg-indigo-100" },
+    { key: "livre",       label: "Livré",                   icon: Package,        color: "text-green-600",  bg: "bg-green-100"  },
   ];
 
-  const currentStep = commande.statut === "confirme" ? 2
-    : commande.statut === "en_attente" ? 0
-    : 1;
+  const currentStep = commande.statut === "livre" ? 3
+    : commande.statut === "en_route" ? 2
+    : commande.statut === "confirme" ? 1
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950" style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -151,21 +155,24 @@ export default function CommandeTrackingPage() {
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
         {/* Status Steps */}
-        <div className="bg-white rounded-2xl border p-5">
-          <h2 className="font-black text-sm mb-4">Statut de votre commande</h2>
-          <div className="space-y-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border dark:border-gray-700 p-5">
+          <h2 className="font-black text-sm mb-4 text-gray-900 dark:text-white">Statut de votre commande</h2>
+          <div className="space-y-3">
             {STATUT_STEPS.map((step, i) => {
               const Icon = step.icon;
               const done = i <= currentStep;
+              const active = i === currentStep;
               return (
-                <div key={step.key} className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${done ? "bg-green-100" : "bg-gray-100 dark:bg-gray-700"}`}>
-                    <Icon className={`w-4 h-4 ${done ? "text-green-600" : "text-gray-400 dark:text-gray-500"}`} />
+                <div key={step.key} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${active ? "bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700" : done ? "opacity-80" : "opacity-40"}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${done ? step.bg : "bg-gray-100 dark:bg-gray-700"}`}>
+                    <Icon className={`w-4 h-4 ${done ? step.color : "text-gray-400"}`} />
                   </div>
-                  <div>
-                    <p className={`text-sm font-bold ${done ? "text-gray-900" : "text-gray-400 dark:text-gray-500"}`}>{step.label}</p>
+                  <div className="flex-1">
+                    <p className={`text-sm font-bold ${done ? "text-gray-900 dark:text-white" : "text-gray-400"}`}>{step.label}</p>
+                    {active && <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Statut actuel</p>}
                   </div>
-                  {i <= currentStep && <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />}
+                  {done && i < currentStep && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />}
+                  {active && <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse flex-shrink-0" />}
                 </div>
               );
             })}
