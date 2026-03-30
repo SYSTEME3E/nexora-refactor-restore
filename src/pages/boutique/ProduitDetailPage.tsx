@@ -63,6 +63,10 @@ export default function ProduitDetailPage() {
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    initTheme();
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       if (!slug || !produitId) return;
 
