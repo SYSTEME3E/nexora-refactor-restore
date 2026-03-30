@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
   Search, ChevronRight, TrendingUp, History, Home,
   HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight
+  ShieldCheck, ArrowLeftRight, Sun, Moon
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
 import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession } from "@/lib/nexora-auth";
@@ -13,7 +13,7 @@ import { ReactNode } from "react";
 import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
 import ChatWidget from "@/components/ChatWidget";
-
+import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 
 const getNavItems = (isAdmin: boolean) => {
   const items = [
@@ -41,7 +41,6 @@ interface AppLayoutProps {
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   isDark?: boolean;
-  /** Boutons ou éléments supplémentaires injectés à droite du header (avant NexoraNotifications) */
   headerActions?: ReactNode;
 }
 
@@ -54,34 +53,39 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen]             = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [darkMode, setDarkMode]                   = useState(false);
   const location  = useLocation();
   const navigate  = useNavigate();
 
-  /* ── Synchronise le thème global depuis la prop isDark ou localStorage ── */
+  /* ── Applique le thème global dès le montage (fonctionne sur TOUTES les pages) ── */
   useEffect(() => {
-    const useDark =
-      isDark !== undefined
-        ? isDark
-        : localStorage.getItem("nexora-theme") === "dark" ||
-          (!localStorage.getItem("nexora-theme") &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-    if (useDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("nexora-theme", "dark");
+    if (isDark !== undefined) {
+      applyThemeLocal(isDark ? "dark" : "light");
+      setDarkMode(isDark);
     } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("nexora-theme", "light");
+      initTheme();
+      setDarkMode(getTheme() === "dark");
     }
   }, [isDark]);
 
+  function applyThemeLocal(t: "dark" | "light") {
+    if (t === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+    try { localStorage.setItem("nexora-theme", t); } catch {}
+  }
+
   useEffect(() => { refreshNexoraSession(); }, []);
+
+  const handleToggleTheme = () => {
+    const next = toggleTheme();
+    setDarkMode(next === "dark");
+  };
 
   const nexoraUser  = getNexoraUser();
   const adminUser   = isNexoraAdmin() || isAdminUser();
   const navItems    = getNavItems(adminUser);
 
-  const displayName = nexoraUser?.nom_prenom || "Eric Kpakpo";
+  const displayName = nexoraUser?.nom_prenom || "Utilisateur";
   const displayRole = nexoraUser?.is_admin
     ? "Administrateur"
     : nexoraUser?.plan === "boss" || nexoraUser?.plan === "roi"
@@ -108,17 +112,17 @@ export default function AppLayout({
   if (isAdminPage) return <>{children}</>;
 
   return (
-    <div className="min-h-screen flex bg-muted/30 overflow-x-hidden max-w-[100vw]">
+    <div className="min-h-screen flex bg-muted/30 dark:bg-gray-950 overflow-x-hidden max-w-[100vw]">
       {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-foreground/30 z-20 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-foreground/30 z-20 lg:hidden" onClick={() => setMobileSidebarOpen(false)} />
       )}
 
       {/* ── Sidebar ── */}
       <aside className={`
-        fixed top-0 left-0 h-full z-30 bg-sidebar text-sidebar-foreground flex flex-col
+        fixed top-0 left-0 h-full z-30
+        bg-sidebar dark:bg-gray-900
+        border-r border-sidebar-border dark:border-gray-800
+        text-sidebar-foreground flex flex-col
         transition-all duration-300 shadow-brand-lg
         ${sidebarOpen ? "w-60" : "w-[68px]"}
         ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
@@ -129,7 +133,7 @@ export default function AppLayout({
         <Link
           to="/profil"
           onClick={() => setMobileSidebarOpen(false)}
-          className="flex items-center gap-3 px-3 py-3.5 border-b border-sidebar-border hover:bg-sidebar-accent transition-colors"
+          className="flex items-center gap-3 px-3 py-3.5 border-b border-sidebar-border dark:border-gray-800 hover:bg-sidebar-accent dark:hover:bg-gray-800 transition-colors"
         >
           <div className="relative flex-shrink-0">
             <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-accent/60">
@@ -144,28 +148,28 @@ export default function AppLayout({
           </div>
           {sidebarOpen && (
             <div className="min-w-0 flex-1">
-              <div className="font-display font-black text-sm text-sidebar-foreground truncate flex items-center gap-1.5">
+              <div className="font-display font-black text-sm text-sidebar-foreground dark:text-gray-100 truncate flex items-center gap-1.5">
                 {displayName.split(" ")[0]}
                 {hasBadge && <BadgeCheck className="w-4 h-4 text-green-400 flex-shrink-0" />}
               </div>
-              <div className="text-xs text-sidebar-foreground/50 truncate">{displayRole}</div>
+              <div className="text-xs text-sidebar-foreground/50 dark:text-gray-400 truncate">{displayRole}</div>
             </div>
           )}
         </Link>
 
         {/* Logo + toggle collapse */}
-        <div className={`flex items-center gap-2.5 px-3 py-2.5 border-b border-sidebar-border ${!sidebarOpen ? "justify-center" : ""}`}>
+        <div className={`flex items-center gap-2.5 px-3 py-2.5 border-b border-sidebar-border dark:border-gray-800 ${!sidebarOpen ? "justify-center" : ""}`}>
           <img src={nexoraLogo} alt="Nexora" className="w-6 h-6 object-contain flex-shrink-0" />
           {sidebarOpen && (
-            <span className="font-display font-black text-xs text-sidebar-foreground tracking-widest flex-1">
+            <span className="font-display font-black text-xs text-sidebar-foreground dark:text-gray-100 tracking-widest flex-1">
               NEXORA
             </span>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`hidden lg:flex w-6 h-6 items-center justify-center rounded hover:bg-sidebar-accent transition-colors flex-shrink-0 ${!sidebarOpen ? "ml-0" : "ml-auto"}`}
+            className={`hidden lg:flex w-6 h-6 items-center justify-center rounded hover:bg-sidebar-accent dark:hover:bg-gray-800 transition-colors flex-shrink-0 ${!sidebarOpen ? "ml-0" : "ml-auto"}`}
           >
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${sidebarOpen ? "rotate-180" : ""}`} />
+            <ChevronRight className={`w-3.5 h-3.5 text-sidebar-foreground/70 dark:text-gray-400 transition-transform ${sidebarOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
 
@@ -182,9 +186,9 @@ export default function AppLayout({
               <div key={path}>
                 {isAdminItem && (
                   <div className="my-2 mx-1">
-                    <div className="h-px bg-sidebar-border opacity-40" />
+                    <div className="h-px bg-sidebar-border dark:bg-gray-700 opacity-40" />
                     {sidebarOpen && (
-                      <p className="text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest px-2 pt-2 pb-1">
+                      <p className="text-[10px] font-bold text-sidebar-foreground/30 dark:text-gray-500 uppercase tracking-widest px-2 pt-2 pb-1">
                         Administration
                       </p>
                     )}
@@ -199,7 +203,7 @@ export default function AppLayout({
                     ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
                     ${active
                       ? "bg-accent text-accent-foreground font-semibold shadow-sm"
-                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      : "text-sidebar-foreground/75 dark:text-gray-300 hover:bg-sidebar-accent dark:hover:bg-gray-800 hover:text-sidebar-foreground dark:hover:text-white"
                     }
                   `}
                 >
@@ -218,13 +222,34 @@ export default function AppLayout({
           })}
         </nav>
 
-        {/* Déconnexion uniquement (thème géré par le Dashboard) */}
-        <div className="p-2.5 border-t border-sidebar-border">
+        {/* Thème + Déconnexion */}
+        <div className="p-2.5 border-t border-sidebar-border dark:border-gray-800 space-y-1">
+          {/* ── Bouton thème — visible sur Dashboard, Boutique, Immobilier et toutes pages ── */}
+          <button
+            onClick={handleToggleTheme}
+            title={darkMode ? "Mode clair" : "Mode sombre"}
+            className={`
+              w-full flex items-center gap-3 rounded-xl transition-colors
+              text-sidebar-foreground/70 dark:text-gray-300
+              hover:bg-sidebar-accent dark:hover:bg-gray-800
+              ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
+            `}
+          >
+            <div className={`flex items-center justify-center rounded-lg flex-shrink-0 ${darkMode ? "bg-yellow-400/20" : "bg-indigo-400/20"} ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}`}>
+              {darkMode
+                ? <Sun className={`flex-shrink-0 text-yellow-400 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
+                : <Moon className={`flex-shrink-0 text-indigo-300 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"}`} />
+              }
+            </div>
+            {sidebarOpen && <span className="text-sm">{darkMode ? "Mode clair" : "Mode sombre"}</span>}
+          </button>
+
+          {/* Déconnexion */}
           <button
             onClick={handleLogout}
             title="Déconnexion"
             className={`
-              w-full flex items-center gap-3 rounded-xl text-sidebar-foreground/70
+              w-full flex items-center gap-3 rounded-xl text-sidebar-foreground/70 dark:text-gray-300
               hover:bg-destructive/20 hover:text-red-200 transition-colors
               ${sidebarOpen ? "px-2.5 py-2" : "px-0 py-2 justify-center"}
             `}
@@ -241,39 +266,35 @@ export default function AppLayout({
       <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden min-w-0 w-0 ${sidebarOpen ? "lg:ml-60" : "lg:ml-[68px]"}`}>
 
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-card border-b border-border px-4 lg:px-6 h-14 flex items-center gap-3 shadow-sm">
-          {/* Burger mobile */}
+        <header className="sticky top-0 z-10 bg-card dark:bg-gray-900 border-b border-border dark:border-gray-800 px-4 lg:px-6 h-14 flex items-center gap-3 shadow-sm">
           <button
             onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted dark:hover:bg-gray-800 transition-colors"
           >
             {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          {/* Retour dashboard (autres pages) */}
           {canGoBack && (
             <button
               onClick={() => navigate("/dashboard")}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted dark:hover:bg-gray-800 transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
               title="Retour au Dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
-          {/* Titre page courante */}
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {currentPage && (
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${currentPage.bg}`}>
                 <currentPage.icon className={`w-4 h-4 ${currentPage.color}`} />
               </div>
             )}
-            <h2 className="font-display font-bold text-foreground text-base truncate">
+            <h2 className="font-display font-bold text-foreground dark:text-gray-100 text-base truncate">
               {currentPage?.label || "NEXORA"}
             </h2>
           </div>
 
-          {/* Recherche (optionnelle) */}
           {onSearchChange && (
             <div className="relative hidden sm:block w-52">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -281,15 +302,12 @@ export default function AppLayout({
                 placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-9 h-8 bg-muted border-0 focus:bg-card text-sm rounded-full"
+                className="pl-9 h-8 bg-muted dark:bg-gray-800 border-0 focus:bg-card text-sm rounded-full"
               />
             </div>
           )}
 
-          {/* ── Actions injectées par la page (ex: Refresh + Thème du Dashboard) ── */}
           {headerActions}
-
-          {/* Notifications globales */}
           <NexoraNotifications />
         </header>
 
@@ -297,7 +315,7 @@ export default function AppLayout({
           {children}
         </main>
 
-        <footer className="py-2.5 px-6 border-t border-border text-center text-xs text-muted-foreground">
+        <footer className="py-2.5 px-6 border-t border-border dark:border-gray-800 text-center text-xs text-muted-foreground dark:text-gray-500">
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
       </div>
