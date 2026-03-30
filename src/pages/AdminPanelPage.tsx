@@ -871,8 +871,7 @@ export default function AdminPanelPage() {
 
       </div>
     </div>
-    );
-  }
+ 
 
   // ════════════ PANEL PRINCIPAL ════════════
   return (
