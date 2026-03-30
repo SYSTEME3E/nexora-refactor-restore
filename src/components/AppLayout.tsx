@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { ReactNode } from "react";
 import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
-import ChatWidget from "@/components/ChatWidget";
 import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 
 
@@ -225,7 +224,6 @@ export default function AppLayout({
 
         {/* Thème + Déconnexion */}
         <div className="p-2.5 border-t border-sidebar-border dark:border-gray-800 space-y-1">
-          {/* ── Bouton thème — visible sur Dashboard, Boutique, Immobilier et toutes pages ── */}
           <button
             onClick={handleToggleTheme}
             title={darkMode ? "Mode clair" : "Mode sombre"}
@@ -320,8 +318,6 @@ export default function AppLayout({
           NEXORA © {new Date().getFullYear()} — Tous droits réservés
         </footer>
       </div>
-
-      <ChatWidget />
     </div>
   );
 }
