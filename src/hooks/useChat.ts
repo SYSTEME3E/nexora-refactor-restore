@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getNexoraUser } from "@/lib/nexora-auth";
 
@@ -17,7 +17,6 @@ export interface ChatMessage {
   _optimistic?: boolean;
 }
 
-
 // ─────────────────────────────────────────────────────────────
 // 30 RÉPONSES AUTOMATIQUES AVEC MOTS-CLÉS
 // ─────────────────────────────────────────────────────────────
@@ -35,55 +34,55 @@ export const BOT_RESPONSES: { keywords: string[]; response: string }[] = [
     response: "💸 Pour effectuer un transfert ou recharger votre compte Nexora Transfert :\n\n1. Allez dans **Transfert** depuis le menu\n2. Cliquez sur **Recharger** et choisissez votre réseau Mobile Money\n3. Entrez le montant et votre numéro\n\nFrais : 100 FCFA par recharge, 3% par transfert.",
   },
   {
-    keywords: ["retrait", "retirer", "récupérer argent", "sortir argent", "envoyer vers"],
+    keywords: ["retrait", "retirer", "recuperer argent", "sortir argent", "envoyer vers"],
     response: "🏧 Pour retirer votre argent :\n\n1. Allez dans **Transfert**\n2. Cliquez sur **Envoyer**\n3. Choisissez le pays, le réseau et entrez le numéro destinataire\n\nFrais : 3% du montant envoyé. Le virement est traité en quelques minutes.",
   },
   {
-    keywords: ["épargne", "epargne", "économiser", "economiser", "coffre", "dépôt", "mettre de côté"],
-    response: "🐖 Nexora Épargne vous permet de mettre de côté en toute sécurité.\n\nAccédez à **Coffre-fort** depuis le menu pour déposer et gérer votre épargne. Plusieurs plans disponibles selon vos objectifs.",
+    keywords: ["epargne", "economiser", "coffre", "depot", "mettre de cote"],
+    response: "🐖 Nexora Épargne vous permet de mettre de côté en toute sécurité.\n\nAccédez à **Coffre-fort** depuis le menu pour déposer et gérer votre épargne.",
   },
   {
-    keywords: ["facture", "devis", "facturation", "créer facture", "document commercial"],
+    keywords: ["facture", "devis", "facturation", "creer facture", "document commercial"],
     response: "🧾 Nexora Factures vous permet de créer des factures et devis professionnels en quelques clics.\n\nAllez dans **Factures** depuis le menu principal.",
   },
   {
     keywords: ["immobilier", "appartement", "maison", "terrain", "louer", "vendre bien", "acheter maison"],
-    response: "🏠 La section **Immobilier** est disponible avec l'abonnement Premium.\n\nVous pouvez publier et consulter des annonces immobilières (vente, location, terrain) dans toute l'Afrique de l'Ouest.",
+    response: "🏠 La section **Immobilier** est disponible avec l'abonnement Premium.\n\nVous pouvez publier et consulter des annonces immobilières dans toute l'Afrique de l'Ouest.",
   },
   {
-    keywords: ["boutique", "créer boutique", "vendre produit", "commande boutique", "shop", "e-commerce"],
+    keywords: ["boutique", "creer boutique", "vendre produit", "commande boutique", "shop", "e-commerce"],
     response: "🛍️ **Nexora Boutique** vous permet de créer votre boutique en ligne et de vendre vos produits.\n\nFonctionnalité disponible avec l'abonnement Premium. Accédez via **Boutique** dans le menu.",
   },
   {
-    keywords: ["prêt", "pret", "emprunt", "crédit", "credit", "financement", "dette"],
+    keywords: ["pret", "emprunt", "credit", "financement", "dette"],
     response: "💰 La section **Prêts** vous permet de gérer vos emprunts et demandes de financement.\n\nAccédez via **Prêts** dans le menu principal.",
   },
   {
-    keywords: ["mot de passe", "password", "connexion", "login", "compte bloqué", "accès refusé"],
+    keywords: ["mot de passe", "password", "connexion", "login", "compte bloque", "acces refuse"],
     response: "🔐 Pour tout problème de connexion ou de mot de passe :\n\n1. Sur la page de connexion, cliquez sur **Mot de passe oublié**\n2. Suivez les instructions pour contacter notre support\n\nSi le problème persiste, écrivez à erickpakpo786@gmail.com",
   },
   {
-    keywords: ["bug", "erreur", "problème technique", "ne fonctionne pas", "bloqué", "plantage"],
+    keywords: ["bug", "erreur", "probleme technique", "ne fonctionne pas", "bloque", "plantage"],
     response: "🔧 Désolé pour ce désagrément ! Pour nous aider à résoudre votre problème :\n\n1. Décrivez précisément ce qui se passe\n2. Indiquez sur quelle page vous êtes\n3. Précisez si le problème se répète\n\nNotre équipe technique traitera votre cas rapidement.",
   },
   {
-    keywords: ["contact", "support", "aide", "help", "assistance", "opérateur", "operateur", "humain", "agent"],
+    keywords: ["contact", "support", "aide", "help", "assistance", "operateur", "humain", "agent"],
     response: "👋 Je suis Sophia, l'assistante automatique de Nexora.\n\nSi vous souhaitez parler directement à un conseiller humain, cliquez sur le bouton **Appeler un opérateur** ci-dessous.",
   },
   {
-    keywords: ["pays", "afrique", "disponible", "zone", "région", "pays éligible"],
+    keywords: ["pays", "afrique", "disponible", "zone", "region", "pays eligible"],
     response: "🌍 Nexora est disponible dans **24 pays africains** !\n\nBénin, Côte d'Ivoire, Togo, Sénégal, Niger, Mali, Burkina Faso, Cameroun, Ghana, Nigeria, Kenya, Tanzanie, Ouganda, Rwanda, Guinée, RD Congo, Gabon, Congo, Maroc, Gambie, Sierra Leone, Liberia, Mozambique, Zambie.",
   },
   {
-    keywords: ["inscription", "créer compte", "nouveau compte", "s'inscrire", "rejoindre"],
+    keywords: ["inscription", "creer compte", "nouveau compte", "s inscrire", "rejoindre"],
     response: "✅ Pour créer votre compte Nexora :\n\n1. Allez sur la page **Connexion**\n2. Cliquez sur **Créer un compte**\n3. Remplissez vos informations\n4. Votre compte est gratuit !\n\nL'inscription prend moins de 2 minutes.",
   },
   {
-    keywords: ["frais", "commission", "coût", "tarif transfert", "combien ça coûte"],
+    keywords: ["frais", "commission", "cout", "tarif transfert", "combien ca coute"],
     response: "💡 Voici les frais Nexora :\n\n• **Inscription** : Gratuite\n• **Recharge compte** : 100 FCFA\n• **Transfert d'argent** : 3% du montant\n• **Abonnement Premium** : 12$/mois\n\nAucun frais caché !",
   },
   {
-    keywords: ["sécurité", "securite", "confidentiel", "données personnelles", "protection"],
+    keywords: ["securite", "confidentiel", "donnees personnelles", "protection"],
     response: "🔒 Vos données sont protégées avec Nexora :\n\n• Chiffrement bout-en-bout AES-256\n• Connexions sécurisées (TLS 1.3)\n• Aucune revente de données\n• Coffre-fort personnel chiffré\n\nVotre confidentialité est notre priorité.",
   },
   {
@@ -95,15 +94,15 @@ export const BOT_RESPONSES: { keywords: string[]; response: string }[] = [
     response: "👤 Pour modifier votre profil :\n\n1. Cliquez sur votre avatar en haut de la barre latérale\n2. Accédez à **Profil**\n3. Modifiez vos informations et sauvegardez\n\nVous pouvez changer votre nom, email et photo.",
   },
   {
-    keywords: ["historique", "transaction", "relevé", "bilan", "mes opérations"],
+    keywords: ["historique", "transaction", "releve", "bilan", "mes operations"],
     response: "📊 Consultez votre historique complet dans la section **Historique** du menu.\n\nVous y trouverez toutes vos opérations : entrées, dépenses, transferts, et leur statut.",
   },
   {
-    keywords: ["lien", "liens", "contact", "liens contacts", "carnet d'adresses", "réseau social"],
+    keywords: ["lien", "liens", "carnet adresses", "reseau social"],
     response: "🔗 La section **Liens & Contacts** vous permet de :\n\n• Créer des liens courts personnalisés\n• Partager vos réseaux sociaux\n• Gérer vos contacts importants\n\nAccédez via **Liens** dans le menu.",
   },
   {
-    keywords: ["télécharger", "telecharger", "application", "app", "mobile", "android", "ios"],
+    keywords: ["telecharger", "application", "app", "mobile", "android", "ios"],
     response: "📱 Nexora est accessible depuis votre navigateur mobile et desktop.\n\nPour l'installer comme application :\n1. Ouvrez Nexora dans Chrome\n2. Appuyez sur « Ajouter à l'écran d'accueil »\n3. Profitez de l'expérience native !",
   },
   {
@@ -111,23 +110,23 @@ export const BOT_RESPONSES: { keywords: string[]; response: string }[] = [
     response: "🏪 Votre vitrine boutique est accessible via :\n**nexora.vercel.app/shop/votre-slug**\n\nPartagez ce lien avec vos clients pour qu'ils puissent commander directement !",
   },
   {
-    keywords: ["commande", "ma commande", "suivi commande", "où est ma commande", "statut commande"],
+    keywords: ["commande", "ma commande", "suivi commande", "ou est ma commande", "statut commande"],
     response: "📦 Pour suivre votre commande :\n\n1. Utilisez le lien de suivi reçu après votre achat\n2. Ou contactez le vendeur directement via WhatsApp\n\nLe vendeur met à jour le statut : En attente → Confirmée → En route → Livrée.",
   },
   {
-    keywords: ["paiement échoué", "paiement refusé", "transaction échouée", "erreur paiement"],
+    keywords: ["paiement echoue", "paiement refuse", "transaction echouee", "erreur paiement"],
     response: "❌ Si votre paiement a échoué :\n\n1. Vérifiez que votre solde Mobile Money est suffisant\n2. Réessayez après quelques minutes\n3. Essayez un autre réseau (Wave, MTN, Orange...)\n\nSi le problème persiste, contactez le support.",
   },
   {
-    keywords: ["whatsapp", "numéro", "appel", "téléphone support"],
+    keywords: ["whatsapp", "numero", "appel", "telephone support"],
     response: "📞 Contactez notre support directement :\n\n• **WhatsApp** : +229 51 76 23 41\n• **Email** : erickpakpo786@gmail.com\n\nDisponible du lundi au samedi, 8h - 20h.",
   },
   {
-    keywords: ["bénin", "benin", "cotonou", "siège", "adresse nexora"],
+    keywords: ["benin", "cotonou", "siege", "adresse nexora"],
     response: "📍 Nexora est basé au **Bénin**, en Afrique de l'Ouest.\n\nNous servons 24 pays africains. Notre équipe support est disponible via WhatsApp (+229 51 76 23 41) ou email.",
   },
   {
-    keywords: ["gratuit", "plan gratuit", "fonctionnalité gratuite", "sans payer", "accès libre"],
+    keywords: ["gratuit", "plan gratuit", "fonctionnalite gratuite", "sans payer", "acces libre"],
     response: "🎁 Le plan **Gratuit** Nexora vous donne accès à :\n\n• Gestion financière (entrées & dépenses)\n• 10 factures par mois\n• 5 produits boutique\n• Coffre-fort (limité)\n• Chat support\n\nPassez au Premium pour tout débloquer !",
   },
   {
@@ -135,35 +134,50 @@ export const BOT_RESPONSES: { keywords: string[]; response: string }[] = [
     response: "🔔 Pour activer les notifications Nexora :\n\n1. Allez dans **Paramètres boutique**\n2. Section **Notifications**\n3. Cliquez sur **Activer sur cet appareil**\n\nVous recevrez des alertes pour chaque nouvelle commande !",
   },
   {
-    keywords: ["merci", "super", "parfait", "excellent", "génial", "top", "ok merci"],
+    keywords: ["merci", "super", "parfait", "excellent", "genial", "top", "ok merci"],
     response: "😊 Avec plaisir ! Je suis là pour vous aider à tout moment.\n\nN'hésitez pas si vous avez d'autres questions. Bonne journée sur Nexora ! 🌟",
   },
   {
-    keywords: ["au revoir", "bye", "bonne journée", "à bientôt", "adieu"],
+    keywords: ["au revoir", "bye", "bonne journee", "a bientot", "adieu"],
     response: "👋 Au revoir et bonne journée ! N'hésitez pas à revenir si vous avez besoin d'aide.\n\nL'équipe Nexora est toujours disponible pour vous. 🙏",
   },
 ];
 
+// ─────────────────────────────────────────────────────────────
+// CORRECTION: Normalisation améliorée pour matcher les accents
+// ─────────────────────────────────────────────────────────────
+function normalizeStr(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // retire les accents
+    .replace(/['']/g, " ")           // apostrophes → espace
+    .replace(/[^a-z0-9\s]/g, " ")   // caractères spéciaux → espace
+    .replace(/\s+/g, " ")            // espaces multiples
+    .trim();
+}
+
 export function findBotResponse(message: string): string | null {
-  const lower = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const normalizedMsg = normalizeStr(message);
   for (const item of BOT_RESPONSES) {
-    if (item.keywords.some(kw => {
-      const kwNorm = kw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return lower.includes(kwNorm);
-    })) {
-      return item.response;
+    for (const kw of item.keywords) {
+      const normalizedKw = normalizeStr(kw);
+      if (normalizedMsg.includes(normalizedKw)) {
+        return item.response;
+      }
     }
   }
   return null;
 }
 
 // ─────────────────────────────────────────────────────────────
-// HOOK UTILISATEUR
+// HOOK UTILISATEUR — CORRIGÉ
 // ─────────────────────────────────────────────────────────────
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const botTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const currentUser = getNexoraUser();
@@ -171,7 +185,6 @@ export function useChat() {
 
   const fetchMessages = useCallback(async () => {
     if (!userId) return;
-    setLoading(true);
     const { data, error } = await (supabase as any)
       .from("chat_messages")
       .select("*")
@@ -179,11 +192,13 @@ export function useChat() {
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      // Remplace en conservant les messages optimistes non encore confirmés
+      // Remplace les messages confirmés, garde les optimistes en attente
       setMessages(prev => {
         const confirmed = data as ChatMessage[];
         const stillPending = prev.filter(
-          m => m._optimistic && !confirmed.some(c => c.content === m.content && c.sender === m.sender)
+          m => m._optimistic && !confirmed.some(
+            c => c.content === m.content && c.sender === m.sender
+          )
         );
         return [...confirmed, ...stillPending];
       });
@@ -192,22 +207,26 @@ export function useChat() {
       ).length;
       setUnreadCount(unread);
     }
-    setLoading(false);
   }, [userId]);
 
   const sendMessage = useCallback(
-    async (content: string, fileData?: {
-      file_url: string;
-      file_type: "image" | "video" | "doc";
-      file_name: string;
-      file_expires_at: string;
-    }) => {
+    async (
+      content: string,
+      fileData?: {
+        file_url: string;
+        file_type: "image" | "video" | "doc";
+        file_name: string;
+        file_expires_at: string;
+      }
+    ) => {
       if (!userId) return;
       const trimmed = content.trim();
+      if (!trimmed && !fileData) return;
 
-      // ── OPTIMISTIC UPDATE : affichage immédiat côté utilisateur ──
+      // ── OPTIMISTIC UPDATE ──
+      const optimisticId = `optimistic_${Date.now()}_${Math.random()}`;
       const optimisticMsg: ChatMessage = {
-        id: `optimistic_${Date.now()}`,
+        id: optimisticId,
         user_id: userId,
         content: trimmed || (fileData ? `[${fileData.file_type}]` : ""),
         sender: "user",
@@ -237,39 +256,48 @@ export function useChat() {
 
       if (error) {
         console.error("Erreur envoi message:", error);
+        // Retirer le message optimiste en cas d'erreur
+        setMessages(prev => prev.filter(m => m.id !== optimisticId));
         return;
       }
 
-      // Sync après insert réussi
-      fetchMessages();
+      // Sync immédiate après insertion
+      await fetchMessages();
 
-      // 2. Réponse bot si texte
+      // 2. CORRECTION: Réponse bot déclenchée si contenu texte
       if (trimmed) {
-        const botReply = findBotResponse(trimmed);
-        if (botReply) {
-          setTimeout(async () => {
-            await (supabase as any).from("chat_messages").insert({
-              user_id: userId, content: botReply,
-              sender: "bot", is_read: false, is_archived: false,
-            });
-            fetchMessages();
-          }, 800);
-        } else {
-          setTimeout(async () => {
+        // Annuler un timeout précédent si l'utilisateur envoie rapidement
+        if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
+
+        botTimeoutRef.current = setTimeout(async () => {
+          try {
+            const botReply = findBotResponse(trimmed);
+            const replyContent = botReply ||
+              "Je n'ai pas trouvé de réponse automatique à votre question. Un conseiller va vous répondre dans les plus brefs délais. 🙏";
+
             await (supabase as any).from("chat_messages").insert({
               user_id: userId,
-              content: "Je n'ai pas trouvé de réponse automatique à votre question. Un conseiller va vous répondre dans les plus brefs délais. 🙏",
-              sender: "bot", is_read: false, is_archived: false,
-            });
-            await (supabase as any).from("nexora_notifications").insert({
-              type: "chat_unknown_question",
-              user_id: userId,
-              message: `Question sans réponse : "${trimmed.slice(0, 100)}"`,
+              content: replyContent,
+              sender: "bot",
               is_read: false,
-            }).catch(() => {});
-            fetchMessages();
-          }, 800);
-        }
+              is_archived: false,
+            });
+
+            // Si pas de réponse bot trouvée, notifier l'admin
+            if (!botReply) {
+              await (supabase as any).from("nexora_notifications").insert({
+                type: "chat_unknown_question",
+                user_id: userId,
+                message: `Question sans réponse bot : "${trimmed.slice(0, 100)}"`,
+                is_read: false,
+              }).catch(() => {});
+            }
+
+            await fetchMessages();
+          } catch (err) {
+            console.error("Erreur réponse bot:", err);
+          }
+        }, 900); // délai naturel de "frappe"
       }
     },
     [userId, fetchMessages]
@@ -314,9 +342,16 @@ export function useChat() {
     fetchMessages();
   }, [userId, fetchMessages]);
 
+  // Chargement initial
   useEffect(() => {
     if (!userId) return;
-    fetchMessages();
+    setLoading(true);
+    fetchMessages().finally(() => setLoading(false));
+  }, [userId, fetchMessages]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!userId) return;
     const channel = supabase
       .channel(`chat_user_${userId}`)
       .on("postgres_changes" as any, {
@@ -326,14 +361,27 @@ export function useChat() {
       }, () => { fetchMessages(); })
       .subscribe();
     channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+      if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
+    };
   }, [userId, fetchMessages]);
 
-  return { messages, unreadCount, loading, sendMessage, uploadFile, markAdminMessagesRead, fetchMessages, requestOperator };
+  return {
+    messages,
+    setMessages, // ← Exposé pour le composant ChatPage
+    unreadCount,
+    loading,
+    sendMessage,
+    uploadFile,
+    markAdminMessagesRead,
+    fetchMessages,
+    requestOperator,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
-// HOOK ADMIN — messages stables (ne disparaissent pas)
+// HOOK ADMIN
 // ─────────────────────────────────────────────────────────────
 export interface ChatConversation {
   user_id: string;
@@ -391,8 +439,8 @@ export function useAdminChat() {
         last_message_at: last?.created_at || "",
         unread_count: unread,
         messages: userMsgs,
-        has_operator_request: userMsgs.some(m => m.content.includes("demande à parler à un opérateur")),
-        has_unknown_question: userMsgs.some(m => m.content.includes("Question sans réponse")),
+        has_operator_request: userMsgs.some(m => m.content?.includes("demande à parler à un opérateur")),
+        has_unknown_question: userMsgs.some(m => m.content?.includes("Question sans réponse")),
       };
     });
 
@@ -407,7 +455,6 @@ export function useAdminChat() {
       user_id: userId, content: content.trim(),
       sender: "admin", is_read: false, is_archived: false,
     });
-    // Pas de fetchConversations() ici → le realtime s'en charge → messages ne disparaissent pas
   }, []);
 
   const markUserMessagesRead = useCallback(async (userId: string) => {
@@ -439,6 +486,6 @@ export function useAdminChat() {
 
   return {
     conversations, loading, totalUnread, totalOperatorRequests, totalUnknownQuestions,
-    sendAdminReply, markUserMessagesRead, archiveConversation, fetchConversations
+    sendAdminReply, markUserMessagesRead, archiveConversation, fetchConversations,
   };
 }
