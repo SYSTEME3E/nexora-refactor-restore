@@ -191,6 +191,9 @@ export default function AdminPanelPage() {
   const [selectedUser, setSelectedUser] = useState<NexoraUser | null>(null);
   const [adminFeatures, setAdminFeatures] = useState<string[]>([]);
   const [adminPassword, setAdminPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Dette cachée
   const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
@@ -462,6 +465,23 @@ export default function AdminPanelPage() {
       loadAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleChangeUserPassword = async (user: NexoraUser) => {
+    if (!newPassword.trim()) { toast({ title: "Mot de passe requis", variant: "destructive" }); return; }
+    if (newPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; }
+    if (newPassword.length < 6) { toast({ title: "Minimum 6 caractères", variant: "destructive" }); return; }
+    setChangingPassword(true);
+    try {
+      await supabase.from("nexora_users" as any).update({ password_plain: newPassword }).eq("id", user.id);
+      await logAction(user.id, "mot_de_passe_modifié", "par admin");
+      toast({ title: "✅ Mot de passe modifié", description: `Le mot de passe de ${user.nom_prenom} a été mis à jour.` });
+      setNewPassword(""); setConfirmPassword("");
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -813,7 +833,44 @@ export default function AdminPanelPage() {
             )}
           </div>
         </div>
+
+          {/* ── Modifier mot de passe ── */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Lock className="w-4 h-4 text-blue-500" /> Modifier le mot de passe
+            </div>
+            <p className="text-xs text-muted-foreground">Définissez un nouveau mot de passe pour cet utilisateur.</p>
+            <div className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Nouveau mot de passe..."
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="rounded-xl"
+              />
+              <Input
+                type="password"
+                placeholder="Confirmer le mot de passe..."
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                className="rounded-xl"
+              />
+              {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-500">Les mots de passe ne correspondent pas.</p>
+              )}
+              <button
+                onClick={() => handleChangeUserPassword(u)}
+                disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors w-full justify-center"
+              >
+                <Lock className="w-4 h-4" />
+                {changingPassword ? "Modification..." : "Enregistrer le nouveau mot de passe"}
+              </button>
+            </div>
+          </div>
+
       </div>
+    </div>
     );
   }
 
