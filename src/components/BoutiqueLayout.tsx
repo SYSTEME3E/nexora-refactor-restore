@@ -14,6 +14,7 @@ const boutiqueNav = [
   { path: "/boutique/parametres",icon: Settings,        label: "Paramètres",  color: "text-gray-400",   bg: "bg-gray-400/10"   },
 ];
 
+
 interface BoutiqueLayoutProps {
   children: React.ReactNode;
   boutiqueName?: string;
