@@ -5,7 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import {
   TrendingUp, TrendingDown, History, Clock,
   ArrowUpRight, Store,
-  Wallet, Sun, Moon, RefreshCw
+  Wallet, RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getNexoraUser } from "@/lib/nexora-auth";
@@ -28,7 +28,6 @@ function getDateStr() {
 export default function DashboardPage() {
   const [devise, setDevise]   = useState<"XOF" | "USD">("XOF");
   const [time, setTime]       = useState(new Date());
-  const [isDark, setIsDark]   = useState(true);
   const [loading, setLoading] = useState(true);
   const [stats, setStats]     = useState({
     totalEntrees: 0,
@@ -78,163 +77,200 @@ export default function DashboardPage() {
     formatAmount(devise === "XOF" ? v : convertAmount(v, "XOF", "USD"), devise);
   const solde = stats.totalEntrees - stats.totalDepenses;
 
-  /* ── Boutons injectés dans le header d'AppLayout ── */
+  /*
+   * On injecte uniquement le bouton Refresh dans le header.
+   * Le toggle mode sombre/clair est géré dans AppLayout (en haut
+   * à côté des notifications) — on ne le duplique PAS ici.
+   */
   const headerActions = (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={loadStats}
-        className={`p-2 rounded-xl border transition-all ${
-          isDark
-            ? "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-            : "bg-white border-gray-200 text-slate-500 shadow-sm"
-        }`}
-      >
-        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-      </button>
-      <button
-        onClick={() => setIsDark(!isDark)}
-        className={`p-2 rounded-xl border transition-all ${
-          isDark
-            ? "bg-slate-800 border-slate-700 text-yellow-400"
-            : "bg-white border-gray-200 text-indigo-600 shadow-sm"
-        }`}
-      >
-        {isDark ? <Sun size={16} /> : <Moon size={16} />}
-      </button>
-    </div>
+    <button
+      onClick={loadStats}
+      className="p-2 rounded-xl border transition-all bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+      title="Actualiser"
+    >
+      <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+    </button>
   );
 
   return (
-    <AppLayout isDark={isDark} headerActions={headerActions}>
-      <div className={`w-full flex flex-col gap-4 transition-colors duration-300 ${isDark ? "bg-[#0B1120]" : "bg-gray-50"}`}>
+    /*
+     * CORRECTION z-index / superposition :
+     * Aucun élément dans cette page n'a de position sticky/fixed
+     * ni de z-index élevé. AppLayout gère son propre header sticky.
+     * Le contenu défile normalement en dessous sans jamais
+     * chevaucher les panneaux de notifications ou autres overlays.
+     */
+    <AppLayout headerActions={headerActions}>
+      <div className="w-full flex flex-col gap-4 pb-6">
 
-        {/* ── 1. HERO ── */}
-        <div className={`relative overflow-hidden rounded-3xl p-6 border-2 transition-all ${
-          isDark
-            ? "bg-slate-900 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
-            : "bg-white border-purple-400 shadow-md"
-        }`}>
+        {/* ── 1. HERO CARD ── */}
+        <div className="relative overflow-hidden rounded-3xl p-6 border-2 bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-800 border-violet-500/30 shadow-xl shadow-violet-500/20">
+          <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -left-8 -bottom-8 w-36 h-36 bg-indigo-400/10 rounded-full blur-xl pointer-events-none" />
+
           <div className="relative z-10 flex flex-col gap-4">
             <div className="flex justify-between items-start">
               <div>
-                <h1 className={`text-2xl font-black mb-1 ${isDark ? "text-white" : "text-slate-900"}`}>
+                <h1 className="text-2xl font-black mb-1 text-white tracking-tight">
                   {getGreeting()}, {displayName} ! 👋
                 </h1>
-                <p className={`text-sm font-medium capitalize ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                <p className="text-sm font-medium capitalize text-violet-200">
                   {getDateStr()}
                 </p>
               </div>
               <select
                 value={devise}
                 onChange={(e) => setDevise(e.target.value as any)}
-                className={`rounded-xl px-3 py-2 font-bold text-xs outline-none border transition-all ${
-                  isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-gray-100 border-gray-200 text-slate-900"
-                }`}
+                className="rounded-xl px-3 py-2 font-bold text-xs outline-none border bg-white/10 border-white/20 text-white backdrop-blur-sm cursor-pointer"
               >
-                <option value="XOF">XOF</option>
-                <option value="USD">USD</option>
+                <option value="XOF" className="text-slate-900 bg-white">XOF</option>
+                <option value="USD" className="text-slate-900 bg-white">USD</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 bg-purple-500/10 w-fit px-4 py-1.5 rounded-2xl border border-purple-500/20">
-              <Clock className="w-4 h-4 text-purple-500" />
-              <span className="text-purple-500 font-mono font-bold text-xs">
+
+            <div className="flex items-center gap-2 bg-white/10 w-fit px-4 py-1.5 rounded-2xl border border-white/15 backdrop-blur-sm">
+              <Clock className="w-4 h-4 text-yellow-300" />
+              <span className="text-yellow-300 font-mono font-bold text-xs tracking-widest">
                 {time.toLocaleTimeString("fr-FR")}
               </span>
             </div>
           </div>
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-purple-600/10 blur-3xl rounded-full" />
         </div>
 
-        {/* ── 2. SOLDE ── */}
-        <div className="rounded-3xl p-6 flex items-center gap-5 shadow-sm border bg-[#F5F3FF] border-[#DDD6FE]">
-          <div className="bg-white p-4 rounded-2xl shadow-md shadow-purple-200">
-            <Wallet className="w-8 h-8 text-[#7C3AED]" />
+        {/* ── 2. SOLDE NET ── */}
+        <div className={`rounded-3xl p-5 flex items-center gap-4 border transition-all ${
+          solde >= 0
+            ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 shadow-sm shadow-emerald-100 dark:shadow-none"
+            : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 shadow-sm shadow-red-100 dark:shadow-none"
+        }`}>
+          <div className={`p-3.5 rounded-2xl ${
+            solde >= 0
+              ? "bg-emerald-100 dark:bg-emerald-900/50"
+              : "bg-red-100 dark:bg-red-900/50"
+          }`}>
+            <Wallet className={`w-7 h-7 ${solde >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`} />
           </div>
           <div>
-            <p className="text-[#6D28D9] text-xs font-black uppercase tracking-widest mb-1">Solde net total</p>
-            <h2 className="text-[#4C1D95] text-3xl font-black font-display">
-              {loading ? "Chargement..." : fmt(solde)}
+            <p className={`text-xs font-black uppercase tracking-widest mb-0.5 ${
+              solde >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+            }`}>Solde net total</p>
+            <h2 className={`text-3xl font-black tracking-tight ${
+              solde >= 0
+                ? "text-emerald-700 dark:text-emerald-300"
+                : "text-red-600 dark:text-red-400"
+            }`}>
+              {loading
+                ? <span className="text-muted-foreground text-lg animate-pulse">Chargement...</span>
+                : fmt(solde)
+              }
             </h2>
           </div>
         </div>
 
-        {/* ── 3. CARTES ── */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link to="/entrees-depenses" className="bg-white border border-gray-200 p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
-            <div className="bg-slate-50 p-2.5 w-fit rounded-xl mb-3 border border-slate-100">
-              <TrendingUp className="w-6 h-6 text-slate-500" />
+        {/* ── 3. CARTES ACTIONS ── */}
+        <div className="grid grid-cols-2 gap-3">
+
+          {/* Entrées — Vert émeraude */}
+          <Link
+            to="/entrees-depenses"
+            className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-3xl shadow-lg shadow-emerald-500/25 hover:scale-[1.02] hover:shadow-emerald-500/40 transition-all active:scale-[0.98]"
+          >
+            <div className="bg-white/15 p-2.5 w-fit rounded-xl mb-3 border border-white/20">
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <p className="text-slate-500 font-bold text-[10px] uppercase tracking-wider mb-1">Entrées</p>
-            <p className="text-slate-900 font-black text-xl truncate">{loading ? "..." : fmt(stats.totalEntrees)}</p>
+            <p className="text-emerald-100 font-bold text-[10px] uppercase tracking-wider mb-1">Entrées</p>
+            <p className="text-white font-black text-xl truncate">{loading ? "..." : fmt(stats.totalEntrees)}</p>
           </Link>
 
-          <Link to="/entrees-depenses" className="bg-[#FFF1F2] border border-[#FECDD3] p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
-            <div className="bg-white p-2.5 w-fit rounded-xl mb-3 shadow-sm">
-              <TrendingDown className="w-6 h-6 text-[#E11D48]" />
+          {/* Dépenses — Rouge */}
+          <Link
+            to="/entrees-depenses"
+            className="bg-gradient-to-br from-rose-500 to-red-600 p-4 rounded-3xl shadow-lg shadow-rose-500/25 hover:scale-[1.02] hover:shadow-rose-500/40 transition-all active:scale-[0.98]"
+          >
+            <div className="bg-white/15 p-2.5 w-fit rounded-xl mb-3 border border-white/20">
+              <TrendingDown className="w-6 h-6 text-white" />
             </div>
-            <p className="text-[#BE123C] font-bold text-[10px] uppercase tracking-wider mb-1">Dépenses</p>
-            <p className="text-[#9F1239] font-black text-xl truncate">{loading ? "..." : fmt(stats.totalDepenses)}</p>
+            <p className="text-rose-100 font-bold text-[10px] uppercase tracking-wider mb-1">Dépenses</p>
+            <p className="text-white font-black text-xl truncate">{loading ? "..." : fmt(stats.totalDepenses)}</p>
           </Link>
 
-          <Link to="/transfert" className="bg-[#F0FDF4] border border-[#DCFCE7] p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
-            <div className="bg-white p-2.5 w-fit rounded-xl mb-3 shadow-sm">
-              <ArrowUpRight className="w-6 h-6 text-[#16A34A]" />
+          {/* Transfert — Ambre/Orange */}
+          <Link
+            to="/transfert"
+            className="bg-gradient-to-br from-amber-400 to-orange-500 p-4 rounded-3xl shadow-lg shadow-amber-500/25 hover:scale-[1.02] hover:shadow-amber-500/40 transition-all active:scale-[0.98]"
+          >
+            <div className="bg-white/15 p-2.5 w-fit rounded-xl mb-3 border border-white/20">
+              <ArrowUpRight className="w-6 h-6 text-white" />
             </div>
-            <p className="text-[#15803D] font-bold text-[10px] uppercase tracking-wider mb-1">Transfert</p>
-            <p className="text-[#166534] font-black text-xl">Suivi →</p>
+            <p className="text-amber-100 font-bold text-[10px] uppercase tracking-wider mb-1">Transfert</p>
+            <p className="text-white font-black text-xl">Suivi →</p>
           </Link>
 
-          <Link to="/boutique" className="bg-[#0F172A] border border-slate-700 p-4 rounded-3xl shadow-sm hover:scale-[1.02] transition-all">
-            <div className="bg-slate-800 p-2.5 w-fit rounded-xl mb-3 border border-slate-700">
-              <Store className="w-6 h-6 text-pink-400" />
+          {/* Boutique — Violet/Indigo */}
+          <Link
+            to="/boutique"
+            className="bg-gradient-to-br from-violet-600 to-indigo-700 p-4 rounded-3xl shadow-lg shadow-violet-500/25 hover:scale-[1.02] hover:shadow-violet-500/40 transition-all active:scale-[0.98]"
+          >
+            <div className="bg-white/15 p-2.5 w-fit rounded-xl mb-3 border border-white/20">
+              <Store className="w-6 h-6 text-white" />
             </div>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider mb-1">Boutique</p>
+            <p className="text-violet-200 font-bold text-[10px] uppercase tracking-wider mb-1">Boutique</p>
             <p className="text-white font-black text-xl">Gérer →</p>
           </Link>
         </div>
 
         {/* ── 4. TRANSACTIONS RÉCENTES ── */}
-        <div className="mt-2 mb-6">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h3 className={`font-bold text-sm flex items-center gap-2 ${isDark ? "text-white" : "text-slate-800"}`}>
-              <History className="w-4 h-4 text-purple-500" /> Transactions récentes
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h3 className="font-bold text-sm flex items-center gap-2 text-foreground">
+              <History className="w-4 h-4 text-violet-500" />
+              Transactions récentes
             </h3>
-            <Link to="/historique" className="text-purple-500 text-xs font-black hover:underline tracking-tight">
-              VOIR TOUT
+            <Link
+              to="/historique"
+              className="text-violet-500 text-xs font-black hover:text-violet-400 tracking-tight transition-colors"
+            >
+              VOIR TOUT →
             </Link>
           </div>
 
-          <div className={`rounded-3xl overflow-hidden border transition-all ${
-            isDark ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200 shadow-sm"
-          }`}>
+          <div className="rounded-3xl overflow-hidden border bg-card border-border shadow-sm">
             {loading ? (
-              <div className="p-8 text-center text-slate-500 text-xs font-medium">Chargement des données...</div>
+              <div className="p-8 text-center text-muted-foreground text-xs font-medium animate-pulse">
+                Chargement des données...
+              </div>
             ) : [...stats.dernièresEntrees, ...stats.dernièresDepenses].length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs font-medium">Aucune activité récente</div>
+              <div className="p-8 text-center text-muted-foreground text-xs font-medium">
+                Aucune activité récente
+              </div>
             ) : (
-              <div className="divide-y divide-slate-800/50">
+              <div className="divide-y divide-border">
                 {stats.dernièresEntrees.slice(0, 2).map((e, i) => (
-                  <div key={`ent-${i}`} className="p-4 flex items-center justify-between">
+                  <div key={`ent-${i}`} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="bg-green-500/10 p-2 rounded-xl"><TrendingUp className="w-4 h-4 text-green-500" /></div>
+                      <div className="bg-emerald-500/10 p-2 rounded-xl">
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      </div>
                       <div>
-                        <p className={`text-xs font-black truncate max-w-[140px] ${isDark ? "text-white" : "text-slate-900"}`}>{e.titre}</p>
-                        <p className="text-slate-500 text-[10px]">{e.date_entree}</p>
+                        <p className="text-xs font-black truncate max-w-[140px] text-foreground">{e.titre}</p>
+                        <p className="text-muted-foreground text-[10px] mt-0.5">{e.date_entree}</p>
                       </div>
                     </div>
-                    <span className="text-green-500 font-black text-xs">+{fmt(e.montant)}</span>
+                    <span className="text-emerald-500 font-black text-xs">+{fmt(e.montant)}</span>
                   </div>
                 ))}
                 {stats.dernièresDepenses.slice(0, 2).map((d, i) => (
-                  <div key={`dep-${i}`} className="p-4 flex items-center justify-between">
+                  <div key={`dep-${i}`} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="bg-red-500/10 p-2 rounded-xl"><TrendingDown className="w-4 h-4 text-red-500" /></div>
+                      <div className="bg-rose-500/10 p-2 rounded-xl">
+                        <TrendingDown className="w-4 h-4 text-rose-500" />
+                      </div>
                       <div>
-                        <p className={`text-xs font-black truncate max-w-[140px] ${isDark ? "text-white" : "text-slate-900"}`}>{d.titre}</p>
-                        <p className="text-slate-500 text-[10px]">{d.date_depense}</p>
+                        <p className="text-xs font-black truncate max-w-[140px] text-foreground">{d.titre}</p>
+                        <p className="text-muted-foreground text-[10px] mt-0.5">{d.date_depense}</p>
                       </div>
                     </div>
-                    <span className="text-red-500 font-black text-xs">-{fmt(d.montant)}</span>
+                    <span className="text-rose-500 font-black text-xs">-{fmt(d.montant)}</span>
                   </div>
                 ))}
               </div>
