@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/lib/shop-cart";
 import SectionAvis from "@/pages/boutique/SectionAvis";
+import { initTheme } from "@/lib/theme";
 
 interface Variation {
   nom: string;
