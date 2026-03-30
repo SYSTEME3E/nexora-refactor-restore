@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { getNexoraUser } from "@/lib/nexora-auth";
 
 
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 5) return "Bonne nuit";
