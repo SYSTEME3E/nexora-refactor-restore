@@ -144,16 +144,16 @@ export const BOT_RESPONSES: { keywords: string[]; response: string }[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// CORRECTION: Normalisation améliorée pour matcher les accents
+// Normalisation améliorée pour matcher les accents
 // ─────────────────────────────────────────────────────────────
 function normalizeStr(str: string): string {
   return str
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // retire les accents
-    .replace(/['']/g, " ")           // apostrophes → espace
-    .replace(/[^a-z0-9\s]/g, " ")   // caractères spéciaux → espace
-    .replace(/\s+/g, " ")            // espaces multiples
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['']/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -171,7 +171,7 @@ export function findBotResponse(message: string): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────
-// HOOK UTILISATEUR — CORRIGÉ
+// HOOK UTILISATEUR — CORRIGÉ COMPLET
 // ─────────────────────────────────────────────────────────────
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -179,6 +179,8 @@ export function useChat() {
   const [loading, setLoading] = useState(false);
   const botTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // FIX: Empêche les réponses bot en double si plusieurs appels simultanés
+  const isSendingBotRef = useRef(false);
 
   const currentUser = getNexoraUser();
   const userId = currentUser?.id;
@@ -192,9 +194,9 @@ export function useChat() {
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      // Remplace les messages confirmés, garde les optimistes en attente
+      const confirmed = data as ChatMessage[];
       setMessages(prev => {
-        const confirmed = data as ChatMessage[];
+        // Garde seulement les messages optimistes non encore confirmés
         const stillPending = prev.filter(
           m => m._optimistic && !confirmed.some(
             c => c.content === m.content && c.sender === m.sender
@@ -241,7 +243,7 @@ export function useChat() {
       };
       setMessages(prev => [...prev, optimisticMsg]);
 
-      // 1. Insérer en base
+      // 1. Insérer le message utilisateur en base
       const { error } = await (supabase as any).from("chat_messages").insert({
         user_id: userId,
         content: trimmed || (fileData ? `[${fileData.file_type}]` : ""),
@@ -256,20 +258,20 @@ export function useChat() {
 
       if (error) {
         console.error("Erreur envoi message:", error);
-        // Retirer le message optimiste en cas d'erreur
         setMessages(prev => prev.filter(m => m.id !== optimisticId));
         return;
       }
 
-      // Sync immédiate après insertion
+      // Sync immédiate pour retirer le message optimiste
       await fetchMessages();
 
-      // 2. CORRECTION: Réponse bot déclenchée si contenu texte
-      if (trimmed) {
-        // Annuler un timeout précédent si l'utilisateur envoie rapidement
+      // 2. FIX: Réponse bot — garde une ref pour éviter doublons
+      if (trimmed && !isSendingBotRef.current) {
         if (botTimeoutRef.current) clearTimeout(botTimeoutRef.current);
 
         botTimeoutRef.current = setTimeout(async () => {
+          if (isSendingBotRef.current) return;
+          isSendingBotRef.current = true;
           try {
             const botReply = findBotResponse(trimmed);
             const replyContent = botReply ||
@@ -283,7 +285,7 @@ export function useChat() {
               is_archived: false,
             });
 
-            // Si pas de réponse bot trouvée, notifier l'admin
+            // Si pas de réponse bot, notifier l'admin via nexora_notifications
             if (!botReply) {
               await (supabase as any).from("nexora_notifications").insert({
                 type: "chat_unknown_question",
@@ -293,11 +295,21 @@ export function useChat() {
               }).catch(() => {});
             }
 
+            // FIX: Aussi insérer dans nexora_messages pour que l'admin le voit dans le dashboard
+            await (supabase as any).from("nexora_messages").insert({
+              user_id: userId,
+              contenu: trimmed,
+              lu_admin: false,
+              fichier_url: fileData?.file_url ?? null,
+            }).catch(() => {});
+
             await fetchMessages();
           } catch (err) {
             console.error("Erreur réponse bot:", err);
+          } finally {
+            isSendingBotRef.current = false;
           }
-        }, 900); // délai naturel de "frappe"
+        }, 900);
       }
     },
     [userId, fetchMessages]
@@ -335,6 +347,12 @@ export function useChat() {
       content: "🔔 **L'utilisateur demande à parler à un opérateur humain.**",
       sender: "bot", is_read: false, is_archived: false,
     });
+    // FIX: Notifier aussi dans nexora_messages pour visibilité admin
+    await (supabase as any).from("nexora_messages").insert({
+      user_id: userId,
+      contenu: "🔔 L'utilisateur demande à parler à un opérateur humain.",
+      lu_admin: false,
+    }).catch(() => {});
     await (supabase as any).from("nexora_notifications").insert({
       type: "chat_operator_request", user_id: userId,
       message: "Un utilisateur demande à parler à un opérateur.", is_read: false,
@@ -349,13 +367,20 @@ export function useChat() {
     fetchMessages().finally(() => setLoading(false));
   }, [userId, fetchMessages]);
 
-  // Realtime subscription
+  // Realtime subscription — FIX: écoute aussi les changements admin/bot
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`chat_user_${userId}`)
+      .channel(`chat_user_${userId}_v2`)
       .on("postgres_changes" as any, {
-        event: "*", schema: "public",
+        event: "INSERT",
+        schema: "public",
+        table: "chat_messages",
+        filter: `user_id=eq.${userId}`,
+      }, () => { fetchMessages(); })
+      .on("postgres_changes" as any, {
+        event: "UPDATE",
+        schema: "public",
         table: "chat_messages",
         filter: `user_id=eq.${userId}`,
       }, () => { fetchMessages(); })
@@ -369,7 +394,7 @@ export function useChat() {
 
   return {
     messages,
-    setMessages, // ← Exposé pour le composant ChatPage
+    setMessages,
     unreadCount,
     loading,
     sendMessage,
@@ -417,6 +442,8 @@ export function useAdminChat() {
     });
 
     const userIds = Object.keys(grouped);
+    if (userIds.length === 0) { setConversations([]); setLoading(false); return; }
+
     const { data: users } = await (supabase as any)
       .from("nexora_users").select("id, nom_prenom, email, avatar_url").in("id", userIds);
 
@@ -475,8 +502,11 @@ export function useAdminChat() {
   useEffect(() => {
     fetchConversations();
     const channel = supabase
-      .channel("chat_admin_all")
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "chat_messages" }, () => {
+      .channel("chat_admin_all_v2")
+      .on("postgres_changes" as any, { event: "INSERT", schema: "public", table: "chat_messages" }, () => {
+        fetchConversations();
+      })
+      .on("postgres_changes" as any, { event: "UPDATE", schema: "public", table: "chat_messages" }, () => {
         fetchConversations();
       })
       .subscribe();
