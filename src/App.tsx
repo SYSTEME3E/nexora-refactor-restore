@@ -159,6 +159,7 @@ const App = () => (
           <Route path="/boutique/parametres"    element={<PremiumPage><BoutiqueParametresPage /></PremiumPage>} />
           <Route path="/boutique/finances"      element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
 
+          
           {/* Vitrines (Accessibles via slugs) */}
           <Route path="/shop/:slug"                               element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"            element={<ProduitDetailPage />} />
