@@ -11,7 +11,7 @@ import {
   Star, Edit2, ToggleLeft, ToggleRight,
   FileText, BookOpen, Key, Package2,
   Briefcase, Tag, Image, AlertCircle,
-  Download, Lock, Zap, Crown
+  Download, Lock, Zap, Crown, Share2
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -244,6 +244,17 @@ export default function ProduitsPage() {
     );
   }
 
+  // ── Copier le lien du produit ─────────────────────────────────────────────
+  const copyLink = (produitId: string) => {
+    if (!boutique?.slug) {
+      toast({ title: "Configurez d'abord votre boutique", variant: "destructive" });
+      return;
+    }
+    const link = `${window.location.origin}/shop/${boutique.slug}/produit/${produitId}`;
+    navigator.clipboard.writeText(link);
+    toast({ title: "Lien copié !", description: link });
+  };
+
   // ── Upload photo
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -432,10 +443,26 @@ export default function ProduitsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ── Suppression corrigée : supprime d'abord les variations liées, puis le produit ──
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer ce produit ?")) return;
-    await supabase.from("produits" as any).delete().eq("id", id);
-    toast({ title: "Produit supprimé" }); load();
+
+    // 1. Supprimer les variations liées
+    await supabase.from("variations_produit" as any).delete().eq("produit_id", id);
+
+    // 2. Supprimer le produit
+    const { error } = await supabase.from("produits" as any).delete().eq("id", id);
+
+    if (error) {
+      toast({ title: "Erreur lors de la suppression", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // 3. Mettre à jour l'état local immédiatement sans recharger
+    setProduitsPhysiques(prev => prev.filter(p => p.id !== id));
+    setProduitsDigitaux(prev => prev.filter(p => p.id !== id));
+
+    toast({ title: "Produit supprimé" });
   };
 
   const toggleField = async (id: string, field: "actif" | "vedette", value: boolean) => {
@@ -1192,7 +1219,16 @@ export default function ProduitsPage() {
                           </div>
                           <p className="text-xs text-gray-400 mt-0.5">{produit.stock_illimite ? "Stock illimité" : `Stock : ${produit.stock}`}{produit.sku && ` • SKU: ${produit.sku}`}</p>
                         </div>
+                        {/* ── Boutons d'action produit physique ── */}
                         <div className="flex flex-col gap-1 flex-shrink-0">
+                          {/* Copier le lien */}
+                          <button
+                            onClick={() => copyLink(produit.id)}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400"
+                            title="Copier le lien"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
                           <button onClick={() => handleEditPhysique(produit)} className="p-1.5 rounded-lg hover:bg-pink-50 text-pink-500"><Edit2 className="w-4 h-4" /></button>
                           <button onClick={() => setExpandedId(isExpanded ? null : produit.id)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:bg-gray-700">
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1293,7 +1329,16 @@ export default function ProduitsPage() {
                           </div>
                           {produit.categorie && <p className="text-xs text-gray-400 mt-0.5">{produit.categorie}</p>}
                         </div>
+                        {/* ── Boutons d'action produit digital ── */}
                         <div className="flex flex-col gap-1 flex-shrink-0">
+                          {/* Copier le lien */}
+                          <button
+                            onClick={() => copyLink(produit.id)}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400"
+                            title="Copier le lien"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
                           <button onClick={() => handleEditDigital(produit)} className="p-1.5 rounded-lg hover:bg-pink-50 text-pink-500"><Edit2 className="w-4 h-4" /></button>
                           <button onClick={() => setExpandedId(isExpanded ? null : produit.id)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:bg-gray-700">
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
