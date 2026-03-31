@@ -77,7 +77,7 @@ const ROADMAP = [
 ];
 
 const STATS = [
-  { value: "24", label: "Pays éligibles", suffix: "" },
+  { value: "24", label: "Pays éligibles pour le service transfert", suffix: "" },
   { value: "99.9", label: "Disponibilité", suffix: "%" },
   { value: "8", label: "Modules intégrés", suffix: "" },
   { value: "0", label: "Frais d'inscription", suffix: " FCFA" },
@@ -354,7 +354,7 @@ export default function LandingPage() {
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-amber-400" /> 99.9% disponibilité</span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
-              <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-indigo-500" /> 5 pays actifs</span>
+              <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-indigo-500" /> 24 pays actifs pour le service Transfert</span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> Inscription gratuite</span>
             </div>
