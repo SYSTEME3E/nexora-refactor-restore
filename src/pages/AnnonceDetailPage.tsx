@@ -50,7 +50,6 @@ export default function AnnonceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [isFavori, setIsFavori] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -74,6 +73,7 @@ export default function AnnonceDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ── Chargement ──
   if (loading) return (
     <AppLayout>
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -82,6 +82,7 @@ export default function AnnonceDetailPage() {
     </AppLayout>
   );
 
+  // ── Annonce introuvable ──
   if (!annonce) return (
     <AppLayout>
       <div className="min-h-[60vh] flex items-center justify-center p-8">
@@ -225,7 +226,7 @@ export default function AnnonceDetailPage() {
               </div>
             </div>
 
-            {/* Boutons de contact */}
+            {/* Boutons de contact — accessibles sans compte */}
             <div className="bg-card rounded-3xl border border-border shadow-sm p-5 space-y-3">
               <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Contacter le vendeur</p>
 
@@ -269,8 +270,13 @@ export default function AnnonceDetailPage() {
           </div>
         </div>
 
-        {/* Section Avis */}
+        {/*
+          Section Avis — publique (pas besoin de compte pour lire les avis).
+          Pour laisser un avis, SectionAvis doit gérer en interne l'état
+          connecté/non-connecté (voir note ci-dessous).
+        */}
         <SectionAvis annonceId={annonce.id} nomItem={annonce.titre} />
+
       </div>
     </AppLayout>
   );
