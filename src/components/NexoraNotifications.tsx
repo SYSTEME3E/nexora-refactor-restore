@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getNexoraUser } from "@/lib/nexora-auth";
 import { Bell, X, AlertTriangle, CheckCircle, Info, XCircle, ShoppingBag } from "lucide-react";
+import { createPortal } from "react-dom";
 
 interface Notification {
   id: string;
@@ -11,8 +12,6 @@ interface Notification {
   lu: boolean;
   created_at: string;
 }
-
-
 
 const TYPE_CONFIG: Record<string, { bg: string; icon: any; color: string; darkBg: string }> = {
   success:  { bg: "bg-green-50 border-green-200",   darkBg: "dark:bg-green-950/50 dark:border-green-800",   icon: CheckCircle,   color: "text-green-600 dark:text-green-400"  },
@@ -58,7 +57,8 @@ export default function NexoraNotifications() {
   const [open, setOpen]       = useState(false);
   const [visible, setVisible] = useState<Notification | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
+  const bellRef    = useRef<HTMLButtonElement>(null);
+  const [panelPos, setPanelPos] = useState({ top: 64, right: 16 });
 
   const loadNotifs = async () => {
     if (!user?.id) return;
@@ -112,6 +112,21 @@ export default function NexoraNotifications() {
     };
   }, [user?.id]);
 
+  // Calcule la position du panel par rapport à la cloche
+  const handleOpen = () => {
+    if (!open && bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect();
+      const panelWidth = 320;
+      const rightEdge = window.innerWidth - rect.right;
+      setPanelPos({
+        top: rect.bottom + 8,
+        right: Math.max(8, rightEdge - 4),
+      });
+    }
+    setOpen(prev => !prev);
+    if (!open) loadNotifs();
+  };
+
   const showToast = (notif: Notification) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setVisible(notif);
@@ -139,43 +154,53 @@ export default function NexoraNotifications() {
 
   return (
     <>
-      {/* ── Toast flottant (au-dessus de tout) ── */}
-      {visible && (() => {
-        const cfg = TYPE_CONFIG[visible.type] || TYPE_CONFIG.info;
-        const Icon = cfg.icon;
-        return (
-          <div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[92vw] max-w-sm border-2 rounded-2xl p-4 shadow-2xl flex items-start gap-3 ${cfg.bg} ${cfg.darkBg}`}
-            style={{ animation: "slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1)" }}
-          >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${visible.type === "commande" ? "bg-pink-100 dark:bg-pink-900/50" : "bg-white dark:bg-gray-800"} shadow-sm`}>
-              <Icon className={`w-5 h-5 ${cfg.color}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-black text-sm text-gray-900 dark:text-gray-100">{visible.titre}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">{visible.message}</p>
-            </div>
-            <button
-              onClick={() => { if (toastTimer.current) clearTimeout(toastTimer.current); setVisible(null); }}
-              className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-        );
-      })()}
-
       <style>{`
         @keyframes slideDown {
           from { transform: translate(-50%, -30px); opacity: 0; }
           to   { transform: translate(-50%, 0);     opacity: 1; }
         }
+        @keyframes notifPanelIn {
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
       `}</style>
+
+      {/* ── Toast flottant via portal — au-dessus de TOUT ── */}
+      {visible && createPortal(
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 w-[92vw] max-w-sm border-2 rounded-2xl p-4 shadow-2xl flex items-start gap-3 ${(TYPE_CONFIG[visible.type] || TYPE_CONFIG.info).bg} ${(TYPE_CONFIG[visible.type] || TYPE_CONFIG.info).darkBg}`}
+          style={{ zIndex: 2147483647, animation: "slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1)" }}
+        >
+          {(() => {
+            const cfg = TYPE_CONFIG[visible.type] || TYPE_CONFIG.info;
+            const Icon = cfg.icon;
+            return (
+              <>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${visible.type === "commande" ? "bg-pink-100 dark:bg-pink-900/50" : "bg-white dark:bg-gray-800"} shadow-sm`}>
+                  <Icon className={`w-5 h-5 ${cfg.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm text-gray-900 dark:text-gray-100">{visible.titre}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">{visible.message}</p>
+                </div>
+                <button
+                  onClick={() => { if (toastTimer.current) clearTimeout(toastTimer.current); setVisible(null); }}
+                  className="flex-shrink-0 p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </>
+            );
+          })()}
+        </div>,
+        document.body
+      )}
 
       {/* ── Cloche ── */}
       <div className="relative">
         <button
-          onClick={() => { setOpen(!open); if (!open) loadNotifs(); }}
+          ref={bellRef}
+          onClick={handleOpen}
           className="relative p-2 rounded-xl hover:bg-muted dark:hover:bg-gray-800 transition-colors"
         >
           <Bell className={`w-5 h-5 ${unreadCount > 0 ? "text-primary" : "dark:text-gray-300"}`} />
@@ -186,18 +211,29 @@ export default function NexoraNotifications() {
           )}
         </button>
 
-        {/* ── Panel notifications — fixed pour éviter tout chevauchement ── */}
-        {open && (
+        {/* ── Panel via portal — TOUJOURS au-dessus de tout le contenu ── */}
+        {open && createPortal(
           <>
-            {/* Overlay plein écran pour fermer */}
-            <div className="fixed inset-0 z-[9980]" onClick={() => setOpen(false)} />
+            {/* Overlay invisible pour fermer en cliquant ailleurs */}
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 99998 }}
+              onClick={() => setOpen(false)}
+            />
 
             <div
-              ref={panelRef}
-              className="fixed right-4 top-16 z-[9990] w-80 max-h-[80vh] bg-card dark:bg-gray-900 border border-border dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-              style={{ maxHeight: "min(80vh, 520px)" }}
+              style={{
+                position: "fixed",
+                top: panelPos.top,
+                right: panelPos.right,
+                zIndex: 99999,
+                width: 320,
+                maxHeight: "min(80vh, 520px)",
+                animation: "notifPanelIn 0.2s ease-out",
+              }}
+              className="bg-card dark:bg-gray-900 border border-border dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              onClick={e => e.stopPropagation()}
             >
-              {/* Header panel */}
+              {/* Header */}
               <div className="p-4 border-b border-border dark:border-gray-700 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-primary" />
@@ -221,7 +257,7 @@ export default function NexoraNotifications() {
                 </div>
               </div>
 
-              {/* Liste */}
+              {/* Liste scrollable */}
               <div className="overflow-y-auto flex-1">
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground text-sm">
@@ -270,7 +306,8 @@ export default function NexoraNotifications() {
                 })}
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </div>
     </>
