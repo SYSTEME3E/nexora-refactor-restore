@@ -67,7 +67,7 @@ function AnnonceCard({ annonce, userId, onFavori, onEdit, onDelete, isOwner }: {
   const [showLinks, setShowLinks] = useState(false);
   const typeInfo   = TYPES.find(t => t.value === annonce.type) || TYPES[0];
   const statutInfo = STATUTS.find(s => s.value === annonce.statut) || STATUTS[0];
-  const isFavori   = annonce.favoris?.includes(userId);
+  const isFavori   = userId !== "guest" && annonce.favoris?.includes(userId);
   const photo      = annonce.images?.[0];
   const annonceUrl = `${window.location.origin}/immobilier/annonce/${annonce.id}`;
   const vendeurUrl = `${window.location.origin}/immobilier/vendeur/${annonce.user_id}`;
@@ -84,10 +84,13 @@ function AnnonceCard({ annonce, userId, onFavori, onEdit, onDelete, isOwner }: {
         <div style={{ position: "absolute", top: 10, left: 10, background: statutInfo.bg, color: "#fff", fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "999px" }}>
           {statutInfo.label}
         </div>
-        <button onClick={() => onFavori(annonce.id)}
-          style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: "999px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: isFavori ? "#ef4444" : "rgba(255,255,255,0.9)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}>
-          <Heart style={{ width: 18, height: 18, color: isFavori ? "#fff" : "#6b7280", fill: isFavori ? "#fff" : "none" }} />
-        </button>
+        {/* Favoris uniquement si connecté */}
+        {userId !== "guest" && (
+          <button onClick={() => onFavori(annonce.id)}
+            style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: "999px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: isFavori ? "#ef4444" : "rgba(255,255,255,0.9)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}>
+            <Heart style={{ width: 18, height: 18, color: isFavori ? "#fff" : "#6b7280", fill: isFavori ? "#fff" : "none" }} />
+          </button>
+        )}
       </div>
 
       {/* Contenu */}
@@ -186,6 +189,7 @@ export default function ImmobilierPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Un utilisateur non connecté peut voir les annonces (userId = "guest")
   const hasPremium = user?.plan === "boss" || user?.plan === "roi" || user?.plan === "admin";
   const userId = user?.id || "guest";
 
@@ -249,7 +253,14 @@ export default function ImmobilierPage() {
 
   const handleEdit = (a: Annonce) => { setForm({ titre: a.titre, description: a.description || "", prix: String(a.prix), type: a.type, ville: a.ville, quartier: a.quartier || "", contact: a.contact, whatsapp: a.whatsapp || "", statut: a.statut, images: a.images || [] }); setEditingId(a.id); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const handleDelete = async (id: string) => { if (!confirm("Supprimer ?")) return; await supabase.from("nexora_annonces_immo" as any).delete().eq("id", id); toast({ title: "Annonce supprimée" }); loadAnnonces(); };
-  const handleFavori = async (id: string) => { const a = annonces.find(x => x.id === id); if (!a) return; const f = a.favoris || []; const nf = f.includes(userId) ? f.filter(x => x !== userId) : [...f, userId]; await supabase.from("nexora_annonces_immo" as any).update({ favoris: nf }).eq("id", id); setAnnonces(prev => prev.map(x => x.id === id ? { ...x, favoris: nf } : x)); };
+  const handleFavori = async (id: string) => {
+    if (userId === "guest") return; // Non connecté = pas de favori
+    const a = annonces.find(x => x.id === id); if (!a) return;
+    const f = a.favoris || [];
+    const nf = f.includes(userId) ? f.filter(x => x !== userId) : [...f, userId];
+    await supabase.from("nexora_annonces_immo" as any).update({ favoris: nf }).eq("id", id);
+    setAnnonces(prev => prev.map(x => x.id === id ? { ...x, favoris: nf } : x));
+  };
 
   const filtered = annonces.filter(a => {
     const ms = !searchQ || a.titre.toLowerCase().includes(searchQ.toLowerCase()) || a.ville.toLowerCase().includes(searchQ.toLowerCase());
@@ -283,17 +294,24 @@ export default function ImmobilierPage() {
                 {annonces.length} annonce{annonces.length > 1 ? "s" : ""} disponible{annonces.length > 1 ? "s" : ""}
               </p>
             </div>
-            {hasPremium && (
+            {/* Bouton Publier : visible uniquement si Premium */}
+            {hasPremium ? (
               <button onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(!showForm); }}
                 style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "6px", background: "#facc15", color: "#1c1917", fontWeight: 800, padding: "10px 18px", borderRadius: "12px", fontSize: "14px", border: "none", cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(250,204,21,0.4)" }}>
                 <Plus style={{ width: 16, height: 16 }} /> Publier
               </button>
+            ) : (
+              /* Si pas Premium ou non connecté : bouton "Publier" redirige vers abonnement */
+              <Link to="/abonnement"
+                style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "6px", background: "#facc15", color: "#1c1917", fontWeight: 800, padding: "10px 18px", borderRadius: "12px", fontSize: "14px", textDecoration: "none", whiteSpace: "nowrap" }}>
+                <Lock style={{ width: 16, height: 16 }} /> Publier
+              </Link>
             )}
           </div>
         </div>
 
-        {/* ══ BANNIÈRE PROFIL (Premium) ══ */}
-        {hasPremium && (
+        {/* ══ BANNIÈRE PROFIL (Premium connecté uniquement) ══ */}
+        {hasPremium && userId !== "guest" && (
           <div style={{ background: "linear-gradient(to right, #eff6ff, #f5f3ff)", border: "1px solid #bfdbfe", borderRadius: "14px", padding: "14px 16px", boxSizing: "border-box" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div style={{ width: 40, height: 40, background: "#dbeafe", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -320,21 +338,24 @@ export default function ImmobilierPage() {
           </div>
         )}
 
-        {/* ══ ACCÈS PREMIUM REQUIS ══ */}
+        {/* ══ BANNIÈRE INCITATION (non premium / non connecté) ══ */}
         {!hasPremium && (
-          <div style={{ background: "linear-gradient(135deg, #f5f3ff, #eef2ff)", border: "2px solid #c4b5fd", borderRadius: "14px", padding: "24px 20px", textAlign: "center", boxSizing: "border-box" }}>
-            <div style={{ width: 52, height: 52, background: "#ede9fe", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-              <Lock style={{ width: 26, height: 26, color: "#7c3aed" }} />
+          <div style={{ background: "linear-gradient(135deg, #f5f3ff, #eef2ff)", border: "1px solid #c4b5fd", borderRadius: "14px", padding: "16px 18px", display: "flex", alignItems: "center", gap: "14px", boxSizing: "border-box" }}>
+            <div style={{ width: 44, height: 44, background: "#ede9fe", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Zap style={{ width: 22, height: 22, color: "#7c3aed" }} />
             </div>
-            <div style={{ fontWeight: 900, fontSize: "16px", color: "#111827", marginBottom: "8px" }}>Publication réservée aux membres Premium</div>
-            <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>Activez le Premium pour publier. La consultation est gratuite.</p>
-            <Link to="/abonnement" style={{ display: "inline-flex", alignItems: "center", gap: "7px", background: "linear-gradient(to right, #7c3aed, #4f46e5)", color: "#fff", fontWeight: 700, padding: "12px 22px", borderRadius: "12px", fontSize: "14px", textDecoration: "none" }}>
-              <Zap style={{ width: 16, height: 16 }} /> Premium — 10$/mois
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: "14px", color: "#111827", marginBottom: "3px" }}>Publiez vos annonces</div>
+              <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>Passez Premium pour publier. La consultation est 100% gratuite.</p>
+            </div>
+            <Link to="/abonnement"
+              style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "5px", background: "#7c3aed", color: "#fff", fontWeight: 700, padding: "9px 14px", borderRadius: "10px", fontSize: "12px", textDecoration: "none", whiteSpace: "nowrap" }}>
+              <Zap style={{ width: 13, height: 13 }} /> 10$/mois
             </Link>
           </div>
         )}
 
-        {/* ══ FORMULAIRE ══ */}
+        {/* ══ FORMULAIRE (Premium seulement) ══ */}
         {showForm && hasPremium && (
           <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px", overflow: "hidden", boxSizing: "border-box" }}>
             <div style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -375,8 +396,8 @@ export default function ImmobilierPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: "13px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "5px" }}>Prix ($) *</label>
-                <input type="number" value={form.prix} onChange={e => setForm({ ...form, prix: e.target.value })} placeholder="Ex: 25000" style={inputStyle} />
+                <label style={{ fontSize: "13px", fontWeight: 700, color: "#374151", display: "block", marginBottom: "5px" }}>Prix (FCFA) *</label>
+                <input type="number" value={form.prix} onChange={e => setForm({ ...form, prix: e.target.value })} placeholder="Ex: 25000000" style={inputStyle} />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -486,8 +507,8 @@ export default function ImmobilierPage() {
                   <input value={filterVille} onChange={e => setFilterVille(e.target.value)} placeholder="Cotonou" style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280", display: "block", marginBottom: "4px" }}>Prix max ($)</label>
-                  <input type="number" value={filterPrixMax} onChange={e => setFilterPrixMax(e.target.value)} placeholder="50000" style={inputStyle} />
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280", display: "block", marginBottom: "4px" }}>Prix max (FCFA)</label>
+                  <input type="number" value={filterPrixMax} onChange={e => setFilterPrixMax(e.target.value)} placeholder="50000000" style={inputStyle} />
                 </div>
               </div>
               <div>
@@ -508,7 +529,7 @@ export default function ImmobilierPage() {
           )}
         </div>
 
-        {/* ══ LISTE ANNONCES — 1 PAR LIGNE ══ */}
+        {/* ══ LISTE ANNONCES ══ */}
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {[...Array(3)].map((_, i) => (
@@ -526,14 +547,13 @@ export default function ImmobilierPage() {
           <div style={{ textAlign: "center", padding: "40px 20px", background: "#fff", borderRadius: "16px", border: "1px solid #f1f5f9" }}>
             <div style={{ fontSize: "48px", marginBottom: "12px" }}>🏘️</div>
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#374151" }}>{annonces.length === 0 ? "Aucune annonce publiée" : "Aucun résultat"}</div>
-            <div style={{ fontSize: "13px", color: "#9ca3af", marginTop: "5px" }}>{annonces.length === 0 ? hasPremium ? "Soyez le premier à publier !" : "Les annonces apparaîtront ici." : "Modifiez vos filtres."}</div>
+            <div style={{ fontSize: "13px", color: "#9ca3af", marginTop: "5px" }}>{annonces.length === 0 ? "Les annonces apparaîtront ici." : "Modifiez vos filtres."}</div>
           </div>
         ) : (
           <>
             <p style={{ fontSize: "13px", color: "#6b7280", fontWeight: 600, margin: 0 }}>
               {filtered.length} annonce{filtered.length > 1 ? "s" : ""} trouvée{filtered.length > 1 ? "s" : ""}
             </p>
-            {/* ✅ UNE SEULE COLONNE */}
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               {filtered.map(annonce => (
                 <AnnonceCard key={annonce.id} annonce={annonce} userId={userId} onFavori={handleFavori} onEdit={handleEdit} onDelete={handleDelete} isOwner={annonce.user_id === userId} />
