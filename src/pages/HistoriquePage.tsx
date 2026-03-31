@@ -7,7 +7,7 @@ import { getNexoraUser } from "@/lib/nexora-auth";
 
 type Devise = "XOF" | "USD";
 type TabType = "tout" | "depenses" | "entrees";
-type PeriodType = "semaine" | "mois" | "annee";
+type PeriodType = "tout" | "semaine" | "mois" | "annee";
 
 const MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 
@@ -33,7 +33,8 @@ export default function HistoriquePage() {
   const [loading, setLoading] = useState(true);
   const [devise, setDevise] = useState<Devise>("XOF");
   const [tab, setTab] = useState<TabType>("tout");
-  const [period, setPeriod] = useState<PeriodType>("mois");
+  // ✅ Par défaut : "tout" — on voit tout sans filtre de date
+  const [period, setPeriod] = useState<PeriodType>("tout");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState(getWeekNumber(new Date()));
@@ -67,7 +68,9 @@ export default function HistoriquePage() {
     ...entrees.filter(e => e.annee_num === selectedYear).map(e => e.semaine_num),
   ].filter(Boolean))].sort((a, b) => (b || 0) - (a || 0)) as number[];
 
+  // ✅ Filtre : si period === "tout", on retourne tout sans restriction
   const filteredDepenses = depenses.filter(d => {
+    if (period === "tout") return true;
     if (period === "annee") return d.annee_num === selectedYear;
     if (period === "mois") return d.annee_num === selectedYear && d.mois_num === selectedMonth;
     if (period === "semaine") return d.annee_num === selectedYear && d.semaine_num === selectedWeek;
@@ -75,6 +78,7 @@ export default function HistoriquePage() {
   });
 
   const filteredEntrees = entrees.filter(e => {
+    if (period === "tout") return true;
     if (period === "annee") return e.annee_num === selectedYear;
     if (period === "mois") return e.annee_num === selectedYear && e.mois_num === selectedMonth;
     if (period === "semaine") return e.annee_num === selectedYear && e.semaine_num === selectedWeek;
@@ -82,7 +86,7 @@ export default function HistoriquePage() {
   });
 
   const totalDepenses = filteredDepenses.reduce((s, d) => s + toXOF(Number(d.montant), d.devise), 0);
-  const totalEntrees = filteredEntrees.reduce((s, e) => s + toXOF(Number(e.montant), e.devise), 0);
+  const totalEntrees  = filteredEntrees.reduce((s, e) => s + toXOF(Number(e.montant), e.devise), 0);
   const solde = totalEntrees - totalDepenses;
 
   function groupByDate<T extends { date_depense?: string; date_entree?: string }>(items: T[], dateKey: "date_depense" | "date_entree") {
@@ -96,16 +100,23 @@ export default function HistoriquePage() {
   }
 
   const depensesByDate = groupByDate(filteredDepenses, "date_depense");
-  const entreesByDate = groupByDate(filteredEntrees, "date_entree");
-  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  const entreesByDate  = groupByDate(filteredEntrees, "date_entree");
 
-  const periodLabel = period === "semaine" ? `Semaine ${selectedWeek} — ${selectedYear}`
-    : period === "mois" ? `${MONTHS[selectedMonth - 1]} ${selectedYear}`
-    : `Année ${selectedYear}`;
+  // ✅ Par défaut tous les groupes sont ouverts
+  const toggleGroup = (key: string) =>
+    setExpandedGroups(prev => ({ ...prev, [key]: prev[key] === false ? true : false }));
+  const isGroupOpen = (key: string) => expandedGroups[key] !== false;
+
+  const periodLabel =
+    period === "tout"     ? `Tout l'historique (${filteredDepenses.length + filteredEntrees.length} transactions)` :
+    period === "semaine"  ? `Semaine ${selectedWeek} — ${selectedYear}` :
+    period === "mois"     ? `${MONTHS[selectedMonth - 1]} ${selectedYear}` :
+                            `Année ${selectedYear}`;
 
   return (
     <AppLayout>
       <div className="space-y-5 animate-fade-in-up">
+
         {/* Header */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1">
@@ -114,7 +125,8 @@ export default function HistoriquePage() {
             </h1>
             <p className="text-sm text-muted-foreground">Toutes vos transactions passées</p>
           </div>
-          <select value={devise} onChange={e => setDevise(e.target.value as Devise)} className="border border-border rounded-lg px-3 py-2 text-sm bg-card font-semibold">
+          <select value={devise} onChange={e => setDevise(e.target.value as Devise)}
+            className="border border-border rounded-lg px-3 py-2 text-sm bg-card font-semibold">
             <option value="XOF">XOF - FCFA</option>
             <option value="USD">USD - $</option>
           </select>
@@ -123,35 +135,47 @@ export default function HistoriquePage() {
         {/* Period selector */}
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex flex-wrap gap-2 items-center justify-between">
-            <div className="flex gap-2">
-              {(["semaine", "mois", "annee"] as PeriodType[]).map(p => (
+            {/* ✅ Bouton "Tout" ajouté en premier */}
+            <div className="flex flex-wrap gap-2">
+              {(["tout", "semaine", "mois", "annee"] as PeriodType[]).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
                   className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${period === p ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10"}`}>
-                  {p === "semaine" ? "📅 Semaine" : p === "mois" ? "📆 Mois" : "🗓️ Année"}
+                  {p === "tout" ? "🗂️ Tout" : p === "semaine" ? "📅 Semaine" : p === "mois" ? "📆 Mois" : "🗓️ Année"}
                 </button>
               ))}
             </div>
-            <div className="flex gap-2 items-center">
-              {period === "semaine" && (
-                <select value={selectedWeek} onChange={e => setSelectedWeek(Number(e.target.value))} className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
-                  {allWeeks.length > 0 ? allWeeks.map(w => {
-                    const mon = getMondayOfWeek(w, selectedYear);
-                    return <option key={w} value={w}>Semaine {w} — {mon.toLocaleDateString("fr-FR")}</option>;
-                  }) : <option value={selectedWeek}>Semaine {selectedWeek}</option>}
+
+            {/* Sélecteurs de période — masqués si "tout" */}
+            {period !== "tout" && (
+              <div className="flex gap-2 items-center flex-wrap">
+                {period === "semaine" && (
+                  <select value={selectedWeek} onChange={e => setSelectedWeek(Number(e.target.value))}
+                    className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
+                    {allWeeks.length > 0 ? allWeeks.map(w => {
+                      const mon = getMondayOfWeek(w, selectedYear);
+                      return <option key={w} value={w}>Semaine {w} — {mon.toLocaleDateString("fr-FR")}</option>;
+                    }) : <option value={selectedWeek}>Semaine {selectedWeek}</option>}
+                  </select>
+                )}
+                {period === "mois" && (
+                  <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}
+                    className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
+                    {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                  </select>
+                )}
+                <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
+                  className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
+                  {allYears.length > 0
+                    ? allYears.map(y => <option key={y} value={y}>{y}</option>)
+                    : <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>}
                 </select>
-              )}
-              {period === "mois" && (
-                <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
-                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                </select>
-              )}
-              <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="border border-border rounded-lg px-3 py-2 text-sm bg-card">
-                {allYears.length > 0 ? allYears.map(y => <option key={y} value={y}>{y}</option>)
-                  : <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>}
-              </select>
-            </div>
+              </div>
+            )}
           </div>
-          <span className="inline-block text-sm font-bold text-primary bg-primary-bg px-3 py-1.5 rounded-full border border-primary/20">{periodLabel}</span>
+
+          <span className="inline-block text-sm font-bold text-primary bg-primary/5 px-3 py-1.5 rounded-full border border-primary/20">
+            {periodLabel}
+          </span>
         </div>
 
         {/* Summary cards */}
@@ -205,26 +229,35 @@ export default function HistoriquePage() {
           <div className="p-8 text-center text-muted-foreground">Chargement...</div>
         ) : (
           <div className="space-y-3">
+
+            {/* ── DÉPENSES ── */}
             {tab !== "entrees" && (
               <div>
-                {tab === "tout" && <h3 className="font-display font-semibold text-sm mb-2 flex items-center gap-2 text-destructive"><TrendingDown className="w-4 h-4" /> Dépenses</h3>}
+                {tab === "tout" && (
+                  <h3 className="font-display font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
+                    <TrendingDown className="w-4 h-4" /> Dépenses ({filteredDepenses.length})
+                  </h3>
+                )}
                 {depensesByDate.length === 0 ? (
-                  <div className="text-center p-6 text-muted-foreground bg-card border border-border rounded-xl text-sm">Aucune dépense pour cette période</div>
+                  <div className="text-center p-6 text-muted-foreground bg-card border border-border rounded-xl text-sm">
+                    Aucune dépense{period !== "tout" ? " pour cette période" : ""}
+                  </div>
                 ) : depensesByDate.map(([date, items]) => {
                   const key = `dep-${date}`;
-                  const isOpen = expandedGroups[key] !== false;
+                  const open = isGroupOpen(key);
                   const dayTotal = items.reduce((s, d) => s + toXOF(Number(d.montant), d.devise), 0);
                   return (
                     <div key={key} className="bg-card border border-border rounded-xl overflow-hidden mb-2">
-                      <button onClick={() => toggleGroup(key)} className="w-full flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left">
+                      <button onClick={() => toggleGroup(key)}
+                        className="w-full flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left">
                         <Clock className="w-4 h-4 text-muted-foreground" />
                         <span className="font-semibold text-sm">
                           {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
                         </span>
                         <span className="ml-auto text-destructive font-bold text-sm">{fmt(dayTotal)}</span>
-                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
                       </button>
-                      {isOpen && (
+                      {open && (
                         <div className="divide-y divide-border">
                           {items.map(d => (
                             <div key={d.id} className="flex items-center gap-3 px-4 py-3">
@@ -238,7 +271,9 @@ export default function HistoriquePage() {
                                 </div>
                                 {d.note && <div className="text-xs text-muted-foreground italic">📝 {d.note}</div>}
                               </div>
-                              <div className="text-sm font-bold text-destructive whitespace-nowrap">-{fmt(toXOF(Number(d.montant), d.devise))}</div>
+                              <div className="text-sm font-bold text-destructive whitespace-nowrap">
+                                -{fmt(toXOF(Number(d.montant), d.devise))}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -249,26 +284,34 @@ export default function HistoriquePage() {
               </div>
             )}
 
+            {/* ── ENTRÉES ── */}
             {tab !== "depenses" && (
               <div>
-                {tab === "tout" && <h3 className="font-display font-semibold text-sm mb-2 flex items-center gap-2 text-green-700"><TrendingUp className="w-4 h-4" /> Entrées</h3>}
+                {tab === "tout" && (
+                  <h3 className="font-display font-semibold text-sm mb-2 flex items-center gap-2 text-green-700">
+                    <TrendingUp className="w-4 h-4" /> Entrées ({filteredEntrees.length})
+                  </h3>
+                )}
                 {entreesByDate.length === 0 ? (
-                  <div className="text-center p-6 text-muted-foreground bg-card border border-border rounded-xl text-sm">Aucune entrée pour cette période</div>
+                  <div className="text-center p-6 text-muted-foreground bg-card border border-border rounded-xl text-sm">
+                    Aucune entrée{period !== "tout" ? " pour cette période" : ""}
+                  </div>
                 ) : entreesByDate.map(([date, items]) => {
                   const key = `ent-${date}`;
-                  const isOpen = expandedGroups[key] !== false;
+                  const open = isGroupOpen(key);
                   const dayTotal = items.reduce((s, e) => s + toXOF(Number(e.montant), e.devise), 0);
                   return (
                     <div key={key} className="bg-card border border-border rounded-xl overflow-hidden mb-2">
-                      <button onClick={() => toggleGroup(key)} className="w-full flex items-center gap-3 px-4 py-3 bg-green-50/50 hover:bg-green-50 transition-colors text-left">
+                      <button onClick={() => toggleGroup(key)}
+                        className="w-full flex items-center gap-3 px-4 py-3 bg-green-50/50 hover:bg-green-50 transition-colors text-left">
                         <Clock className="w-4 h-4 text-muted-foreground" />
                         <span className="font-semibold text-sm">
                           {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
                         </span>
                         <span className="ml-auto text-green-700 font-bold text-sm">{fmt(dayTotal)}</span>
-                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
                       </button>
-                      {isOpen && (
+                      {open && (
                         <div className="divide-y divide-border">
                           {items.map(e => (
                             <div key={e.id} className="flex items-center gap-3 px-4 py-3">
@@ -282,7 +325,9 @@ export default function HistoriquePage() {
                                 </div>
                                 {e.note && <div className="text-xs text-muted-foreground italic">📝 {e.note}</div>}
                               </div>
-                              <div className="text-sm font-bold text-green-700 whitespace-nowrap">+{fmt(toXOF(Number(e.montant), e.devise))}</div>
+                              <div className="text-sm font-bold text-green-700 whitespace-nowrap">
+                                +{fmt(toXOF(Number(e.montant), e.devise))}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -293,10 +338,15 @@ export default function HistoriquePage() {
               </div>
             )}
 
-            {(filteredDepenses.length === 0 && filteredEntrees.length === 0) && (
+            {filteredDepenses.length === 0 && filteredEntrees.length === 0 && (
               <div className="text-center p-8 text-muted-foreground bg-card border border-border rounded-xl">
                 <Calendar className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm">Aucune transaction pour cette période.</p>
+                <p className="text-sm font-medium">Aucune transaction{period !== "tout" ? " pour cette période" : ""}.</p>
+                {period !== "tout" && (
+                  <button onClick={() => setPeriod("tout")} className="mt-3 text-xs text-primary font-semibold hover:underline">
+                    Voir tout l'historique
+                  </button>
+                )}
               </div>
             )}
           </div>
