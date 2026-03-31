@@ -10,7 +10,6 @@ import { Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 
-
 // Auth
 import NexoraLoginPage from "@/pages/NexoraLoginPage";
 import LandingPage from "@/pages/LandingPage";
@@ -153,13 +152,13 @@ const App = () => (
 
           {/* Routes Premium */}
           <Route path="/immobilier"             element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
+          <Route path="/immobilier/annonce/:id" element={<PremiumPage><AnnonceDetailPage /></PremiumPage>} />
           <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
           <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
           <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
           <Route path="/boutique/parametres"    element={<PremiumPage><BoutiqueParametresPage /></PremiumPage>} />
           <Route path="/boutique/finances"      element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
 
-          
           {/* Vitrines (Accessibles via slugs) */}
           <Route path="/shop/:slug"                               element={<BoutiqueVitrinePage />} />
           <Route path="/shop/:slug/produit/:produitId"            element={<ProduitDetailPage />} />
