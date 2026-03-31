@@ -371,7 +371,6 @@ export default function PretsPage() {
 
   const rembPour = (id: string) => remboursements.filter(r => r.pret_id === id);
 
-  const preteurLabel = form.nom_preteur || "Prêteur";
   const emprunteurLabel = form.nom_personne || "Emprunteur";
 
   return (
@@ -450,26 +449,21 @@ export default function PretsPage() {
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
             <h2 className="font-bold text-lg text-foreground">Nouveau contrat de prêt</h2>
 
-            {/* Aperçu live */}
+            {/* Aperçu live avec prêteur éditable inline */}
             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm flex-wrap">
-              <span className="font-bold text-primary">{preteurLabel}</span>
+              <input
+                value={form.nom_preteur}
+                onChange={e => setForm({ ...form, nom_preteur: e.target.value })}
+                placeholder="Prêteur"
+                className="font-bold text-primary bg-transparent border-none outline-none min-w-[80px] w-auto placeholder:text-primary/50 placeholder:font-bold"
+                style={{ width: form.nom_preteur ? `${form.nom_preteur.length + 2}ch` : "80px" }}
+              />
               <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <span className="font-bold text-orange-600">{emprunteurLabel}</span>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-
-                <div className="col-span-2">
-                  <label className="text-sm font-medium">Nom du Prêteur *</label>
-                  <Input
-                    value={form.nom_preteur}
-                    onChange={e => setForm({ ...form, nom_preteur: e.target.value })}
-                    placeholder="Nom complet du prêteur"
-                    className="mt-1"
-                    required
-                  />
-                </div>
 
                 <div className="col-span-2">
                   <label className="text-sm font-medium">Nom de l'Emprunteur *</label>
@@ -566,7 +560,7 @@ export default function PretsPage() {
               <div className="space-y-4 pt-2 border-t border-border">
                 <p className="font-semibold text-sm text-primary">Signatures numériques</p>
                 <SignaturePad
-                  label={`Signature du Prêteur (${preteurLabel})`}
+                  label={`Signature du Prêteur (${form.nom_preteur || "Prêteur"})`}
                   onSave={sig => setForm({ ...form, signature_preteur: sig })}
                 />
                 <SignaturePad
