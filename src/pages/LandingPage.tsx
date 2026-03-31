@@ -29,7 +29,7 @@ const FEATURES = [
     icon: Receipt, color: "#10b981", bg: "#ecfdf5",
     title: "Facturation Professionnelle", tag: "Disponible",
     desc: "Créez des factures PDF magnifiques et professionnelles en moins d'une minute. Ajoutez vos informations fiscales, et téléchargez ou partagez instantanément.",
-    points: ["PDF haute qualité", "Logo & branding personnalisé", "Numérotation automatique", "Archivage illimité"],
+    points: ["PDF haute qualité", "Branding personnalisé", "Numérotation automatique", "Archivage illimité"],
   },
   {
     icon: Store, color: "#f43f5e", bg: "#fff1f2",
@@ -41,7 +41,7 @@ const FEATURES = [
     icon: Send, color: "#0ea5e9", bg: "#f0f9ff",
     title: "Transfert d'Argent Africa", tag: "Disponible",
     desc: "Envoyez de l'argent partout en Afrique via Mobile Money en quelques secondes. Rechargez votre compte gratuitement, transférez vers 24 pays actifs avec seulement 3% de frais.",
-    points: ["Recharge 100% gratuite", "24 pays actifs", "3% de frais seulement", "Facture PDF automatique"],
+    points: ["Payez 100 FCFA comme frais du rechargement", "24 pays actifs", "3% de frais seulement", "Facture PDF automatique"],
   },
   {
     icon: Home, color: "#8b5cf6", bg: "#f5f3ff",
@@ -247,7 +247,7 @@ export default function LandingPage() {
 
       {/* ── TOP BANNER ── */}
       <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500 py-2.5 text-center text-white text-xs font-bold tracking-wide">
-       🌍 NEXORA disponible dans 24 pays africains — Transferts, Boutique, Immobilier &nbsp;·&nbsp;
+       🌍 NEXORA disponible dans plusieurs pays africains — Transferts, Boutique, Immobilier etc... &nbsp;·&nbsp;
         <button onClick={() => navigate("/login")} className="underline underline-offset-2 hover:no-underline">
           Commencer gratuitement →
         </button>
@@ -331,7 +331,7 @@ export default function LandingPage() {
 
             <p className="anim-fadeup text-gray-500 dark:text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
               style={{ animationDelay: ".18s" }}>
-              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, les prêts et le transfert d'argent dans une seule application moderne, sécurisée et conçue pour l'Afrique.
+              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, les prêts et le transfert d'argent... dans une seule application moderne, sécurisée et conçue pour l'Afrique.
             </p>
 
             <div className="anim-fadeup flex flex-col sm:flex-row items-center justify-center gap-4 mb-10"
@@ -573,7 +573,7 @@ export default function LandingPage() {
                 Un continent,<br /><span style={{ color: "#38bdf8" }}>une infrastructure.</span>
               </h2>
               <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-                Rechargez votre compte gratuitement via Mobile Money et envoyez de l'argent vers 5 pays africains avec seulement 3% de frais.
+                Rechargez votre compte gratuitement via Mobile Money et envoyez de l'argent vers 24 pays africains avec seulement 3% de frais.
               </p>
 
               <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">✓ 24 pays éligibles</p>
@@ -821,7 +821,7 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-wrap items-center justify-center gap-8">
               {[
                 { icon: ShieldCheck, label: "100% sécurisé" },
-                { icon: Globe, label: "24 pays éligibles" },
+                { icon: Globe, label: "Plusieurs pays éligibles" },
                 { icon: Users, label: "Inscription gratuite" },
               ].map((item, i) => {
                 const Icon = item.icon;
