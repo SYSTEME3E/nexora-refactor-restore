@@ -77,7 +77,7 @@ const ROADMAP = [
 ];
 
 const STATS = [
-  { value: "24", label: "Pays éligibles pour le service transfert", suffix: "" },
+  { value: "24", label: "Pays éligibles pour le service du Transfert", suffix: "" },
   { value: "99.9", label: "Disponibilité", suffix: "%" },
   { value: "8", label: "Modules intégrés", suffix: "" },
   { value: "0", label: "Frais d'inscription", suffix: " FCFA" },
@@ -354,7 +354,7 @@ export default function LandingPage() {
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-amber-400" /> 99.9% disponibilité</span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
-              <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-indigo-500" /> 24 pays actifs pour le service Transfert</span>
+              <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-indigo-500" /> 24 pays actifs pour le service du Transfert</span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-gray-200 dark:bg-gray-600" />
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> Inscription gratuite</span>
             </div>
@@ -365,8 +365,8 @@ export default function LandingPage() {
             {[
               { icon: Wallet, label: "Solde total", value: "842 500 FCFA", color: "#6366f1" },
               { icon: TrendingUp, label: "Ce mois", value: "+127 400 FCFA", color: "#10b981" },
-              { icon: FileText, label: "Factures", value: "24 créées", color: "#f59e0b" },
-              { icon: Send, label: "Transferts", value: "5 pays actifs", color: "#0ea5e9" },
+              { icon: FileText, label: "Factures", value: "29 créées", color: "#f59e0b" },
+              { icon: Send, label: "Transferts", value: "24 pays actifs", color: "#0ea5e9" },
             ].map((c, i) => {
               const Icon = c.icon;
               return (
