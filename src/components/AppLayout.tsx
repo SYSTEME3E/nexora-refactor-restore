@@ -22,7 +22,7 @@ const getNavItems = (isAdmin: boolean) => {
     { path: "/entrees-depenses", icon: TrendingUp,      label: "Entrées & Dépenses",  color: "text-green-400",   bg: "bg-green-400/10"   },
     { path: "/historique",       icon: History,         label: "Historique",           color: "text-accent",      bg: "bg-accent/10"      },
     { path: "/transfert",        icon: ArrowLeftRight,  label: "Nexora Transfert",    color: "text-violet-400",  bg: "bg-violet-400/10"  },
-    { path: "/prets",            icon: HandCoins,       label: "Contrats Prêt",       color: "text-orange-300",  bg: "bg-orange-300/10"  },
+    { path: "/crypto-p2p",       icon: TrendingUp,      label: "Crypto P2P",          color: "text-amber-300",   bg: "bg-amber-300/10"   },
     { path: "/factures",         icon: Receipt,         label: "Factures",             color: "text-purple-300",  bg: "bg-purple-300/10"  },
     { path: "/coffre-fort",      icon: Lock,            label: "Coffre-fort",          color: "text-yellow-300",  bg: "bg-yellow-300/10"  },
     { path: "/liens",            icon: Link2,           label: "Liens & Contacts",     color: "text-green-300",   bg: "bg-green-300/10"   },
@@ -30,6 +30,7 @@ const getNavItems = (isAdmin: boolean) => {
     { path: "/immobilier",       icon: Map,             label: "Marché Immobilier",    color: "text-blue-300",    bg: "bg-blue-300/10"    },
   ];
   if (isAdmin) {
+    items.push({ path: "/prets",  icon: HandCoins,   label: "Contrats Prêt", color: "text-orange-300", bg: "bg-orange-300/10" });
     items.push({ path: "/admin",  icon: ShieldCheck, label: "Panel Admin", color: "text-amber-400", bg: "bg-amber-400/10" });
     items.push({ path: "/medias", icon: Image,       label: "Médias",      color: "text-sky-300",   bg: "bg-sky-300/10"  });
   }
@@ -209,13 +210,13 @@ export default function AppLayout({
                 >
                   <div className={`
                     flex items-center justify-center rounded-lg flex-shrink-0
-                    ${sidebarOpen ? "w-7 h-7" : "w-9 h-9"}
+                    ${sidebarOpen ? "w-8 h-8" : "w-10 h-10"}
                     ${active ? "bg-white/20" : bg}
                     transition-all duration-150
                   `}>
-                    <Icon className={`flex-shrink-0 ${sidebarOpen ? "w-4 h-4" : "w-5 h-5"} ${active ? "text-accent-foreground" : color}`} />
+                    <Icon className={`flex-shrink-0 ${sidebarOpen ? "w-4.5 h-4.5" : "w-5.5 h-5.5"} ${active ? "text-accent-foreground" : color}`} />
                   </div>
-                  {sidebarOpen && <span className="text-sm truncate">{label}</span>}
+                  {sidebarOpen && <span className="text-[15px] font-semibold truncate">{label}</span>}
                 </Link>
               </div>
             );

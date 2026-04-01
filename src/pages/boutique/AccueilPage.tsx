@@ -60,7 +60,7 @@ export default function BoutiqueAccueilPage() {
   const totalMontant = commandesFiltrees.reduce((sum, c) => sum + (c.total || 0), 0);
 
   const produitsPhysiques = produits.filter(p => p.type === 'physique' || !p.type).length;
-  const produitsDigitaux = produits.filter(p => p.type === 'digital').length;
+  const produitsDigitaux = produits.filter(p => p.type === 'numerique').length;
 
   const planActuel = user?.plan || 'gratuit';
   const limiteProduits = PLAN_LIMITS[planActuel].produits;

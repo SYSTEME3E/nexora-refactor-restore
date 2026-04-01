@@ -32,8 +32,8 @@ interface BoutiqueInfo {
 
 interface CommandeCreee {
   id: string;
-  reference: string;
-  lien_suivi?: string | null;
+  numero: string;
+  trackingUrl: string;
 }
 
 function formatPrix(prix: number, devise = "XOF") {
@@ -102,17 +102,30 @@ export default function AcheterPage() {
     setEnregistrement(true);
 
     const ref = `NX-${Date.now().toString(36).toUpperCase()}`;
-    const { data, error } = await (supabase as any).from("nexora_commandes_shop").insert({
+    const items = [{
+      produit_id: produit.id,
+      nom: produit.nom,
+      prix: prixUnit,
+      quantite: qte,
+      montant: total,
+      type: produit.type,
+      paiement_lien: produit.paiement_lien,
+    }];
+
+    const { data, error } = await (supabase as any).from("commandes").insert({
       boutique_id: boutique.id,
       produit_id: produit.id,
-      quantite: qte,
-      montant_total: (produit.prix_promo || produit.prix) * qte,
+      items,
+      total,
+      montant: total,
       devise: boutique.devise || "XOF",
       statut: "en_attente",
-      acheteur_nom: acheteurNom || "Anonyme",
-      acheteur_tel: acheteurTel || null,
-      reference: ref,
-      lien_suivi: null,
+      statut_paiement: produit.paiement_lien || produit.moyens_paiement.length > 0 ? "en_attente" : "paye",
+      numero: ref,
+      client_nom: acheteurNom || "Client",
+      client_tel: acheteurTel || null,
+      client_email: null,
+      client_adresse: null,
     }).select().maybeSingle();
 
     if (error || !data) {
@@ -121,7 +134,11 @@ export default function AcheterPage() {
       return;
     }
 
-    setCommande({ id: (data as any).id, reference: ref, lien_suivi: (data as any).lien_suivi });
+    setCommande({
+      id: (data as any).id,
+      numero: (data as any).numero || ref,
+      trackingUrl: `${window.location.origin}/commande/${(data as any).id}`,
+    });
     setEtape("confirmation");
     setEnregistrement(false);
   };
@@ -331,26 +348,30 @@ export default function AcheterPage() {
               <div>
                 <h2 className="text-xl font-black text-gray-900 dark:text-white">Commande enregistrée !</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Référence : <span className="font-mono font-bold text-gray-700 dark:text-gray-200">{commande.reference}</span>
+                  Référence : <span className="font-mono font-bold text-gray-700 dark:text-gray-200">{commande.numero}</span>
                 </p>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                Votre commande a été transmise au vendeur. Il va vérifier votre paiement et vous communiquer un lien de suivi.
+                Votre commande a été transmise au vendeur. Vous pouvez suivre son évolution, payer via le lien du vendeur et le contacter directement.
               </p>
             </div>
 
-            {/* Lien de suivi si déjà disponible */}
-            {commande.lien_suivi && (
-              <a href={commande.lien_suivi} target="_blank" rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all">
-                <Truck className="w-4 h-4" /> Suivre ma commande
+            <a href={commande.trackingUrl}
+              className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all">
+              <Truck className="w-4 h-4" /> Suivre ma commande
+            </a>
+
+            {produit.paiement_lien && (
+              <a href={produit.paiement_lien} target="_blank" rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-pink-600 text-white font-bold text-sm hover:bg-pink-700 transition-all">
+                <ExternalLink className="w-4 h-4" /> Payer avec le lien du vendeur
               </a>
             )}
 
             {/* Contacter le vendeur */}
             {boutique.whatsapp && (
               <a
-                href={`https://wa.me/${boutique.whatsapp.replace(/[^0-9]/g, "")}?text=Bonjour, j'ai passé commande sur votre boutique NEXORA (Réf: ${commande.reference}). Pouvez-vous confirmer la réception de mon paiement ?`}
+                href={`https://wa.me/${boutique.whatsapp.replace(/[^0-9]/g, "")}?text=Bonjour, j'ai passé commande sur votre boutique NEXORA (Réf: ${commande.numero}). Pouvez-vous confirmer la réception de mon paiement ?`}
                 target="_blank" rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl font-bold text-white text-sm transition-all active:scale-95"
                 style={{ background: "#25D366" }}>

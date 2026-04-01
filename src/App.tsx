@@ -43,6 +43,7 @@ import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 import ImmobilierPage from "@/pages/ImmobilierPage";
 import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
+import Cryptop2pmarketplace from "@/pages/Cryptop2pmarketplace";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
@@ -140,7 +141,7 @@ const App = () => (
           <Route path="/abonnement"        element={<ProtectedPage><AbonnementPage /></ProtectedPage>} />
           <Route path="/transfert"         element={<ProtectedPage><TransfertPage /></ProtectedPage>} />
           <Route path="/factures"          element={<ProtectedPage><FacturesPage /></ProtectedPage>} />
-          <Route path="/prets"             element={<ProtectedPage><PretsPage /></ProtectedPage>} />
+          <Route path="/prets"             element={<AdminPage><PretsPage /></AdminPage>} />
           <Route path="/entrees-depenses"  element={<ProtectedPage><EntreesDepensesPage /></ProtectedPage>} />
 
           {/* Callback Paiement Moneroo */}
@@ -151,8 +152,8 @@ const App = () => (
           <Route path="/depenses"          element={<Navigate to="/entrees-depenses" replace />} />
 
           {/* Routes Premium */}
-          <Route path="/immobilier"             element={<PremiumPage><ImmobilierPage /></PremiumPage>} />
-          <Route path="/immobilier/annonce/:id" element={<PremiumPage><AnnonceDetailPage /></PremiumPage>} />
+          <Route path="/immobilier"             element={<ImmobilierPage />} />
+          <Route path="/immobilier/annonce/:id" element={<AnnonceDetailPage />} />
           <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
           <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
           <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
@@ -164,6 +165,7 @@ const App = () => (
           <Route path="/shop/:slug/produit/:produitId"            element={<ProduitDetailPage />} />
           <Route path="/shop/:slug/acheter/:produitId"            element={<AcheterPage />} />
           <Route path="/immobilier/vendeur/:userId"               element={<ProfilVendeurPage />} />
+          <Route path="/crypto-p2p"                                element={<ProtectedPage><Cryptop2pmarketplace /></ProtectedPage>} />
           <Route path="/commande/:commandeId"                     element={<CommandeTrackingPage />} />
 
           {/* Admin */}
