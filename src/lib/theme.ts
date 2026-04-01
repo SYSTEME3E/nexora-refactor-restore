@@ -12,9 +12,9 @@ export function getTheme(): NexoraTheme {
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "dark" || stored === "light") return stored;
-    if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) return "dark";
+    return "dark";
   } catch {}
-  return "light";
+  return "dark";
 }
 
 /** Applique le thème sur <html> et le persiste en localStorage */

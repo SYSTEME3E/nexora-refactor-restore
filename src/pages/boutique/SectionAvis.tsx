@@ -22,12 +22,17 @@ interface SectionAvisProps {
 
 export default function SectionAvis({ produitId, annonceId, nomItem }: SectionAvisProps) {
   const [note, setNote] = useState(5);
+  const [nomComplet, setNomComplet] = useState("");
   const [commentaire, setCommentaire] = useState("");
   const [avis, setAvis] = useState<Avis[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const user = getNexoraUser();
+
+  useEffect(() => {
+    setNomComplet(user?.nom_prenom || "");
+  }, [user?.nom_prenom]);
 
   const loadAvis = async () => {
     setLoading(true);
@@ -45,10 +50,12 @@ export default function SectionAvis({ produitId, annonceId, nomItem }: SectionAv
     e.preventDefault();
     if (!commentaire.trim()) { toast({ title: "Écrivez un commentaire", variant: "destructive" }); return; }
     if (!user) { toast({ title: "Connectez-vous pour donner un avis", variant: "destructive" }); return; }
+    const parts = nomComplet.trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) { toast({ title: "Nom et prénom obligatoires", description: "Veuillez renseigner votre nom complet.", variant: "destructive" }); return; }
     setSubmitting(true);
     const { error } = await supabase.from("avis_produits" as any).insert({
       user_id: user.id,
-      user_nom: user.nom_prenom || user.username || "Utilisateur",
+      user_nom: nomComplet.trim(),
       produit_id: produitId || null,
       annonce_id: annonceId || null,
       note,
@@ -84,6 +91,12 @@ export default function SectionAvis({ produitId, annonceId, nomItem }: SectionAv
             ))}
           </div>
         </div>
+        <input
+          placeholder="Nom et prénom"
+          value={nomComplet}
+          onChange={(e) => setNomComplet(e.target.value)}
+          className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+        />
         <Textarea
           placeholder="Écrivez votre avis ici..."
           value={commentaire}

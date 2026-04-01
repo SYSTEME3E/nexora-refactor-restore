@@ -57,9 +57,9 @@ const FEATURES = [
   },
   {
     icon: CreditCard, color: "#ec4899", bg: "#fdf2f8",
-    title: "Prêts entre Particuliers", tag: "Disponible",
-    desc: "Formalisez vos prêts entre amis, famille ou partenaires commerciaux. Créez un contrat de prêt signé électroniquement.",
-    points: ["Contrats signés électroniquement", "Calendrier de remboursement", "Rappels automatiques", "Suivi des paiements"],
+    title: "Crypto P2P", tag: "Disponible",
+    desc: "Achetez et vendez vos crypto-monnaies dans un espace P2P mieux organisé avec suivi d’opérations, vendeurs et tableau de bord dédié.",
+    points: ["Offres crypto organisées", "Suivi des opérations", "Paiements flexibles", "Vue admin dédiée"],
   },
   {
     icon: Wallet, color: "#14b8a6", bg: "#f0fdfa",
@@ -331,7 +331,7 @@ export default function LandingPage() {
 
             <p className="anim-fadeup text-gray-500 dark:text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
               style={{ animationDelay: ".18s" }}>
-              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, les prêts et le transfert d'argent... dans une seule application moderne, sécurisée et conçue pour l'Afrique.
+              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, le crypto P2P et le transfert d'argent... dans une seule application moderne, sécurisée et conçue pour l'Afrique.
             </p>
 
             <div className="anim-fadeup flex flex-col sm:flex-row items-center justify-center gap-4 mb-10"
@@ -863,7 +863,7 @@ export default function LandingPage() {
             <div>
               <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Modules</p>
               <div className="flex flex-col gap-2">
-                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Prêts","Liens"].map(l => (
+                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Crypto P2P","Liens"].map(l => (
                   <button key={l} onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">{l}</button>
                 ))}
               </div>

@@ -96,13 +96,13 @@ export default function App() {
   const styles = {
     app: { minHeight: "100vh", background: c(COLORS.bg.dark, COLORS.bg.light), color: c(COLORS.text.dark, COLORS.text.light), fontFamily: "'Inter', -apple-system, sans-serif", transition: "all 0.3s" },
     card: { background: c(COLORS.card.dark, COLORS.card.light), border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, borderRadius: 16, padding: 24 },
-    btn: (variant = "primary", size = "md") => ({
+    btn: (variant = "primary", size = "md") => (({
       primary: { background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})`, color: "#000", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
       secondary: { background: c("rgba(255,255,255,0.08)", "rgba(0,0,0,0.06)"), color: c(COLORS.text.dark, COLORS.text.light), fontWeight: 600, border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
       green: { background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
       red: { background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
       ghost: { background: "transparent", color: c(COLORS.muted.dark, COLORS.muted.light), fontWeight: 500, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-    }[variant] || {},
+    })[variant] || {}),
     input: { background: c("rgba(255,255,255,0.05)", "rgba(0,0,0,0.04)"), border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, borderRadius: 10, padding: "12px 16px", color: c(COLORS.text.dark, COLORS.text.light), fontSize: 14, width: "100%", outline: "none", boxSizing: "border-box" },
   };
 

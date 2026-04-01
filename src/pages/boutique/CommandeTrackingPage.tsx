@@ -125,17 +125,18 @@ export default function CommandeTrackingPage() {
 
   const items = Array.isArray(commande.items) ? commande.items : [];
   const isDigital = items.some((item: any) => item.type === "digital" || item.type === "numerique");
+  const paymentLink = items.find((item: any) => item?.paiement_lien)?.paiement_lien || null;
 
   const STATUT_STEPS = [
-    { key: "en_attente",  label: "En cours",                icon: Clock,          color: "text-yellow-600", bg: "bg-yellow-100" },
-    { key: "confirme",    label: "Confirmée",               icon: CheckCircle,    color: "text-blue-600",   bg: "bg-blue-100"   },
-    { key: "en_route",    label: "En route pour livraison", icon: Truck,          color: "text-indigo-600", bg: "bg-indigo-100" },
-    { key: "livre",       label: "Livré",                   icon: Package,        color: "text-green-600",  bg: "bg-green-100"  },
+    { key: "en_attente", label: "En attente",      icon: Clock,       color: "text-yellow-600", bg: "bg-yellow-100" },
+    { key: "confirmee",  label: "Confirmée",       icon: CheckCircle, color: "text-blue-600",   bg: "bg-blue-100" },
+    { key: "expediee",   label: "Expédiée",        icon: Truck,       color: "text-indigo-600", bg: "bg-indigo-100" },
+    { key: "livree",     label: "Livrée",          icon: Package,     color: "text-green-600",  bg: "bg-green-100" },
   ];
 
-  const currentStep = commande.statut === "livre" ? 3
-    : commande.statut === "en_route" ? 2
-    : commande.statut === "confirme" ? 1
+  const currentStep = commande.statut === "livree" ? 3
+    : commande.statut === "expediee" ? 2
+    : commande.statut === "confirmee" ? 1
     : 0;
 
   return (
@@ -180,11 +181,11 @@ export default function CommandeTrackingPage() {
         </div>
 
         {/* WhatsApp Contact for digital products */}
-        {isDigital && commande.statut === "en_attente" && whatsappLink && (
+        {isDigital && whatsappLink && (
           <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5">
             <h3 className="font-black text-sm text-green-800 mb-2">📱 Contactez le vendeur</h3>
             <p className="text-xs text-green-700 mb-4">
-              Votre commande de produit digital a été enregistrée. Contactez le vendeur via WhatsApp pour recevoir votre produit.
+              Votre commande de produit digital a été enregistrée. Contactez le vendeur via WhatsApp et suivez l’évolution en temps réel.
             </p>
             <a
               href={whatsappLink}
@@ -197,24 +198,17 @@ export default function CommandeTrackingPage() {
           </div>
         )}
 
-        {/* Confirm reception */}
-        {isDigital && commande.statut === "en_attente" && (
+        {paymentLink && (
           <div className="bg-white border rounded-2xl p-5">
-            <h3 className="font-black text-sm mb-2">Vous avez reçu votre produit ?</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              Une fois que vous avez reçu votre produit digital, confirmez la réception pour finaliser la commande.
-            </p>
-            <button
-              onClick={confirmReception}
-              disabled={confirming}
-              className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm disabled:opacity-50"
-            >
-              {confirming ? "Confirmation..." : "✅ Confirmer la réception"}
-            </button>
+            <h3 className="font-black text-sm mb-2">Paiement du vendeur</h3>
+            <p className="text-xs text-gray-500 mb-4">Si le vendeur a défini un lien de paiement, vous pouvez l’utiliser depuis cette page.</p>
+            <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity text-sm">
+              <ExternalLink className="w-4 h-4" /> Ouvrir le lien de paiement
+            </a>
           </div>
         )}
 
-        {commande.statut === "confirme" && (
+        {commande.statut === "confirmee" && (
           <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-5 text-center">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
             <h3 className="font-black text-green-800 mb-1">Commande confirmée !</h3>
