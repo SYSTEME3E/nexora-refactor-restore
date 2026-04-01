@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const COLORS = {
-  bg: { dark: "#0a0f1e", light: "#f0f4ff" },
+  bg: { dark: "#0a0f1e", light: "#f4f6fb" },
   card: { dark: "#111827", light: "#ffffff" },
-  cardBorder: { dark: "#1e2d45", light: "#dde6f7" },
+  cardBorder: { dark: "#1e2d45", light: "#e2e8f0" },
   primary: "#f59e0b",
   primaryDark: "#d97706",
   green: "#10b981",
@@ -12,11 +11,9 @@ const COLORS = {
   blue: "#3b82f6",
   purple: "#8b5cf6",
   text: { dark: "#f1f5f9", light: "#0f172a" },
-  muted: { dark: "#64748b", light: "#64748b" },
-  sidebar: { dark: "#080d1a", light: "#1a2540" },
+  muted: { dark: "#94a3b8", light: "#64748b" },
 };
 
-// ─── CRYPTO DATA ─────────────────────────────────────────────────────────────
 const CRYPTOS = [
   { id: "usdt_trc20", name: "USDT TRC20", symbol: "USDT", network: "TRON", color: "#26a17b", icon: "₮", addrRegex: /^T[A-Za-z1-9]{33}$/, addrExample: "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" },
   { id: "usdt_bep20", name: "USDT BEP20", symbol: "USDT", network: "BSC", color: "#f0b90b", icon: "₮", addrRegex: /^0x[0-9a-fA-F]{40}$/, addrExample: "0x..." },
@@ -26,9 +23,8 @@ const CRYPTOS = [
   { id: "matic", name: "Polygon", symbol: "MATIC", network: "POLYGON", color: "#8247e5", icon: "⬡", addrRegex: /^0x[0-9a-fA-F]{40}$/, addrExample: "0x..." },
 ];
 
-// ─── MOCK DATA ─────────────────────────────────────────────────────────────
 const MOCK_OFFERS = [
-  { id: "o1", sellerId: "v1", sellerName: "EricPro", sellerAvatar: "E", verified: true, crypto: "usdt_trc20", rate: 650, minAmount: 10, maxAmount: 5000, available: 15000, paymentMethods: ["MTN MoMo", "Moov Money"], completedTrades: 247, successRate: 99.2, online: true },
+  { id: "o1", sellerId: "admin", sellerName: "EricPro", sellerAvatar: "E", verified: true, crypto: "usdt_trc20", rate: 650, minAmount: 10, maxAmount: 5000, available: 15000, paymentMethods: ["MTN MoMo", "Moov Money"], completedTrades: 247, successRate: 99.2, online: true },
   { id: "o2", sellerId: "v2", sellerName: "CryptoKing", sellerAvatar: "C", verified: true, crypto: "usdt_trc20", rate: 648, minAmount: 20, maxAmount: 10000, available: 50000, paymentMethods: ["Orange Money", "MTN MoMo"], completedTrades: 523, successRate: 98.7, online: true },
   { id: "o3", sellerId: "v3", sellerName: "AfriTrade", sellerAvatar: "A", verified: true, crypto: "bnb", rate: 285000, minAmount: 0.01, maxAmount: 10, available: 25, paymentMethods: ["MTN MoMo"], completedTrades: 189, successRate: 97.5, online: false },
   { id: "o4", sellerId: "v4", sellerName: "WestCoast", sellerAvatar: "W", verified: false, crypto: "eth", rate: 3200000, minAmount: 0.001, maxAmount: 2, available: 5, paymentMethods: ["Wave", "Orange Money"], completedTrades: 45, successRate: 95.0, online: true },
@@ -42,31 +38,37 @@ const MOCK_ORDERS = [
   { id: "CMD-003", crypto: "usdt_trc20", amount: 100, amountFCFA: 65000, walletAddr: "TRx5abc...mn7", seller: "CryptoKing", status: "pending", createdAt: new Date(Date.now() - 3600000).toISOString() },
 ];
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// Admin credentials
+const ADMIN_EMAIL = "erickpakpo384@gmail.com";
+const ADMIN_PASSWORD = "55237685N";
+
 const fmt = (n) => Math.round(n).toLocaleString("fr-FR");
 const getCrypto = (id) => CRYPTOS.find(c => c.id === id) || CRYPTOS[0];
+
 const statusConfig = {
-  pending:   { label: "En attente", color: "#f59e0b", bg: "#fef3c7" },
-  paid:      { label: "Payé", color: "#3b82f6", bg: "#dbeafe" },
-  delivered: { label: "Livré", color: "#8b5cf6", bg: "#ede9fe" },
-  confirmed: { label: "Confirmé", color: "#10b981", bg: "#d1fae5" },
-  disputed:  { label: "Litige", color: "#ef4444", bg: "#fee2e2" },
+  pending:   { label: "En attente", color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+  paid:      { label: "Payé", color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
+  delivered: { label: "Livré", color: "#8b5cf6", bg: "rgba(139,92,246,0.15)" },
+  confirmed: { label: "Confirmé", color: "#10b981", bg: "rgba(16,185,129,0.15)" },
+  disputed:  { label: "Litige", color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
 };
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [theme, setTheme] = useState("dark");
-  const [page, setPage] = useState("landing"); // landing | login | register | marketplace | dashboard | buy | seller | admin
+  const [page, setPage] = useState("login");
   const [user, setUser] = useState(null);
+  // Registered accounts stored in state (demo only)
+  const [accounts, setAccounts] = useState([
+    { id: "admin", name: "Eric Admin", email: ADMIN_EMAIL, password: ADMIN_PASSWORD, isAdmin: true, isSeller: true }
+  ]);
   const [offers, setOffers] = useState(MOCK_OFFERS);
   const [orders, setOrders] = useState(MOCK_ORDERS);
   const [selectedOffer, setSelectedOffer] = useState(null);
-  const [selectedCrypto, setSelectedCrypto] = useState("usdt_trc20");
+  const [selectedCrypto, setSelectedCrypto] = useState("all");
   const [notification, setNotification] = useState(null);
-  const [mobileMenu, setMobileMenu] = useState(false);
 
   const isDark = theme === "dark";
-  const c = (darkVal, lightVal) => isDark ? darkVal : lightVal;
+  const c = (d, l) => isDark ? d : l;
 
   const notify = useCallback((msg, type = "success") => {
     setNotification({ msg, type });
@@ -75,99 +77,88 @@ export default function App() {
 
   const login = (userData) => {
     setUser(userData);
-    setPage("marketplace");
-    notify(`Bienvenue, ${userData.name} ! 🎉`);
+    setPage(userData.isAdmin ? "admin" : "marketplace");
+    notify(`Bienvenue, ${userData.name} !`);
   };
 
   const logout = () => {
     setUser(null);
-    setPage("landing");
+    setPage("login");
     notify("Déconnexion réussie", "info");
   };
 
   const navigate = (p, opts = {}) => {
     if (opts.offer) setSelectedOffer(opts.offer);
     setPage(p);
-    setMobileMenu(false);
     window.scrollTo(0, 0);
   };
 
-  // ─── STYLES ────────────────────────────────────────────────────────────────
   const styles = {
-    app: { minHeight: "100vh", background: c(COLORS.bg.dark, COLORS.bg.light), color: c(COLORS.text.dark, COLORS.text.light), fontFamily: "'Inter', -apple-system, sans-serif", transition: "all 0.3s" },
+    app: { minHeight: "100vh", background: c(COLORS.bg.dark, COLORS.bg.light), color: c(COLORS.text.dark, COLORS.text.light), fontFamily: "'Inter', -apple-system, sans-serif", transition: "background 0.3s, color 0.3s" },
     card: { background: c(COLORS.card.dark, COLORS.card.light), border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, borderRadius: 16, padding: 24 },
-    btn: (variant = "primary", size = "md") => (({
-      primary: { background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})`, color: "#000", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-      secondary: { background: c("rgba(255,255,255,0.08)", "rgba(0,0,0,0.06)"), color: c(COLORS.text.dark, COLORS.text.light), fontWeight: 600, border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-      green: { background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-      red: { background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-      ghost: { background: "transparent", color: c(COLORS.muted.dark, COLORS.muted.light), fontWeight: 500, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "8px 16px" : "12px 24px", fontSize: size === "sm" ? 13 : 15, transition: "all 0.2s", display: "inline-flex", alignItems: "center", gap: 8 },
-    })[variant] || {}),
-    input: { background: c("rgba(255,255,255,0.05)", "rgba(0,0,0,0.04)"), border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, borderRadius: 10, padding: "12px 16px", color: c(COLORS.text.dark, COLORS.text.light), fontSize: 14, width: "100%", outline: "none", boxSizing: "border-box" },
+    btn: (variant = "primary", size = "md") => ({
+      primary:   { background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})`, color: "#000", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "7px 14px" : "11px 22px", fontSize: size === "sm" ? 13 : 14, transition: "opacity 0.2s, transform 0.1s", display: "inline-flex", alignItems: "center", gap: 6, lineHeight: 1.4 },
+      secondary: { background: c("rgba(255,255,255,0.07)", "rgba(0,0,0,0.05)"), color: c(COLORS.text.dark, COLORS.text.light), fontWeight: 600, border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "7px 14px" : "11px 22px", fontSize: size === "sm" ? 13 : 14, transition: "opacity 0.2s", display: "inline-flex", alignItems: "center", gap: 6, lineHeight: 1.4 },
+      green:     { background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "7px 14px" : "11px 22px", fontSize: size === "sm" ? 13 : 14, transition: "opacity 0.2s", display: "inline-flex", alignItems: "center", gap: 6, lineHeight: 1.4 },
+      red:       { background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "7px 14px" : "11px 22px", fontSize: size === "sm" ? 13 : 14, transition: "opacity 0.2s", display: "inline-flex", alignItems: "center", gap: 6, lineHeight: 1.4 },
+      ghost:     { background: "transparent", color: c(COLORS.muted.dark, COLORS.muted.light), fontWeight: 500, border: "none", cursor: "pointer", borderRadius: 10, padding: size === "sm" ? "7px 14px" : "11px 22px", fontSize: size === "sm" ? 13 : 14, transition: "opacity 0.2s", display: "inline-flex", alignItems: "center", gap: 6, lineHeight: 1.4 },
+    }[variant] || {}),
+    input: { background: c("rgba(255,255,255,0.05)", "rgba(0,0,0,0.03)"), border: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, borderRadius: 10, padding: "11px 14px", color: c(COLORS.text.dark, COLORS.text.light), fontSize: 14, width: "100%", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" },
   };
 
   return (
     <div style={styles.app}>
-      {/* Notification Toast */}
+      <style>{`
+        @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+        input::placeholder, select option { color:#64748b; }
+        button:hover { opacity:0.85; }
+        button:active { transform:scale(0.98); }
+        select { appearance:none; }
+      `}</style>
+
       {notification && (
-        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, background: notification.type === "success" ? COLORS.green : notification.type === "error" ? COLORS.red : COLORS.blue, color: "#fff", padding: "14px 20px", borderRadius: 12, fontWeight: 600, fontSize: 14, boxShadow: "0 8px 32px rgba(0,0,0,0.3)", maxWidth: 350, animation: "slideIn 0.3s ease" }}>
-          {notification.type === "success" ? "✅ " : notification.type === "error" ? "❌ " : "ℹ️ "}{notification.msg}
+        <div style={{ position:"fixed", top:20, right:20, zIndex:9999, background: notification.type==="success"?COLORS.green:notification.type==="error"?COLORS.red:COLORS.blue, color:"#fff", padding:"13px 20px", borderRadius:12, fontWeight:600, fontSize:13, boxShadow:"0 8px 32px rgba(0,0,0,0.25)", maxWidth:340, animation:"slideIn 0.3s ease" }}>
+          {notification.type==="success"?"✅ ":notification.type==="error"?"❌ ":"ℹ️ "}{notification.msg}
         </div>
       )}
 
-      <style>{`
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        input::placeholder { color: #64748b; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-      `}</style>
-
-      {/* ROUTER */}
-      {page === "landing" && <LandingPage styles={styles} c={c} isDark={isDark} navigate={navigate} theme={theme} setTheme={setTheme} />}
-      {page === "login" && <LoginPage styles={styles} c={c} isDark={isDark} navigate={navigate} login={login} notify={notify} />}
-      {page === "register" && <RegisterPage styles={styles} c={c} isDark={isDark} navigate={navigate} login={login} notify={notify} />}
-      {page === "marketplace" && <MarketplacePage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} selectedCrypto={selectedCrypto} setSelectedCrypto={setSelectedCrypto} theme={theme} setTheme={setTheme} notify={notify} />}
-      {page === "buy" && <BuyPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} offer={selectedOffer} orders={orders} setOrders={setOrders} notify={notify} />}
-      {page === "dashboard" && <DashboardPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} />}
-      {page === "seller" && <SellerPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} setOffers={setOffers} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} />}
-      {page === "admin" && <AdminPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} />}
+      {page === "login"      && <LoginPage styles={styles} c={c} isDark={isDark} navigate={navigate} login={login} notify={notify} accounts={accounts} theme={theme} setTheme={setTheme} />}
+      {page === "register"   && <RegisterPage styles={styles} c={c} isDark={isDark} navigate={navigate} login={login} notify={notify} accounts={accounts} setAccounts={setAccounts} theme={theme} setTheme={setTheme} />}
+      {page === "marketplace"&& <MarketplacePage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} selectedCrypto={selectedCrypto} setSelectedCrypto={setSelectedCrypto} theme={theme} setTheme={setTheme} notify={notify} />}
+      {page === "buy"        && <BuyPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} offer={selectedOffer} orders={orders} setOrders={setOrders} notify={notify} />}
+      {page === "dashboard"  && <DashboardPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} />}
+      {page === "seller"     && <SellerPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} setOffers={setOffers} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} />}
+      {page === "admin"      && <AdminPage styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} offers={offers} orders={orders} setOrders={setOrders} notify={notify} theme={theme} setTheme={setTheme} accounts={accounts} />}
     </div>
   );
 }
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
-function Navbar({ styles, c, isDark, navigate, user, logout, page, theme, setTheme }) {
-  const [mob, setMob] = useState(false);
+function Navbar({ styles, c, isDark, navigate, user, logout, theme, setTheme }) {
   return (
-    <nav style={{ background: c("rgba(10,15,30,0.95)", "rgba(255,255,255,0.95)"), backdropFilter: "blur(20px)", borderBottom: `1px solid ${c("rgba(255,255,255,0.08)", "rgba(0,0,0,0.08)")}`, position: "sticky", top: 0, zIndex: 100, padding: "0 24px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
-        {/* Logo */}
-        <div onClick={() => navigate(user ? "marketplace" : "landing")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-          <div style={{ width: 36, height: 36, background: "linear-gradient(135deg, #f59e0b, #d97706)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, color: "#000" }}>₿</div>
-          <span style={{ fontWeight: 900, fontSize: 20, background: "linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>CryptoP2P</span>
+    <nav style={{ background: c("rgba(8,13,26,0.97)", "rgba(255,255,255,0.97)"), backdropFilter:"blur(20px)", borderBottom:`1px solid ${c("rgba(255,255,255,0.07)","rgba(0,0,0,0.07)")}`, position:"sticky", top:0, zIndex:100 }}>
+      <div style={{ maxWidth:1160, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:60, padding:"0 24px" }}>
+        <div onClick={() => navigate(user?.isAdmin ? "admin" : "marketplace")} style={{ display:"flex", alignItems:"center", gap:9, cursor:"pointer" }}>
+          <div style={{ width:34, height:34, background:"linear-gradient(135deg, #f59e0b, #d97706)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:"#000" }}>₿</div>
+          <span style={{ fontWeight:900, fontSize:18, background:"linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CryptoP2P</span>
         </div>
 
-        {/* Desktop Nav */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {user && <button onClick={() => navigate("marketplace")} style={{ ...styles.btn("ghost", "sm"), fontSize: 14 }}>Marketplace</button>}
-          {user && <button onClick={() => navigate("dashboard")} style={{ ...styles.btn("ghost", "sm"), fontSize: 14 }}>Mon compte</button>}
-          {user?.isSeller && <button onClick={() => navigate("seller")} style={{ ...styles.btn("ghost", "sm"), fontSize: 14 }}>Vendeur</button>}
-          {user?.isAdmin && <button onClick={() => navigate("admin")} style={{ ...styles.btn("ghost", "sm"), fontSize: 14 }}>Admin</button>}
-          
-          <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")} style={{ ...styles.btn("secondary", "sm"), padding: "8px 12px", fontSize: 16 }}>{theme === "dark" ? "☀️" : "🌙"}</button>
-          
-          {user ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#000", fontSize: 14 }}>{user.name[0]}</div>
-              <button onClick={logout} style={{ ...styles.btn("secondary", "sm") }}>Déconnexion</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => navigate("login")} style={styles.btn("secondary", "sm")}>Connexion</button>
-              <button onClick={() => navigate("register")} style={styles.btn("primary", "sm")}>S'inscrire</button>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          {user && !user.isAdmin && <button onClick={() => navigate("marketplace")} style={styles.btn("ghost","sm")}>Marketplace</button>}
+          {user && !user.isAdmin && <button onClick={() => navigate("dashboard")} style={styles.btn("ghost","sm")}>Mon compte</button>}
+          {user?.isSeller && !user.isAdmin && <button onClick={() => navigate("seller")} style={styles.btn("ghost","sm")}>Vendeur</button>}
+          {user?.isAdmin && <button onClick={() => navigate("admin")} style={styles.btn("ghost","sm")}>Administration</button>}
+
+          <button onClick={() => setTheme(theme==="dark"?"light":"dark")} style={{ ...styles.btn("secondary","sm"), padding:"7px 10px", fontSize:15 }}>{theme==="dark"?"☀️":"🌙"}</button>
+
+          {user && (
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg, #f59e0b, #d97706)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, color:"#000", fontSize:13 }}>{user.name[0]}</div>
+              <button onClick={logout} style={styles.btn("secondary","sm")}>Déconnexion</button>
             </div>
           )}
         </div>
@@ -176,247 +167,180 @@ function Navbar({ styles, c, isDark, navigate, user, logout, page, theme, setThe
   );
 }
 
-// ─── LANDING PAGE ─────────────────────────────────────────────────────────────
-function LandingPage({ styles, c, isDark, navigate, theme, setTheme }) {
-  const stats = [
-    { label: "Transactions", value: "12,847+", icon: "🔄" },
-    { label: "Vendeurs vérifiés", value: "234", icon: "✅" },
-    { label: "Volume (FCFA)", value: "2.4Md+", icon: "💰" },
-    { label: "Pays couverts", value: "14", icon: "🌍" },
-  ];
-
+// ─── AUTH LAYOUT ──────────────────────────────────────────────────────────────
+function AuthLayout({ styles, c, isDark, theme, setTheme, children }) {
   return (
-    <div>
-      <Navbar styles={styles} c={c} isDark={isDark} navigate={navigate} user={null} logout={() => {}} page="landing" theme={theme} setTheme={setTheme} />
-      
-      {/* Hero */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px 60px" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: c("rgba(245,158,11,0.1)", "rgba(245,158,11,0.1)"), border: "1px solid rgba(245,158,11,0.3)", borderRadius: 100, padding: "6px 16px", fontSize: 13, fontWeight: 600, color: COLORS.primary, marginBottom: 24 }}>
-            <span style={{ animation: "pulse 2s infinite", color: COLORS.green }}>●</span> Plateforme live — Transactions en temps réel
-          </div>
-          <h1 style={{ fontSize: "clamp(36px,6vw,72px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
-            Achetez & Vendez des<br />
-            <span style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Crypto-monnaies</span><br />
-            via Mobile Money
-          </h1>
-          <p style={{ fontSize: 18, color: c(COLORS.muted.dark, COLORS.muted.light), maxWidth: 560, margin: "0 auto 40px", lineHeight: 1.6 }}>
-            La première marketplace P2P dédiée à l'Afrique. Achetez USDT, BNB, ETH et plus encore en payant avec MTN, Orange Money, Moov et Wave.
-          </p>
-          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => navigate("marketplace")} style={{ ...styles.btn("primary"), fontSize: 16, padding: "14px 32px" }}>
-              🚀 Voir les offres
-            </button>
-            <button onClick={() => navigate("register")} style={{ ...styles.btn("secondary"), fontSize: 16, padding: "14px 32px" }}>
-              Créer un compte →
-            </button>
-          </div>
+    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 24px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+          <div style={{ width:34, height:34, background:"linear-gradient(135deg, #f59e0b, #d97706)", borderRadius:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:15, color:"#000" }}>₿</div>
+          <span style={{ fontWeight:900, fontSize:18, background:"linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CryptoP2P</span>
         </div>
-
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginTop: 80 }}>
-          {stats.map(s => (
-            <div key={s.label} style={{ ...styles.card, textAlign: "center", padding: 28 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>{s.icon}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: COLORS.primary }}>{s.value}</div>
-              <div style={{ fontSize: 14, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 4 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* How it works */}
-        <div style={{ marginTop: 80 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 800, textAlign: "center", marginBottom: 48 }}>Comment ça marche ?</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
-            {[
-              { step: "01", title: "Créez un compte", desc: "Inscription gratuite en 2 minutes. Votre compte vous donne accès à tous les vendeurs vérifiés.", icon: "👤" },
-              { step: "02", title: "Choisissez une offre", desc: "Parcourez les offres par type de crypto. Comparez les taux et choisissez le meilleur vendeur.", icon: "🔍" },
-              { step: "03", title: "Payez via Mobile Money", desc: "Saisissez votre adresse wallet, la quantité souhaitée et payez avec MTN, Orange ou autre.", icon: "📱" },
-              { step: "04", title: "Recevez vos cryptos", desc: "Le vendeur envoie vos cryptos. Confirmez la réception pour valider la transaction.", icon: "✅" },
-            ].map(s => (
-              <div key={s.step} style={{ ...styles.card, position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: -10, right: -10, fontSize: 80, opacity: 0.05, fontWeight: 900 }}>{s.step}</div>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>{s.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary, marginBottom: 8, letterSpacing: 2 }}>ÉTAPE {s.step}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{s.title}</h3>
-                <p style={{ fontSize: 14, color: c(COLORS.muted.dark, COLORS.muted.light), lineHeight: 1.6 }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CTA Vendeur */}
-        <div style={{ marginTop: 80, ...styles.card, background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(249,115,22,0.1))", border: "1px solid rgba(245,158,11,0.2)", textAlign: "center", padding: 60 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 16 }}>Devenez vendeur</h2>
-          <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 28, maxWidth: 500, margin: "0 auto 28px" }}>
-            Publiez vos offres et vendez vos cryptos à des acheteurs vérifiés. Paiement sécurisé et retraits Mobile Money en moins de 5 minutes.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("green"), textDecoration: "none", fontSize: 14 }}>
-              📱 WhatsApp : +229 0155237685
-            </a>
-            <a href="mailto:erickpakpo786@gmail.com" style={{ ...styles.btn("secondary"), textDecoration: "none", fontSize: 14 }}>
-              ✉️ erickpakpo786@gmail.com
-            </a>
-          </div>
-        </div>
+        <button onClick={() => setTheme(theme==="dark"?"light":"dark")} style={{ ...styles.btn("secondary","sm"), padding:"7px 10px", fontSize:15 }}>{theme==="dark"?"☀️":"🌙"}</button>
       </div>
-
-      {/* Footer */}
-      <footer style={{ borderTop: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, padding: "40px 24px", textAlign: "center", color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ fontWeight: 800, fontSize: 20, color: COLORS.primary, marginBottom: 8 }}>CryptoP2P Africa</div>
-          <p>© 2026 CryptoP2P — Support : <a href="https://wa.me/22901 55237685" style={{ color: COLORS.primary }}>WhatsApp</a> | <a href="mailto:erickpakpo786@gmail.com" style={{ color: COLORS.primary }}>Email</a></p>
-        </div>
-      </footer>
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"24px 24px 48px" }}>
+        {children}
+      </div>
     </div>
   );
 }
 
-// ─── AUTH PAGES ───────────────────────────────────────────────────────────────
-function LoginPage({ styles, c, isDark, navigate, login, notify }) {
-  const [form, setForm] = useState({ identifier: "", password: "" });
+// ─── LOGIN ─────────────────────────────────────────────────────────────────────
+function LoginPage({ styles, c, isDark, navigate, login, notify, accounts, theme, setTheme }) {
+  const [form, setForm] = useState({ email:"", password:"" });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = () => {
-    if (!form.identifier || !form.password) { notify("Remplissez tous les champs", "error"); return; }
+    if (!form.email || !form.password) { notify("Remplissez tous les champs", "error"); return; }
     setLoading(true);
     setTimeout(() => {
-      // Mock auth — simulate different roles
-      const isAdmin = form.identifier === "admin" && form.password === "admin123";
-      const isSeller = form.identifier === "vendeur" || form.identifier === "seller";
-      login({ id: "u1", name: form.identifier === "admin" ? "Eric Admin" : "Utilisateur Test", email: form.identifier + "@test.com", isAdmin, isSeller });
+      const found = accounts.find(a => a.email.toLowerCase() === form.email.toLowerCase() && a.password === form.password);
+      if (!found) {
+        notify("Email ou mot de passe incorrect", "error");
+        setLoading(false);
+        return;
+      }
+      login(found);
+      setLoading(false);
+    }, 900);
+  };
+
+  return (
+    <AuthLayout styles={styles} c={c} isDark={isDark} theme={theme} setTheme={setTheme}>
+      <div style={{ width:"100%", maxWidth:420 }}>
+        <div style={styles.card}>
+          <div style={{ marginBottom:28 }}>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:6 }}>Connexion</h1>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:14 }}>Accédez à votre compte CryptoP2P</p>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:24 }}>
+            <div>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Adresse email</label>
+              <input style={styles.input} placeholder="votre@email.com" value={form.email} onChange={e => setForm({...form, email:e.target.value})} onKeyDown={e => e.key==="Enter" && handleSubmit()} />
+            </div>
+            <div>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Mot de passe</label>
+              <input style={styles.input} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({...form, password:e.target.value})} onKeyDown={e => e.key==="Enter" && handleSubmit()} />
+            </div>
+          </div>
+
+          <button onClick={handleSubmit} disabled={loading} style={{ ...styles.btn("primary"), width:"100%", justifyContent:"center", opacity:loading?0.7:1 }}>
+            {loading ? "Vérification..." : "Se connecter →"}
+          </button>
+
+          <p style={{ textAlign:"center", marginTop:20, fontSize:14, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+            Pas encore de compte ?{" "}
+            <span onClick={() => navigate("register")} style={{ color:COLORS.primary, cursor:"pointer", fontWeight:600 }}>S'inscrire</span>
+          </p>
+        </div>
+      </div>
+    </AuthLayout>
+  );
+}
+
+// ─── REGISTER ─────────────────────────────────────────────────────────────────
+function RegisterPage({ styles, c, isDark, navigate, login, notify, accounts, setAccounts, theme, setTheme }) {
+  const [form, setForm] = useState({ name:"", email:"", password:"", confirm:"" });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = () => {
+    if (!form.name || !form.email || !form.password || !form.confirm) { notify("Remplissez tous les champs", "error"); return; }
+    if (form.password !== form.confirm) { notify("Les mots de passe ne correspondent pas", "error"); return; }
+    if (form.password.length < 8) { notify("Mot de passe trop court (8 caractères minimum)", "error"); return; }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) { notify("Format d'email invalide", "error"); return; }
+    const exists = accounts.find(a => a.email.toLowerCase() === form.email.toLowerCase());
+    if (exists) { notify("Cet email est déjà utilisé", "error"); return; }
+
+    setLoading(true);
+    setTimeout(() => {
+      const newUser = { id:`u_${Date.now()}`, name:form.name, email:form.email, password:form.password, isAdmin:false, isSeller:false };
+      setAccounts(prev => [...prev, newUser]);
+      login(newUser);
       setLoading(false);
     }, 1200);
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 420 }}>
-        <div onClick={() => navigate("landing")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 40, justifyContent: "center" }}>
-          <div style={{ width: 42, height: 42, background: "linear-gradient(135deg, #f59e0b, #d97706)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 20, color: "#000" }}>₿</div>
-          <span style={{ fontWeight: 900, fontSize: 24, background: "linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>CryptoP2P</span>
-        </div>
+    <AuthLayout styles={styles} c={c} isDark={isDark} theme={theme} setTheme={setTheme}>
+      <div style={{ width:"100%", maxWidth:440 }}>
         <div style={styles.card}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Connexion</h1>
-          <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 28, fontSize: 14 }}>Bienvenue ! Connectez-vous pour continuer.</p>
-          
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Email ou nom d'utilisateur</label>
-            <input style={styles.input} placeholder="votre@email.com" value={form.identifier} onChange={e => setForm({ ...form, identifier: e.target.value })} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-          </div>
-          <div style={{ marginBottom: 28 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Mot de passe</label>
-            <input style={styles.input} type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-          </div>
-          
-          <button onClick={handleSubmit} disabled={loading} style={{ ...styles.btn("primary"), width: "100%", justifyContent: "center", opacity: loading ? 0.7 : 1 }}>
-            {loading ? "Connexion..." : "Se connecter →"}
-          </button>
-          
-          <div style={{ marginTop: 20, padding: "14px 16px", background: c("rgba(59,130,246,0.1)", "rgba(59,130,246,0.08)"), borderRadius: 10, fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-            <strong>Demo :</strong> Utilisez n'importe quel identifiant/mdp • Admin : admin/admin123 • Vendeur : vendeur/test
+          <div style={{ marginBottom:28 }}>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:6 }}>Créer un compte</h1>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:14 }}>Rejoignez la marketplace P2P crypto d'Afrique</p>
           </div>
 
-          <p style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-            Pas encore de compte ? <span onClick={() => navigate("register")} style={{ color: COLORS.primary, cursor: "pointer", fontWeight: 600 }}>S'inscrire</span>
+          <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
+            {[
+              { key:"name", label:"Nom complet", placeholder:"Jean Dupont", type:"text" },
+              { key:"email", label:"Adresse email", placeholder:"votre@email.com", type:"email" },
+              { key:"password", label:"Mot de passe", placeholder:"Minimum 8 caractères", type:"password" },
+              { key:"confirm", label:"Confirmer le mot de passe", placeholder:"••••••••", type:"password" },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{f.label}</label>
+                <input style={styles.input} type={f.type} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm({...form, [f.key]:e.target.value})} />
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleSubmit} disabled={loading} style={{ ...styles.btn("primary"), width:"100%", justifyContent:"center", opacity:loading?0.7:1 }}>
+            {loading ? "Création en cours..." : "Créer mon compte"}
+          </button>
+
+          <p style={{ textAlign:"center", marginTop:20, fontSize:14, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+            Déjà un compte ?{" "}
+            <span onClick={() => navigate("login")} style={{ color:COLORS.primary, cursor:"pointer", fontWeight:600 }}>Se connecter</span>
           </p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function RegisterPage({ styles, c, isDark, navigate, login, notify }) {
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = () => {
-    if (!form.name || !form.email || !form.password) { notify("Remplissez tous les champs", "error"); return; }
-    if (form.password !== form.confirm) { notify("Les mots de passe ne correspondent pas", "error"); return; }
-    if (form.password.length < 8) { notify("Mot de passe trop court (8 min)", "error"); return; }
-    setLoading(true);
-    setTimeout(() => {
-      login({ id: "u_new", name: form.name, email: form.email, isAdmin: false, isSeller: false });
-      setLoading(false);
-    }, 1500);
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 440 }}>
-        <div onClick={() => navigate("landing")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 40, justifyContent: "center" }}>
-          <div style={{ width: 42, height: 42, background: "linear-gradient(135deg, #f59e0b, #d97706)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 20, color: "#000" }}>₿</div>
-          <span style={{ fontWeight: 900, fontSize: 24, background: "linear-gradient(135deg, #f59e0b, #fbbf24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>CryptoP2P</span>
-        </div>
-        <div style={styles.card}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Créer un compte</h1>
-          <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 28, fontSize: 14 }}>Rejoignez la communauté P2P la plus sûre d'Afrique.</p>
-          
-          {[
-            { key: "name", label: "Nom complet", placeholder: "Jean Dupont" },
-            { key: "email", label: "Adresse email", placeholder: "votre@email.com" },
-            { key: "password", label: "Mot de passe", placeholder: "••••••••", type: "password" },
-            { key: "confirm", label: "Confirmer le mot de passe", placeholder: "••••••••", type: "password" },
-          ].map(f => (
-            <div key={f.key} style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{f.label}</label>
-              <input style={styles.input} type={f.type || "text"} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })} />
-            </div>
-          ))}
-          
-          <button onClick={handleSubmit} disabled={loading} style={{ ...styles.btn("primary"), width: "100%", justifyContent: "center", marginTop: 12, opacity: loading ? 0.7 : 1 }}>
-            {loading ? "Création..." : "Créer mon compte 🚀"}
-          </button>
-
-          <p style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-            Déjà un compte ? <span onClick={() => navigate("login")} style={{ color: COLORS.primary, cursor: "pointer", fontWeight: 600 }}>Se connecter</span>
-          </p>
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }
 
 // ─── MARKETPLACE ──────────────────────────────────────────────────────────────
 function MarketplacePage({ styles, c, isDark, navigate, user, logout, offers, selectedCrypto, setSelectedCrypto, theme, setTheme, notify }) {
   const [search, setSearch] = useState("");
-  const filtered = offers.filter(o => (o.crypto === selectedCrypto || selectedCrypto === "all") && (search === "" || o.sellerName.toLowerCase().includes(search.toLowerCase())));
+  const filtered = offers.filter(o =>
+    (selectedCrypto === "all" || o.crypto === selectedCrypto) &&
+    (search === "" || o.sellerName.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div>
       <Navbar styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} theme={theme} setTheme={setTheme} />
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>Marketplace P2P</h1>
-          <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 15 }}>Achetez des crypto-monnaies directement auprès de vendeurs vérifiés</p>
+      <div style={{ maxWidth:1160, margin:"0 auto", padding:"32px 24px" }}>
+        <div style={{ marginBottom:28 }}>
+          <h1 style={{ fontSize:26, fontWeight:900, marginBottom:6 }}>Marketplace P2P</h1>
+          <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:14 }}>Achetez des crypto-monnaies directement auprès de vendeurs vérifiés</p>
         </div>
 
-        {/* Crypto Filter Tabs */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-          <button onClick={() => setSelectedCrypto("all")} style={{ ...styles.btn(selectedCrypto === "all" ? "primary" : "secondary", "sm") }}>🌐 Tout</button>
+        {/* Crypto Filter */}
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
+          <button onClick={() => setSelectedCrypto("all")} style={styles.btn(selectedCrypto==="all"?"primary":"secondary","sm")}>🌐 Tout</button>
           {CRYPTOS.map(cr => (
-            <button key={cr.id} onClick={() => setSelectedCrypto(cr.id)} style={{ ...styles.btn(selectedCrypto === cr.id ? "primary" : "secondary", "sm") }}>
-              <span style={{ color: cr.color }}>{cr.icon}</span> {cr.symbol} <span style={{ opacity: 0.7, fontSize: 11 }}>{cr.network}</span>
+            <button key={cr.id} onClick={() => setSelectedCrypto(cr.id)} style={styles.btn(selectedCrypto===cr.id?"primary":"secondary","sm")}>
+              <span style={{ color:cr.color }}>{cr.icon}</span> {cr.symbol}
+              <span style={{ opacity:0.6, fontSize:11 }}>{cr.network}</span>
             </button>
           ))}
         </div>
 
         {/* Search */}
-        <div style={{ position: "relative", maxWidth: 400, marginBottom: 24 }}>
-          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: c(COLORS.muted.dark, COLORS.muted.light) }}>🔍</span>
-          <input style={{ ...styles.input, paddingLeft: 42 }} placeholder="Rechercher un vendeur..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div style={{ position:"relative", maxWidth:380, marginBottom:24 }}>
+          <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:14 }}>🔍</span>
+          <input style={{ ...styles.input, paddingLeft:38 }} placeholder="Rechercher un vendeur..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
-        {/* Offers Grid */}
+        {/* Offers */}
         {filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-            <p>Aucune offre trouvée pour ce filtre.</p>
+          <div style={{ textAlign:"center", padding:"60px 0", color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+            <p>Aucune offre trouvée</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {filtered.map(offer => <OfferCard key={offer.id} offer={offer} styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} notify={notify} />)}
           </div>
         )}
@@ -427,65 +351,59 @@ function MarketplacePage({ styles, c, isDark, navigate, user, logout, offers, se
 
 function OfferCard({ offer, styles, c, isDark, navigate, user, notify }) {
   const crypto = getCrypto(offer.crypto);
-  
   const handleBuy = () => {
     if (!user) { notify("Connectez-vous pour acheter", "error"); navigate("login"); return; }
     navigate("buy", { offer });
   };
 
   return (
-    <div style={{ ...styles.card, padding: 20, transition: "all 0.2s" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        {/* Seller Info */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 200px" }}>
-          <div style={{ position: "relative" }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #1e3a5f, #0f2035)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: COLORS.primary, border: `2px solid ${offer.verified ? COLORS.green : c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
+    <div style={{ ...styles.card, padding:20 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
+        {/* Seller */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, flex:"1 1 200px", minWidth:0 }}>
+          <div style={{ position:"relative", flexShrink:0 }}>
+            <div style={{ width:46, height:46, borderRadius:"50%", background:"linear-gradient(135deg, #1e3a5f, #0f2035)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:COLORS.primary, border:`2px solid ${offer.verified?COLORS.green:c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
               {offer.sellerAvatar}
             </div>
-            <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: "50%", background: offer.online ? COLORS.green : "#6b7280", border: "2px solid" }} />
+            <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:offer.online?COLORS.green:"#6b7280", border:`2px solid ${c(COLORS.card.dark, COLORS.card.light)}` }} />
           </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 15 }}>{offer.sellerName}</span>
-              {offer.verified && <span style={{ background: "rgba(16,185,129,0.15)", color: COLORS.green, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 100 }}>✓ VÉRIFIÉ</span>}
+          <div style={{ minWidth:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+              <span style={{ fontWeight:700, fontSize:14 }}>{offer.sellerName}</span>
+              {offer.verified && <span style={{ background:"rgba(16,185,129,0.12)", color:COLORS.green, fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:100, whiteSpace:"nowrap" }}>✓ VÉRIFIÉ</span>}
             </div>
-            <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 2 }}>
+            <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:2 }}>
               {offer.completedTrades} trades • {offer.successRate}% succès
             </div>
           </div>
         </div>
 
         {/* Crypto & Rate */}
-        <div style={{ flex: "1 1 180px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 24, color: crypto.color }}>{crypto.icon}</span>
+        <div style={{ flex:"1 1 170px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+            <span style={{ fontSize:22, color:crypto.color }}>{crypto.icon}</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{crypto.name}</div>
-              <div style={{ fontSize: 11, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Réseau {crypto.network}</div>
+              <div style={{ fontWeight:700, fontSize:14 }}>{crypto.name}</div>
+              <div style={{ fontSize:11, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Réseau {crypto.network}</div>
             </div>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.primary }}>
-            {fmt(offer.rate)} <span style={{ fontSize: 13, fontWeight: 500, color: c(COLORS.muted.dark, COLORS.muted.light) }}>FCFA / {crypto.symbol}</span>
+          <div style={{ fontSize:19, fontWeight:900, color:COLORS.primary }}>
+            {fmt(offer.rate)} <span style={{ fontSize:12, fontWeight:500, color:c(COLORS.muted.dark, COLORS.muted.light) }}>FCFA/{crypto.symbol}</span>
           </div>
         </div>
 
-        {/* Limits & Methods */}
-        <div style={{ flex: "1 1 160px", fontSize: 13 }}>
-          <div style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 4 }}>
-            Limite : {offer.minAmount} — {fmt(offer.maxAmount)} {crypto.symbol}
-          </div>
-          <div style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 8 }}>
-            Dispo : <span style={{ color: COLORS.green, fontWeight: 600 }}>{fmt(offer.available)} {crypto.symbol}</span>
-          </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {/* Limits */}
+        <div style={{ flex:"1 1 150px", fontSize:12.5, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+          <div style={{ marginBottom:4 }}>Min–Max : {offer.minAmount} — {fmt(offer.maxAmount)} {crypto.symbol}</div>
+          <div style={{ marginBottom:8 }}>Dispo : <span style={{ color:COLORS.green, fontWeight:600 }}>{fmt(offer.available)} {crypto.symbol}</span></div>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
             {offer.paymentMethods.map(m => (
-              <span key={m} style={{ background: c("rgba(255,255,255,0.06)", "rgba(0,0,0,0.06)"), borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{m}</span>
+              <span key={m} style={{ background:c("rgba(255,255,255,0.07)","rgba(0,0,0,0.06)"), borderRadius:6, padding:"2px 7px", fontSize:11, fontWeight:600 }}>{m}</span>
             ))}
           </div>
         </div>
 
-        {/* Action */}
-        <button onClick={handleBuy} style={{ ...styles.btn("primary"), whiteSpace: "nowrap", flexShrink: 0 }}>
+        <button onClick={handleBuy} style={{ ...styles.btn("primary"), whiteSpace:"nowrap", flexShrink:0 }}>
           Acheter {crypto.symbol} →
         </button>
       </div>
@@ -495,7 +413,7 @@ function OfferCard({ offer, styles, c, isDark, navigate, user, notify }) {
 
 // ─── BUY PAGE ─────────────────────────────────────────────────────────────────
 function BuyPage({ styles, c, isDark, navigate, user, offer, orders, setOrders, notify }) {
-  const [step, setStep] = useState(1); // 1: form, 2: payment, 3: success
+  const [step, setStep] = useState(1);
   const [wallet, setWallet] = useState("");
   const [amount, setAmount] = useState("");
   const [walletError, setWalletError] = useState("");
@@ -503,10 +421,11 @@ function BuyPage({ styles, c, isDark, navigate, user, offer, orders, setOrders, 
   const [orderId, setOrderId] = useState("");
 
   if (!offer) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <p>Aucune offre sélectionnée</p>
-        <button onClick={() => navigate("marketplace")} style={{ ...styles.btn("primary"), marginTop: 16 }}>Retour au marketplace</button>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ fontSize:48, marginBottom:16 }}>⚠️</div>
+        <p style={{ marginBottom:20, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Aucune offre sélectionnée</p>
+        <button onClick={() => navigate("marketplace")} style={styles.btn("primary")}>← Retour au marketplace</button>
       </div>
     </div>
   );
@@ -516,11 +435,7 @@ function BuyPage({ styles, c, isDark, navigate, user, offer, orders, setOrders, 
 
   const validateWallet = (addr) => {
     if (!addr) { setWalletError(""); return; }
-    if (!crypto.addrRegex.test(addr)) {
-      setWalletError(`Format invalide. Exemple : ${crypto.addrExample}`);
-    } else {
-      setWalletError("");
-    }
+    setWalletError(crypto.addrRegex.test(addr) ? "" : `Format invalide. Exemple : ${crypto.addrExample}`);
   };
 
   const handlePay = () => {
@@ -537,190 +452,192 @@ function BuyPage({ styles, c, isDark, navigate, user, offer, orders, setOrders, 
     setTimeout(() => {
       const id = `CMD-${Date.now().toString().slice(-6)}`;
       setOrderId(id);
-      const newOrder = {
-        id, crypto: offer.crypto, amount: parseFloat(amount), amountFCFA, walletAddr: wallet.slice(0, 8) + "..." + wallet.slice(-4),
-        seller: offer.sellerName, status: "paid", createdAt: new Date().toISOString(),
-      };
-      setOrders([newOrder, ...orders]);
+      setOrders(prev => [{ id, crypto:offer.crypto, amount:parseFloat(amount), amountFCFA, walletAddr:wallet.slice(0,8)+"..."+wallet.slice(-4), seller:offer.sellerName, status:"paid", createdAt:new Date().toISOString() }, ...prev]);
       setStep(3);
       setLoading(false);
-      notify("Paiement confirmé ! Le vendeur va vous envoyer vos cryptos 🎉");
+      notify("Paiement confirmé ! Le vendeur va envoyer vos cryptos.");
     }, 2000);
   };
 
+  const steps = ["Détails", "Paiement", "Confirmation"];
+
   return (
-    <div style={{ minHeight: "100vh" }}>
-      <nav style={{ background: c("rgba(10,15,30,0.95)", "rgba(255,255,255,0.95)"), backdropFilter: "blur(20px)", borderBottom: `1px solid ${c("rgba(255,255,255,0.08)", "rgba(0,0,0,0.08)")}`, padding: "0 24px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", height: 64, gap: 16 }}>
-          <button onClick={() => navigate("marketplace")} style={{ ...styles.btn("secondary", "sm") }}>← Retour</button>
-          <span style={{ fontWeight: 700 }}>Acheter {crypto.name}</span>
+    <div style={{ minHeight:"100vh" }}>
+      <nav style={{ background:c("rgba(8,13,26,0.97)","rgba(255,255,255,0.97)"), backdropFilter:"blur(20px)", borderBottom:`1px solid ${c("rgba(255,255,255,0.07)","rgba(0,0,0,0.07)")}`, padding:"0 24px" }}>
+        <div style={{ maxWidth:1160, margin:"0 auto", display:"flex", alignItems:"center", height:60, gap:14 }}>
+          <button onClick={() => navigate("marketplace")} style={styles.btn("secondary","sm")}>← Retour</button>
+          <span style={{ fontWeight:700, fontSize:15 }}>Acheter {crypto.name}</span>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 560, margin: "40px auto", padding: "0 24px" }}>
-        {/* Progress */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
-          {["Détails", "Paiement", "Confirmation"].map((s, i) => (
-            <div key={s} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: step > i ? COLORS.primary : step === i + 1 ? "linear-gradient(135deg, #f59e0b, #d97706)" : c("rgba(255,255,255,0.1)", "rgba(0,0,0,0.1)"), display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: step > i || step === i + 1 ? "#000" : c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 6 }}>
-                  {step > i + 1 ? "✓" : i + 1}
+      <div style={{ maxWidth:540, margin:"36px auto", padding:"0 24px" }}>
+        {/* Progress Steps */}
+        <div style={{ display:"flex", alignItems:"center", marginBottom:36 }}>
+          {steps.map((s, i) => (
+            <div key={s} style={{ display:"flex", alignItems:"center", flex:1 }}>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1 }}>
+                <div style={{ width:30, height:30, borderRadius:"50%", background:step>i+1?COLORS.green:step===i+1?COLORS.primary:c("rgba(255,255,255,0.1)","rgba(0,0,0,0.1)"), display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:12, color:step>=i+1?"#000":c(COLORS.muted.dark, COLORS.muted.light), marginBottom:5, transition:"background 0.3s" }}>
+                  {step>i+1?"✓":i+1}
                 </div>
-                <span style={{ fontSize: 11, color: step === i + 1 ? COLORS.primary : c(COLORS.muted.dark, COLORS.muted.light) }}>{s}</span>
+                <span style={{ fontSize:11, color:step===i+1?COLORS.primary:c(COLORS.muted.dark, COLORS.muted.light), whiteSpace:"nowrap" }}>{s}</span>
               </div>
-              {i < 2 && <div style={{ height: 2, flex: 1, background: step > i + 1 ? COLORS.primary : c("rgba(255,255,255,0.1)", "rgba(0,0,0,0.1)"), margin: "0 8px", marginBottom: 20 }} />}
+              {i<2 && <div style={{ height:2, flex:1, background:step>i+1?COLORS.green:c("rgba(255,255,255,0.1)","rgba(0,0,0,0.1)"), margin:"0 6px 18px", transition:"background 0.3s" }} />}
             </div>
           ))}
         </div>
 
         {/* Seller Summary */}
-        <div style={{ ...styles.card, padding: 16, marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #1e3a5f, #0f2035)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: COLORS.primary }}>
+        <div style={{ ...styles.card, padding:16, marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:38, height:38, borderRadius:"50%", background:"linear-gradient(135deg, #1e3a5f, #0f2035)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, color:COLORS.primary, fontSize:15, flexShrink:0 }}>
             {offer.sellerAvatar}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700 }}>{offer.sellerName}</div>
-            <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{offer.completedTrades} trades • {offer.successRate}% succès</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:700, fontSize:14 }}>{offer.sellerName}</div>
+            <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{offer.completedTrades} trades • {offer.successRate}% succès</div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: 800, color: COLORS.primary }}>{fmt(offer.rate)}</div>
-            <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>FCFA / {crypto.symbol}</div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontWeight:800, color:COLORS.primary, fontSize:16 }}>{fmt(offer.rate)}</div>
+            <div style={{ fontSize:11, color:c(COLORS.muted.dark, COLORS.muted.light) }}>FCFA / {crypto.symbol}</div>
           </div>
         </div>
 
-        {/* Step 1: Form */}
-        {step === 1 && (
+        {/* Step 1 */}
+        {step===1 && (
           <div style={styles.card}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>Détails de la commande</h2>
-            
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
+            <h2 style={{ fontSize:18, fontWeight:800, marginBottom:22 }}>Détails de la commande</h2>
+
+            <div style={{ marginBottom:18 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
                 Adresse Wallet {crypto.name} ({crypto.network}) *
               </label>
               <input
-                style={{ ...styles.input, borderColor: walletError ? COLORS.red : undefined }}
+                style={{ ...styles.input, borderColor:walletError?COLORS.red:wallet&&!walletError?COLORS.green:undefined }}
                 placeholder={crypto.addrExample}
                 value={wallet}
                 onChange={e => { setWallet(e.target.value); validateWallet(e.target.value); }}
               />
-              {walletError && <p style={{ color: COLORS.red, fontSize: 12, marginTop: 6 }}>⚠️ {walletError}</p>}
-              {wallet && !walletError && <p style={{ color: COLORS.green, fontSize: 12, marginTop: 6 }}>✅ Format d'adresse valide</p>}
+              {walletError && <p style={{ color:COLORS.red, fontSize:12, marginTop:5 }}>⚠️ {walletError}</p>}
+              {wallet && !walletError && <p style={{ color:COLORS.green, fontSize:12, marginTop:5 }}>✅ Adresse valide</p>}
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
+            <div style={{ marginBottom:22 }}>
+              <label style={{ display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
                 Quantité de {crypto.symbol} *
               </label>
-              <div style={{ position: "relative" }}>
+              <div style={{ position:"relative" }}>
                 <input
-                  style={{ ...styles.input, paddingRight: 80 }}
+                  style={{ ...styles.input, paddingRight:72 }}
                   type="number"
                   placeholder={`Min: ${offer.minAmount}`}
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                 />
-                <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: crypto.color, fontSize: 14 }}>{crypto.symbol}</span>
+                <span style={{ position:"absolute", right:13, top:"50%", transform:"translateY(-50%)", fontWeight:700, color:crypto.color, fontSize:13 }}>{crypto.symbol}</span>
               </div>
-              <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 6 }}>
+              <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:5 }}>
                 Limites : {offer.minAmount} – {fmt(offer.maxAmount)} {crypto.symbol}
               </div>
             </div>
 
-            {/* Auto-calculation */}
-            {amountFCFA > 0 && (
-              <div style={{ background: c("rgba(245,158,11,0.08)", "rgba(245,158,11,0.08)"), border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: 16, marginBottom: 24 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>Vous recevez</span>
-                  <span style={{ fontWeight: 700 }}>{amount} {crypto.symbol}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>Taux</span>
-                  <span style={{ fontWeight: 600 }}>{fmt(offer.rate)} FCFA/{crypto.symbol}</span>
-                </div>
-                <div style={{ height: 1, background: c("rgba(255,255,255,0.1)", "rgba(0,0,0,0.1)"), margin: "12px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 700 }}>Total à payer</span>
-                  <span style={{ fontWeight: 900, fontSize: 20, color: COLORS.primary }}>{fmt(amountFCFA)} FCFA</span>
+            {amountFCFA>0 && (
+              <div style={{ background:c("rgba(245,158,11,0.07)","rgba(245,158,11,0.07)"), border:"1px solid rgba(245,158,11,0.2)", borderRadius:12, padding:16, marginBottom:22 }}>
+                {[
+                  ["Vous recevez", `${amount} ${crypto.symbol}`],
+                  ["Taux appliqué", `${fmt(offer.rate)} FCFA/${crypto.symbol}`],
+                ].map(([l,v]) => (
+                  <div key={l} style={{ display:"flex", justifyContent:"space-between", marginBottom:8, fontSize:13 }}>
+                    <span style={{ color:c(COLORS.muted.dark, COLORS.muted.light) }}>{l}</span>
+                    <span style={{ fontWeight:600 }}>{v}</span>
+                  </div>
+                ))}
+                <div style={{ height:1, background:c("rgba(255,255,255,0.1)","rgba(0,0,0,0.1)"), margin:"10px 0" }} />
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ fontWeight:700 }}>Total à payer</span>
+                  <span style={{ fontWeight:900, fontSize:19, color:COLORS.primary }}>{fmt(amountFCFA)} FCFA</span>
                 </div>
               </div>
             )}
 
-            <button onClick={handlePay} style={{ ...styles.btn("primary"), width: "100%", justifyContent: "center" }}>
-              Continuer → Paiement Mobile Money
+            <button onClick={handlePay} style={{ ...styles.btn("primary"), width:"100%", justifyContent:"center" }}>
+              Continuer → Paiement
             </button>
           </div>
         )}
 
-        {/* Step 2: Payment */}
-        {step === 2 && (
+        {/* Step 2 */}
+        {step===2 && (
           <div style={styles.card}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Paiement Mobile Money</h2>
-            <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14, marginBottom: 24 }}>Sélectionnez votre opérateur et confirmez le paiement</p>
+            <h2 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Paiement Mobile Money</h2>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginBottom:22 }}>Confirmez votre paiement</p>
 
-            {/* Order summary */}
-            <div style={{ background: c("rgba(16,185,129,0.08)", "rgba(16,185,129,0.06)"), border: "1px solid rgba(16,185,129,0.2)", borderRadius: 12, padding: 16, marginBottom: 24 }}>
-              <div style={{ fontWeight: 700, marginBottom: 12 }}>📋 Récapitulatif</div>
-              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>Crypto</span><strong>{amount} {crypto.symbol}</strong></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>Wallet</span><strong>{wallet.slice(0, 12)}...{wallet.slice(-4)}</strong></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>Vendeur</span><strong>{offer.sellerName}</strong></div>
-                <div style={{ height: 1, background: c("rgba(255,255,255,0.1)", "rgba(0,0,0,0.1)"), margin: "4px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 700 }}>Total</span><span style={{ fontWeight: 900, color: COLORS.primary, fontSize: 18 }}>{fmt(amountFCFA)} FCFA</span></div>
+            <div style={{ background:c("rgba(16,185,129,0.07)","rgba(16,185,129,0.06)"), border:"1px solid rgba(16,185,129,0.2)", borderRadius:12, padding:16, marginBottom:20 }}>
+              <div style={{ fontWeight:700, marginBottom:12, fontSize:14 }}>📋 Récapitulatif</div>
+              {[
+                ["Crypto à recevoir", `${amount} ${crypto.symbol}`],
+                ["Adresse wallet", `${wallet.slice(0,12)}...${wallet.slice(-4)}`],
+                ["Vendeur", offer.sellerName],
+              ].map(([l,v]) => (
+                <div key={l} style={{ display:"flex", justifyContent:"space-between", marginBottom:6, fontSize:13 }}>
+                  <span style={{ color:c(COLORS.muted.dark, COLORS.muted.light) }}>{l}</span>
+                  <strong>{v}</strong>
+                </div>
+              ))}
+              <div style={{ height:1, background:c("rgba(255,255,255,0.1)","rgba(0,0,0,0.1)"), margin:"10px 0" }} />
+              <div style={{ display:"flex", justifyContent:"space-between" }}>
+                <span style={{ fontWeight:700 }}>Total</span>
+                <span style={{ fontWeight:900, color:COLORS.primary, fontSize:18 }}>{fmt(amountFCFA)} FCFA</span>
               </div>
             </div>
 
-            {/* Mobile Money Methods */}
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 12 }}>Moyens de paiement acceptés :</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ marginBottom:20 }}>
+              <p style={{ fontSize:13, fontWeight:600, color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:10 }}>Paiements acceptés</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {offer.paymentMethods.map(m => (
-                  <div key={m} style={{ border: `2px solid ${COLORS.primary}`, borderRadius: 10, padding: "12px 14px", textAlign: "center", fontWeight: 600, fontSize: 14, background: "rgba(245,158,11,0.05)" }}>
+                  <div key={m} style={{ border:`1.5px solid ${COLORS.primary}`, borderRadius:10, padding:"11px 14px", textAlign:"center", fontWeight:600, fontSize:13, background:"rgba(245,158,11,0.04)" }}>
                     📱 {m}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ background: c("rgba(59,130,246,0.08)", "rgba(59,130,246,0.06)"), border: "1px solid rgba(59,130,246,0.2)", borderRadius: 10, padding: 14, marginBottom: 24, fontSize: 13 }}>
-              ℹ️ <strong>Info :</strong> En cliquant sur "Payer", vous serez redirigé vers l'interface de paiement Mobile Money de votre opérateur. Le vendeur sera notifié dès confirmation.
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <button onClick={confirmPayment} disabled={loading} style={{ ...styles.btn("green"), width:"100%", justifyContent:"center", fontSize:15, opacity:loading?0.7:1 }}>
+                {loading?"⏳ Traitement...": `💳 Payer ${fmt(amountFCFA)} FCFA`}
+              </button>
+              <button onClick={() => setStep(1)} style={{ ...styles.btn("ghost"), width:"100%", justifyContent:"center" }}>
+                ← Modifier la commande
+              </button>
             </div>
-
-            <button onClick={confirmPayment} disabled={loading} style={{ ...styles.btn("green"), width: "100%", justifyContent: "center", opacity: loading ? 0.7 : 1, fontSize: 16 }}>
-              {loading ? "⏳ Traitement..." : `💳 Payer ${fmt(amountFCFA)} FCFA`}
-            </button>
-            <button onClick={() => setStep(1)} style={{ ...styles.btn("ghost"), width: "100%", justifyContent: "center", marginTop: 8 }}>
-              ← Modifier la commande
-            </button>
           </div>
         )}
 
-        {/* Step 3: Success */}
-        {step === 3 && (
-          <div style={{ ...styles.card, textAlign: "center" }}>
-            <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-            <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8 }}>Paiement confirmé !</h2>
-            <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 24 }}>
-              Votre commande <strong style={{ color: COLORS.primary }}>{orderId}</strong> a été créée. Le vendeur va vous envoyer vos cryptos.
+        {/* Step 3 */}
+        {step===3 && (
+          <div style={{ ...styles.card, textAlign:"center" }}>
+            <div style={{ fontSize:56, marginBottom:16 }}>🎉</div>
+            <h2 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Paiement confirmé !</h2>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:24, fontSize:14 }}>
+              Commande <strong style={{ color:COLORS.primary }}>{orderId}</strong> créée. Le vendeur va vous envoyer vos cryptos.
             </p>
-            
-            <div style={{ background: c("rgba(245,158,11,0.08)", "rgba(245,158,11,0.06)"), borderRadius: 12, padding: 20, marginBottom: 24, textAlign: "left" }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>📌 Prochaines étapes</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 14 }}>
+
+            <div style={{ background:c("rgba(245,158,11,0.07)","rgba(245,158,11,0.06)"), borderRadius:12, padding:20, marginBottom:24, textAlign:"left" }}>
+              <h3 style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>📌 Prochaines étapes</h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {[
-                  { icon: "🔔", text: "Le vendeur reçoit une notification" },
-                  { icon: "📤", text: "Il envoie vos cryptos manuellement" },
-                  { icon: "✅", text: "Vous devez confirmer la réception" },
-                  { icon: "🔒", text: "Les fonds du vendeur sont libérés" },
-                ].map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: "50%", background: c("rgba(255,255,255,0.08)", "rgba(0,0,0,0.06)"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{s.icon}</span>
-                    <span style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>{s.text}</span>
+                  ["🔔","Le vendeur reçoit une notification"],
+                  ["📤","Il envoie vos cryptos manuellement"],
+                  ["✅","Vous confirmez la réception"],
+                  ["🔒","Les fonds du vendeur sont libérés"],
+                ].map(([icon,text],i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13 }}>
+                    <span style={{ fontSize:16 }}>{icon}</span>
+                    <span style={{ color:c(COLORS.muted.dark, COLORS.muted.light) }}>{text}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
               <button onClick={() => navigate("dashboard")} style={styles.btn("primary")}>Voir mes commandes →</button>
               <button onClick={() => navigate("marketplace")} style={styles.btn("secondary")}>Retour marketplace</button>
             </div>
@@ -736,135 +653,120 @@ function DashboardPage({ styles, c, isDark, navigate, user, logout, orders, setO
   const [activeTab, setActiveTab] = useState("orders");
   const [confirmModal, setConfirmModal] = useState(null);
 
-  const confirmReception = (orderId) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: "confirmed" } : o));
+  const confirmReception = (id) => {
+    setOrders(orders.map(o => o.id===id?{...o, status:"confirmed"}:o));
     setConfirmModal(null);
-    notify("Réception confirmée ! La transaction est terminée. ✅");
+    notify("Réception confirmée ! Transaction terminée. ✅");
   };
 
-  const openDispute = (orderId) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: "disputed" } : o));
+  const openDispute = (id) => {
+    setOrders(orders.map(o => o.id===id?{...o, status:"disputed"}:o));
     notify("Litige ouvert. Le support va analyser votre cas.", "error");
   };
 
-  const statusCounts = {
-    all: orders.length,
-    paid: orders.filter(o => o.status === "paid").length,
-    delivered: orders.filter(o => o.status === "delivered").length,
-    confirmed: orders.filter(o => o.status === "confirmed").length,
-  };
+  const tabs = [{ id:"orders", label:"Mes commandes" }, { id:"profile", label:"Mon profil" }];
 
   return (
     <div>
       <Navbar styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} theme={theme} setTheme={setTheme} />
-      
-      {/* Confirm Modal */}
+
       {confirmModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ ...styles.card, maxWidth: 400, width: "100%" }}>
-            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Confirmer la réception ?</h3>
-            <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 24, fontSize: 14 }}>
-              En confirmant, vous attestez avoir bien reçu vos cryptos. Cette action est <strong>irréversible</strong> et libère les fonds du vendeur.
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div style={{ ...styles.card, maxWidth:400, width:"100%" }}>
+            <h3 style={{ fontSize:18, fontWeight:800, marginBottom:10 }}>Confirmer la réception ?</h3>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:22, fontSize:14, lineHeight:1.6 }}>
+              En confirmant, vous attestez avoir reçu vos cryptos. Cette action est <strong>irréversible</strong>.
             </p>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={() => confirmReception(confirmModal)} style={{ ...styles.btn("green"), flex: 1, justifyContent: "center" }}>✅ Confirmer la réception</button>
-              <button onClick={() => setConfirmModal(null)} style={{ ...styles.btn("secondary"), flex: 1, justifyContent: "center" }}>Annuler</button>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => confirmReception(confirmModal)} style={{ ...styles.btn("green"), flex:1, justifyContent:"center" }}>✅ Confirmer</button>
+              <button onClick={() => setConfirmModal(null)} style={{ ...styles.btn("secondary"), flex:1, justifyContent:"center" }}>Annuler</button>
             </div>
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 22, color: "#000" }}>
-            {user?.name?.[0] || "U"}
+      <div style={{ maxWidth:980, margin:"0 auto", padding:"32px 24px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:28, flexWrap:"wrap" }}>
+          <div style={{ width:52, height:52, borderRadius:"50%", background:"linear-gradient(135deg, #f59e0b, #d97706)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:20, color:"#000" }}>
+            {user?.name?.[0]||"U"}
           </div>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900 }}>Bonjour, {user?.name} 👋</h1>
-            <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>Gérez vos achats et confirmez vos réceptions</p>
+            <h1 style={{ fontSize:22, fontWeight:900 }}>Bonjour, {user?.name} 👋</h1>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginTop:2 }}>Gérez vos achats et confirmez vos réceptions</p>
           </div>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 32 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(150px,1fr))", gap:12, marginBottom:28 }}>
           {[
-            { label: "Total commandes", value: orders.length, icon: "📦", color: COLORS.blue },
-            { label: "En attente", value: statusCounts.paid, icon: "⏳", color: COLORS.primary },
-            { label: "Livrées", value: statusCounts.delivered, icon: "🚚", color: COLORS.purple },
-            { label: "Confirmées", value: statusCounts.confirmed, icon: "✅", color: COLORS.green },
+            { label:"Total", value:orders.length, icon:"📦", color:COLORS.blue },
+            { label:"En attente", value:orders.filter(o=>o.status==="paid").length, icon:"⏳", color:COLORS.primary },
+            { label:"Livrées", value:orders.filter(o=>o.status==="delivered").length, icon:"🚚", color:COLORS.purple },
+            { label:"Confirmées", value:orders.filter(o=>o.status==="confirmed").length, icon:"✅", color:COLORS.green },
           ].map(s => (
-            <div key={s.label} style={{ ...styles.card, padding: 20 }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 2 }}>{s.label}</div>
+            <div key={s.label} style={{ ...styles.card, padding:18 }}>
+              <div style={{ fontSize:24, marginBottom:6 }}>{s.icon}</div>
+              <div style={{ fontSize:24, fontWeight:900, color:s.color }}>{s.value}</div>
+              <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, paddingBottom: 0 }}>
-          {[
-            { id: "orders", label: "Mes commandes" },
-            { id: "profile", label: "Mon profil" },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ ...styles.btn(activeTab === tab.id ? "primary" : "ghost", "sm"), borderRadius: "8px 8px 0 0", paddingBottom: 14 }}>
+        <div style={{ display:"flex", gap:6, marginBottom:20, borderBottom:`1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, paddingBottom:0 }}>
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ ...styles.btn(activeTab===tab.id?"primary":"ghost","sm"), borderRadius:"8px 8px 0 0", paddingBottom:13 }}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Orders Tab */}
-        {activeTab === "orders" && (
+        {activeTab==="orders" && (
           <div>
-            {orders.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
-                <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>Aucune commande pour l'instant</p>
-                <button onClick={() => navigate("marketplace")} style={{ ...styles.btn("primary"), marginTop: 16 }}>Découvrir les offres →</button>
+            {orders.length===0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                <p style={{ marginBottom:16 }}>Aucune commande pour l'instant</p>
+                <button onClick={() => navigate("marketplace")} style={styles.btn("primary")}>Découvrir les offres →</button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                 {orders.map(order => {
                   const crypto = getCrypto(order.crypto);
-                  const status = statusConfig[order.status] || statusConfig.pending;
+                  const status = statusConfig[order.status]||statusConfig.pending;
                   return (
-                    <div key={order.id} style={{ ...styles.card, padding: 20 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                        <div style={{ flex: "1 1 200px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontWeight: 700, color: COLORS.primary }}>{order.id}</span>
-                            <span style={{ background: status.bg, color: status.color, padding: "2px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>{status.label}</span>
+                    <div key={order.id} style={{ ...styles.card, padding:18 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                        <div style={{ flex:"1 1 180px" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5, flexWrap:"wrap" }}>
+                            <span style={{ fontWeight:700, color:COLORS.primary, fontSize:13 }}>{order.id}</span>
+                            <span style={{ background:status.bg, color:status.color, padding:"2px 9px", borderRadius:100, fontSize:11, fontWeight:700 }}>{status.label}</span>
                           </div>
-                          <div style={{ fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                            {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                            {new Date(order.createdAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}
                           </div>
                         </div>
-                        <div style={{ flex: "1 1 160px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ color: crypto.color, fontSize: 20 }}>{crypto.icon}</span>
+                        <div style={{ flex:"1 1 140px" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                            <span style={{ color:crypto.color, fontSize:18 }}>{crypto.icon}</span>
                             <div>
-                              <div style={{ fontWeight: 700 }}>{order.amount} {crypto.symbol}</div>
-                              <div style={{ fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
+                              <div style={{ fontWeight:700, fontSize:14 }}>{order.amount} {crypto.symbol}</div>
+                              <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
                             </div>
                           </div>
                         </div>
-                        <div style={{ flex: "1 1 160px", fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
+                        <div style={{ flex:"1 1 140px", fontSize:12.5, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
                           <div>Vendeur : <strong>{order.seller}</strong></div>
                           <div>Wallet : {order.walletAddr}</div>
                         </div>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          {order.status === "delivered" && (
-                            <>
-                              <button onClick={() => setConfirmModal(order.id)} style={styles.btn("green", "sm")}>✅ Confirmer réception</button>
-                              <button onClick={() => openDispute(order.id)} style={{ ...styles.btn("red", "sm") }}>⚠️ Litige</button>
-                            </>
-                          )}
-                          {order.status === "paid" && (
-                            <span style={{ fontSize: 13, color: COLORS.primary, fontStyle: "italic" }}>⏳ En attente d'envoi...</span>
-                          )}
-                          {order.status === "confirmed" && <span style={{ color: COLORS.green, fontSize: 13, fontWeight: 600 }}>✅ Transaction terminée</span>}
-                          {order.status === "disputed" && <span style={{ color: COLORS.red, fontSize: 13, fontWeight: 600 }}>⚠️ Litige en cours</span>}
+                        <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
+                          {order.status==="delivered" && <>
+                            <button onClick={() => setConfirmModal(order.id)} style={styles.btn("green","sm")}>✅ Confirmer réception</button>
+                            <button onClick={() => openDispute(order.id)} style={styles.btn("red","sm")}>⚠️ Litige</button>
+                          </>}
+                          {order.status==="paid" && <span style={{ fontSize:12, color:COLORS.primary, fontStyle:"italic" }}>⏳ Attente envoi...</span>}
+                          {order.status==="confirmed" && <span style={{ color:COLORS.green, fontSize:12, fontWeight:600 }}>✅ Terminé</span>}
+                          {order.status==="disputed" && <span style={{ color:COLORS.red, fontSize:12, fontWeight:600 }}>⚠️ Litige en cours</span>}
                         </div>
                       </div>
                     </div>
@@ -875,29 +777,28 @@ function DashboardPage({ styles, c, isDark, navigate, user, logout, orders, setO
           </div>
         )}
 
-        {/* Profile Tab */}
-        {activeTab === "profile" && (
+        {activeTab==="profile" && (
           <div style={styles.card}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Informations du compte</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <h3 style={{ fontSize:17, fontWeight:700, marginBottom:20 }}>Informations du compte</h3>
+            <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
               {[
-                { label: "Nom complet", value: user?.name },
-                { label: "Email", value: user?.email },
-                { label: "Statut", value: user?.isSeller ? "Vendeur vérifié" : "Acheteur" },
+                { label:"Nom complet", value:user?.name },
+                { label:"Adresse email", value:user?.email },
+                { label:"Statut", value:user?.isSeller?"Vendeur vérifié":"Acheteur" },
               ].map(f => (
-                <div key={f.label} style={{ display: "flex", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
-                  <span style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>{f.label}</span>
-                  <span style={{ fontWeight: 600 }}>{f.value}</span>
+                <div key={f.label} style={{ display:"flex", justifyContent:"space-between", padding:"14px 0", borderBottom:`1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
+                  <span style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:14 }}>{f.label}</span>
+                  <span style={{ fontWeight:600, fontSize:14 }}>{f.value}</span>
                 </div>
               ))}
             </div>
             {!user?.isSeller && (
-              <div style={{ marginTop: 24, padding: 20, background: c("rgba(245,158,11,0.08)", "rgba(245,158,11,0.06)"), border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12 }}>
-                <h4 style={{ fontWeight: 700, marginBottom: 8 }}>Devenir vendeur</h4>
-                <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 13, marginBottom: 16 }}>Contactez notre équipe pour être validé comme vendeur sur la plateforme.</p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("green", "sm"), textDecoration: "none" }}>📱 WhatsApp</a>
-                  <a href="mailto:erickpakpo786@gmail.com" style={{ ...styles.btn("secondary", "sm"), textDecoration: "none" }}>✉️ Email</a>
+              <div style={{ marginTop:24, padding:20, background:c("rgba(245,158,11,0.07)","rgba(245,158,11,0.06)"), border:"1px solid rgba(245,158,11,0.2)", borderRadius:12 }}>
+                <h4 style={{ fontWeight:700, marginBottom:8 }}>Devenir vendeur</h4>
+                <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginBottom:14, lineHeight:1.6 }}>Contactez notre équipe pour être validé comme vendeur.</p>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                  <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("green","sm"), textDecoration:"none" }}>📱 WhatsApp</a>
+                  <a href="mailto:erickpakpo786@gmail.com" style={{ ...styles.btn("secondary","sm"), textDecoration:"none" }}>✉️ Email</a>
                 </div>
               </div>
             )}
@@ -912,151 +813,138 @@ function DashboardPage({ styles, c, isDark, navigate, user, logout, orders, setO
 function SellerPage({ styles, c, isDark, navigate, user, logout, offers, setOffers, orders, setOrders, notify, theme, setTheme }) {
   const [activeTab, setActiveTab] = useState("orders");
   const [showNewOffer, setShowNewOffer] = useState(false);
-  const [newOffer, setNewOffer] = useState({ crypto: "usdt_trc20", rate: "", minAmount: "", maxAmount: "", available: "", paymentMethods: [] });
-  const [withdrawModal, setWithdrawModal] = useState(null);
+  const [newOffer, setNewOffer] = useState({ crypto:"usdt_trc20", rate:"", minAmount:"", maxAmount:"", available:"", paymentMethods:[] });
+  const [withdrawModal, setWithdrawModal] = useState(false);
+  const [withdrawForm, setWithdrawForm] = useState({ amount:"", reseau:"", numero:"", nom:"" });
 
-  // Mock seller orders
-  const sellerOrders = orders.map(o => ({
-    ...o, status: o.status === "pending" ? "paid" : o.status
-  }));
+  const sellerOrders = orders.map(o => ({ ...o, status:o.status==="pending"?"paid":o.status }));
+  const earnings = { total:485000, blocked:65000, available:420000 };
 
-  const myOffers = offers.filter(o => o.sellerId === "v1"); // Mock: first vendor
-
-  const markDelivered = (orderId) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: "delivered" } : o));
-    notify("Crypto marquée comme livrée ! En attente de confirmation de l'acheteur.");
+  const markDelivered = (id) => {
+    setOrders(orders.map(o => o.id===id?{...o,status:"delivered"}:o));
+    notify("Crypto marquée comme livrée. En attente de confirmation acheteur.");
   };
 
   const handleWithdraw = () => {
-    setWithdrawModal(null);
+    if (!withdrawForm.amount || !withdrawForm.reseau || !withdrawForm.numero || !withdrawForm.nom) { notify("Remplissez tous les champs", "error"); return; }
+    setWithdrawModal(false);
+    setWithdrawForm({ amount:"", reseau:"", numero:"", nom:"" });
     notify("Demande de retrait envoyée ! Traitement en moins de 5 minutes. 💸");
   };
 
   const createOffer = () => {
-    if (!newOffer.rate || !newOffer.minAmount || !newOffer.maxAmount || !newOffer.available) {
-      notify("Remplissez tous les champs", "error"); return;
-    }
-    const crypto = getCrypto(newOffer.crypto);
+    if (!newOffer.rate || !newOffer.minAmount || !newOffer.maxAmount || !newOffer.available) { notify("Remplissez tous les champs", "error"); return; }
     const offer = {
-      id: `o_${Date.now()}`, sellerId: "v1", sellerName: user.name, sellerAvatar: user.name[0],
-      verified: true, crypto: newOffer.crypto, rate: parseFloat(newOffer.rate),
-      minAmount: parseFloat(newOffer.minAmount), maxAmount: parseFloat(newOffer.maxAmount),
-      available: parseFloat(newOffer.available), paymentMethods: newOffer.paymentMethods.length ? newOffer.paymentMethods : ["MTN MoMo"],
-      completedTrades: 0, successRate: 100, online: true,
+      id:`o_${Date.now()}`, sellerId:"v_seller", sellerName:user.name, sellerAvatar:user.name[0],
+      verified:true, crypto:newOffer.crypto, rate:parseFloat(newOffer.rate),
+      minAmount:parseFloat(newOffer.minAmount), maxAmount:parseFloat(newOffer.maxAmount),
+      available:parseFloat(newOffer.available),
+      paymentMethods:newOffer.paymentMethods.length?newOffer.paymentMethods:["MTN MoMo"],
+      completedTrades:0, successRate:100, online:true,
     };
     setOffers([offer, ...offers]);
     setShowNewOffer(false);
-    setNewOffer({ crypto: "usdt_trc20", rate: "", minAmount: "", maxAmount: "", available: "", paymentMethods: [] });
+    setNewOffer({ crypto:"usdt_trc20", rate:"", minAmount:"", maxAmount:"", available:"", paymentMethods:[] });
     notify("Offre publiée avec succès ! ✅");
   };
-
-  // Mock earnings
-  const earnings = { total: 485000, blocked: 65000, available: 420000 };
 
   return (
     <div>
       <Navbar styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} theme={theme} setTheme={setTheme} />
 
-      {/* Withdraw Modal */}
       {withdrawModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ ...styles.card, maxWidth: 400, width: "100%" }}>
-            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Retrait Mobile Money</h3>
-            <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14, marginBottom: 20 }}>
-              Disponible : <strong style={{ color: COLORS.green }}>{fmt(earnings.available)} FCFA</strong>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div style={{ ...styles.card, maxWidth:400, width:"100%" }}>
+            <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Retrait Mobile Money</h3>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginBottom:20 }}>
+              Disponible : <strong style={{ color:COLORS.green }}>{fmt(earnings.available)} FCFA</strong>
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
-              <input style={styles.input} placeholder="Montant (FCFA)" type="number" />
-              <input style={styles.input} placeholder="Réseau (MTN, Orange...)" />
-              <input style={styles.input} placeholder="Numéro Mobile Money" />
-              <input style={styles.input} placeholder="Nom du bénéficiaire" />
+            <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:20 }}>
+              {[
+                { key:"amount", label:"Montant (FCFA)", placeholder:"Ex: 50000", type:"number" },
+                { key:"reseau", label:"Réseau Mobile Money", placeholder:"MTN, Orange, Moov..." },
+                { key:"numero", label:"Numéro Mobile Money", placeholder:"+229 XX XX XX XX" },
+                { key:"nom", label:"Nom du bénéficiaire", placeholder:"Jean Dupont" },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ display:"block", fontSize:12, fontWeight:600, color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:5 }}>{f.label}</label>
+                  <input style={styles.input} type={f.type||"text"} placeholder={f.placeholder} value={withdrawForm[f.key]} onChange={e => setWithdrawForm({...withdrawForm,[f.key]:e.target.value})} />
+                </div>
+              ))}
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={handleWithdraw} style={{ ...styles.btn("primary"), flex: 1, justifyContent: "center" }}>💸 Retirer</button>
-              <button onClick={() => setWithdrawModal(null)} style={{ ...styles.btn("secondary"), flex: 1, justifyContent: "center" }}>Annuler</button>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={handleWithdraw} style={{ ...styles.btn("primary"), flex:1, justifyContent:"center" }}>💸 Retirer</button>
+              <button onClick={() => setWithdrawModal(false)} style={{ ...styles.btn("secondary"), flex:1, justifyContent:"center" }}>Annuler</button>
             </div>
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 900 }}>Espace Vendeur 🏪</h1>
-          <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>Gérez vos offres et commandes</p>
+      <div style={{ maxWidth:980, margin:"0 auto", padding:"32px 24px" }}>
+        <div style={{ marginBottom:28 }}>
+          <h1 style={{ fontSize:22, fontWeight:900 }}>Espace Vendeur 🏪</h1>
+          <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginTop:4 }}>Gérez vos offres et commandes</p>
         </div>
 
-        {/* Earnings Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 32 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px,1fr))", gap:12, marginBottom:28 }}>
           {[
-            { label: "Revenus totaux", value: fmt(earnings.total) + " FCFA", icon: "💰", color: COLORS.primary },
-            { label: "Bloqués (24h)", value: fmt(earnings.blocked) + " FCFA", icon: "🔒", color: COLORS.primary, sub: "Disponible après 24h" },
-            { label: "Disponibles", value: fmt(earnings.available) + " FCFA", icon: "✅", color: COLORS.green },
-            { label: "Commandes actives", value: sellerOrders.filter(o => o.status === "paid").length, icon: "📦", color: COLORS.blue },
+            { label:"Revenus totaux", value:`${fmt(earnings.total)} FCFA`, icon:"💰", color:COLORS.primary },
+            { label:"Fonds bloqués", value:`${fmt(earnings.blocked)} FCFA`, icon:"🔒", color:COLORS.primary },
+            { label:"Disponibles", value:`${fmt(earnings.available)} FCFA`, icon:"✅", color:COLORS.green },
+            { label:"Commandes actives", value:sellerOrders.filter(o=>o.status==="paid").length, icon:"📦", color:COLORS.blue },
           ].map(s => (
-            <div key={s.label} style={{ ...styles.card, padding: 20 }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
-              <div style={{ fontSize: s.value.toString().length > 12 ? 18 : 22, fontWeight: 900, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 2 }}>{s.label}</div>
-              {s.sub && <div style={{ fontSize: 11, color: c(COLORS.muted.dark, COLORS.muted.light), marginTop: 4, opacity: 0.7 }}>{s.sub}</div>}
+            <div key={s.label} style={{ ...styles.card, padding:18 }}>
+              <div style={{ fontSize:24, marginBottom:6 }}>{s.icon}</div>
+              <div style={{ fontSize:typeof s.value==="number"?24:16, fontWeight:900, color:s.color }}>{s.value}</div>
+              <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:3 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[
-              { id: "orders", label: "Commandes" },
-              { id: "offers", label: "Mes offres" },
-              { id: "finance", label: "Finances" },
-            ].map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={styles.btn(activeTab === tab.id ? "primary" : "secondary", "sm")}>{tab.label}</button>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:10 }}>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {[["orders","Commandes"],["offers","Mes offres"],["finance","Finances"]].map(([id,label]) => (
+              <button key={id} onClick={() => setActiveTab(id)} style={styles.btn(activeTab===id?"primary":"secondary","sm")}>{label}</button>
             ))}
           </div>
-          {activeTab === "offers" && <button onClick={() => setShowNewOffer(true)} style={styles.btn("primary", "sm")}>+ Nouvelle offre</button>}
-          {activeTab === "finance" && <button onClick={() => setWithdrawModal(true)} style={styles.btn("green", "sm")}>💸 Retrait</button>}
+          <div style={{ display:"flex", gap:8 }}>
+            {activeTab==="offers" && <button onClick={() => setShowNewOffer(!showNewOffer)} style={styles.btn("primary","sm")}>+ Nouvelle offre</button>}
+            {activeTab==="finance" && <button onClick={() => setWithdrawModal(true)} style={styles.btn("green","sm")}>💸 Retrait</button>}
+          </div>
         </div>
 
-        {/* Orders Tab */}
-        {activeTab === "orders" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {sellerOrders.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                <div style={{ fontSize: 48 }}>📭</div>
+        {activeTab==="orders" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {sellerOrders.length===0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
                 <p>Aucune commande pour l'instant</p>
               </div>
             ) : sellerOrders.map(order => {
               const crypto = getCrypto(order.crypto);
-              const status = statusConfig[order.status] || statusConfig.pending;
+              const status = statusConfig[order.status]||statusConfig.pending;
               return (
-                <div key={order.id} style={{ ...styles.card, padding: 20 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: "1 1 160px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontWeight: 700, color: COLORS.primary, fontSize: 14 }}>{order.id}</span>
-                        <span style={{ background: status.bg, color: status.color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>{status.label}</span>
+                <div key={order.id} style={{ ...styles.card, padding:18 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                    <div style={{ flex:"1 1 150px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4, flexWrap:"wrap" }}>
+                        <span style={{ fontWeight:700, color:COLORS.primary, fontSize:13 }}>{order.id}</span>
+                        <span style={{ background:status.bg, color:status.color, padding:"2px 8px", borderRadius:100, fontSize:11, fontWeight:700 }}>{status.label}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                        {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                        {new Date(order.createdAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}
                       </div>
                     </div>
-                    <div style={{ flex: "1 1 140px" }}>
-                      <div style={{ fontWeight: 700 }}>{order.amount} {crypto.symbol}</div>
-                      <div style={{ fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
+                    <div style={{ flex:"1 1 130px" }}>
+                      <div style={{ fontWeight:700, fontSize:14 }}>{order.amount} {crypto.symbol}</div>
+                      <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
                     </div>
-                    <div style={{ flex: "1 1 140px", fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                      Wallet : {order.walletAddr}
-                    </div>
+                    <div style={{ flex:"1 1 130px", fontSize:12.5, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Wallet : {order.walletAddr}</div>
                     <div>
-                      {order.status === "paid" && (
-                        <button onClick={() => markDelivered(order.id)} style={styles.btn("primary", "sm")}>
-                          📤 Marquer livré
-                        </button>
-                      )}
-                      {order.status === "delivered" && <span style={{ color: COLORS.purple, fontSize: 13, fontWeight: 600 }}>⏳ Attente confirmation</span>}
-                      {order.status === "confirmed" && <span style={{ color: COLORS.green, fontSize: 13, fontWeight: 600 }}>✅ Fonds crédités</span>}
-                      {order.status === "disputed" && (
-                        <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("red", "sm"), textDecoration: "none" }}>⚠️ Contacter support</a>
-                      )}
+                      {order.status==="paid" && <button onClick={() => markDelivered(order.id)} style={styles.btn("primary","sm")}>📤 Marquer livré</button>}
+                      {order.status==="delivered" && <span style={{ color:COLORS.purple, fontSize:12, fontWeight:600 }}>⏳ Attente confirmation</span>}
+                      {order.status==="confirmed" && <span style={{ color:COLORS.green, fontSize:12, fontWeight:600 }}>✅ Fonds crédités</span>}
+                      {order.status==="disputed" && <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("red","sm"), textDecoration:"none" }}>⚠️ Support</a>}
                     </div>
                   </div>
                 </div>
@@ -1065,58 +953,53 @@ function SellerPage({ styles, c, isDark, navigate, user, logout, offers, setOffe
           </div>
         )}
 
-        {/* Offers Tab */}
-        {activeTab === "offers" && (
+        {activeTab==="offers" && (
           <div>
             {showNewOffer && (
-              <div style={{ ...styles.card, marginBottom: 20, border: `1px solid rgba(245,158,11,0.3)` }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Nouvelle offre</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 6 }}>Crypto-monnaie</label>
-                    <select style={{ ...styles.input }} value={newOffer.crypto} onChange={e => setNewOffer({ ...newOffer, crypto: e.target.value })}>
+              <div style={{ ...styles.card, marginBottom:20, border:`1px solid rgba(245,158,11,0.3)` }}>
+                <h3 style={{ fontSize:15, fontWeight:700, marginBottom:18 }}>Nouvelle offre</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  <div style={{ gridColumn:"1 / -1" }}>
+                    <label style={{ display:"block", fontSize:12, fontWeight:600, color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:6 }}>Crypto-monnaie</label>
+                    <select style={{ ...styles.input }} value={newOffer.crypto} onChange={e => setNewOffer({...newOffer, crypto:e.target.value})}>
                       {CRYPTOS.map(cr => <option key={cr.id} value={cr.id}>{cr.name} ({cr.network})</option>)}
                     </select>
                   </div>
                   {[
-                    { key: "rate", label: "Taux (FCFA / unité)", placeholder: "ex: 650" },
-                    { key: "available", label: "Disponible (en crypto)", placeholder: "ex: 10000" },
-                    { key: "minAmount", label: "Montant minimum", placeholder: "ex: 10" },
-                    { key: "maxAmount", label: "Montant maximum", placeholder: "ex: 5000" },
+                    {key:"rate",label:"Taux (FCFA/unité)",placeholder:"ex: 650"},
+                    {key:"available",label:"Disponible (en crypto)",placeholder:"ex: 10000"},
+                    {key:"minAmount",label:"Montant minimum",placeholder:"ex: 10"},
+                    {key:"maxAmount",label:"Montant maximum",placeholder:"ex: 5000"},
                   ].map(f => (
                     <div key={f.key}>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: c(COLORS.muted.dark, COLORS.muted.light), marginBottom: 6 }}>{f.label}</label>
-                      <input style={styles.input} type="number" placeholder={f.placeholder} value={newOffer[f.key]} onChange={e => setNewOffer({ ...newOffer, [f.key]: e.target.value })} />
+                      <label style={{ display:"block", fontSize:12, fontWeight:600, color:c(COLORS.muted.dark, COLORS.muted.light), marginBottom:6 }}>{f.label}</label>
+                      <input style={styles.input} type="number" placeholder={f.placeholder} value={newOffer[f.key]} onChange={e => setNewOffer({...newOffer,[f.key]:e.target.value})} />
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-                  <button onClick={createOffer} style={styles.btn("primary", "sm")}>Publier l'offre ✅</button>
-                  <button onClick={() => setShowNewOffer(false)} style={styles.btn("secondary", "sm")}>Annuler</button>
+                <div style={{ marginTop:16, display:"flex", gap:8 }}>
+                  <button onClick={createOffer} style={styles.btn("primary","sm")}>Publier ✅</button>
+                  <button onClick={() => setShowNewOffer(false)} style={styles.btn("secondary","sm")}>Annuler</button>
                 </div>
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {offers.slice(0, 3).map(offer => {
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {offers.slice(0,4).map(offer => {
                 const crypto = getCrypto(offer.crypto);
                 return (
-                  <div key={offer.id} style={{ ...styles.card, padding: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: "1 1 160px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: crypto.color, fontSize: 22 }}>{crypto.icon}</span>
-                        <div>
-                          <div style={{ fontWeight: 700 }}>{crypto.name}</div>
-                          <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Réseau {crypto.network}</div>
-                        </div>
+                  <div key={offer.id} style={{ ...styles.card, padding:18, display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                    <div style={{ flex:"1 1 150px", display:"flex", alignItems:"center", gap:10 }}>
+                      <span style={{ color:crypto.color, fontSize:22 }}>{crypto.icon}</span>
+                      <div>
+                        <div style={{ fontWeight:700, fontSize:14 }}>{crypto.name}</div>
+                        <div style={{ fontSize:11, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Réseau {crypto.network}</div>
                       </div>
                     </div>
-                    <div style={{ flex: "1 1 140px" }}>
-                      <div style={{ fontWeight: 800, fontSize: 18, color: COLORS.primary }}>{fmt(offer.rate)} FCFA</div>
-                      <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Dispo : {fmt(offer.available)}</div>
+                    <div style={{ flex:"1 1 130px" }}>
+                      <div style={{ fontWeight:800, fontSize:17, color:COLORS.primary }}>{fmt(offer.rate)} FCFA</div>
+                      <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Dispo : {fmt(offer.available)}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <span style={{ background: "rgba(16,185,129,0.15)", color: COLORS.green, padding: "4px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700 }}>● Active</span>
-                    </div>
+                    <span style={{ background:"rgba(16,185,129,0.12)", color:COLORS.green, padding:"4px 12px", borderRadius:100, fontSize:12, fontWeight:700 }}>● Active</span>
                   </div>
                 );
               })}
@@ -1124,43 +1007,39 @@ function SellerPage({ styles, c, isDark, navigate, user, logout, offers, setOffe
           </div>
         )}
 
-        {/* Finance Tab */}
-        {activeTab === "finance" && (
-          <div>
-            <div style={{ ...styles.card, marginBottom: 20 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 20 }}>📊 Revenus</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {[
-                  { label: "Revenus totaux", value: fmt(earnings.total) + " FCFA", color: COLORS.primary },
-                  { label: "Fonds bloqués (24h)", value: fmt(earnings.blocked) + " FCFA", color: COLORS.primary, note: "Disponible après 24h" },
-                  { label: "Disponibles pour retrait", value: fmt(earnings.available) + " FCFA", color: COLORS.green },
-                ].map(s => (
-                  <div key={s.label} style={{ display: "flex", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}`, alignItems: "center" }}>
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{s.label}</span>
-                      {s.note && <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{s.note}</div>}
-                    </div>
-                    <span style={{ fontWeight: 800, fontSize: 18, color: s.color }}>{s.value}</span>
+        {activeTab==="finance" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <div style={styles.card}>
+              <h3 style={{ fontWeight:700, fontSize:17, marginBottom:20 }}>📊 Bilan financier</h3>
+              {[
+                { label:"Revenus totaux", value:`${fmt(earnings.total)} FCFA`, color:COLORS.primary },
+                { label:"Fonds bloqués (24h)", value:`${fmt(earnings.blocked)} FCFA`, color:COLORS.primary, note:"Disponible après 24h" },
+                { label:"Disponibles pour retrait", value:`${fmt(earnings.available)} FCFA`, color:COLORS.green },
+              ].map(s => (
+                <div key={s.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0", borderBottom:`1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
+                  <div>
+                    <span style={{ fontWeight:600, fontSize:14 }}>{s.label}</span>
+                    {s.note && <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:2 }}>{s.note}</div>}
                   </div>
-                ))}
-              </div>
-              <button onClick={() => setWithdrawModal(true)} style={{ ...styles.btn("primary"), marginTop: 20, width: "100%", justifyContent: "center" }}>
+                  <span style={{ fontWeight:800, fontSize:17, color:s.color }}>{s.value}</span>
+                </div>
+              ))}
+              <button onClick={() => setWithdrawModal(true)} style={{ ...styles.btn("primary"), marginTop:20, width:"100%", justifyContent:"center" }}>
                 💸 Demander un retrait
               </button>
             </div>
-
-            <div style={{ ...styles.card }}>
-              <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>⏱️ Règles de retrait</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 14 }}>
+            <div style={styles.card}>
+              <h3 style={{ fontWeight:700, fontSize:15, marginBottom:16 }}>⏱️ Règles de retrait</h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:10, fontSize:13, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
                 {[
                   "Les fonds sont bloqués 24h après confirmation de l'acheteur",
                   "Après 24h, vous pouvez demander un retrait",
                   "Traitement en moins de 5 minutes via Mobile Money",
                   "En cas de litige, les fonds restent bloqués jusqu'à résolution",
-                ].map((rule, i) => (
-                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ color: COLORS.primary, flexShrink: 0 }}>→</span>
-                    <span style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>{rule}</span>
+                ].map((rule,i) => (
+                  <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", lineHeight:1.5 }}>
+                    <span style={{ color:COLORS.primary, flexShrink:0 }}>→</span>
+                    <span>{rule}</span>
                   </div>
                 ))}
               </div>
@@ -1173,112 +1052,109 @@ function SellerPage({ styles, c, isDark, navigate, user, logout, offers, setOffe
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, setOrders, notify, theme, setTheme }) {
+function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, setOrders, notify, theme, setTheme, accounts }) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [sellers] = useState([
-    { id: "v1", name: "EricPro", email: "eric@test.com", verified: true, trades: 247, volume: 3200000, status: "active" },
-    { id: "v2", name: "CryptoKing", email: "king@test.com", verified: true, trades: 523, volume: 7400000, status: "active" },
-    { id: "v3", name: "AfriTrade", email: "afri@test.com", verified: false, trades: 12, volume: 180000, status: "pending" },
-    { id: "v4", name: "NewTrader", email: "new@test.com", verified: false, trades: 0, volume: 0, status: "pending" },
+  const [allSellers] = useState([
+    { id:"v1", name:"EricPro", email:"eric@pro.com", verified:true, trades:247, volume:3200000 },
+    { id:"v2", name:"CryptoKing", email:"king@crypto.com", verified:true, trades:523, volume:7400000 },
+    { id:"v3", name:"AfriTrade", email:"afri@trade.com", verified:false, trades:12, volume:180000 },
+    { id:"v4", name:"NewTrader", email:"new@trader.com", verified:false, trades:0, volume:0 },
   ]);
-  const [pendingSellers, setPendingSellers] = useState(sellers.filter(s => !s.verified));
+  const [pendingSellers, setPendingSellers] = useState(allSellers.filter(s => !s.verified));
+  const disputes = orders.filter(o => o.status==="disputed");
 
   const validateSeller = (id) => {
-    setPendingSellers(pendingSellers.filter(s => s.id !== id));
+    setPendingSellers(pendingSellers.filter(s => s.id!==id));
     notify("Vendeur validé ! Il peut maintenant publier des offres. ✅");
   };
-
   const rejectSeller = (id) => {
-    setPendingSellers(pendingSellers.filter(s => s.id !== id));
+    setPendingSellers(pendingSellers.filter(s => s.id!==id));
     notify("Demande refusée.", "error");
   };
-
   const validateDispute = (orderId) => {
-    setOrders(orders.map(o => o.id === orderId ? { ...o, status: "confirmed" } : o));
+    setOrders(orders.map(o => o.id===orderId?{...o,status:"confirmed"}:o));
     notify("Litige résolu. Transaction validée par l'admin. ✅");
   };
 
-  const disputes = orders.filter(o => o.status === "disputed");
-
   const stats = {
     totalOrders: orders.length,
-    totalVolumeFCFA: orders.reduce((s, o) => s + o.amountFCFA, 0),
+    totalVolume: orders.reduce((s,o) => s+o.amountFCFA, 0),
     pendingValidations: pendingSellers.length,
     activeDisputes: disputes.length,
+    totalUsers: accounts.length,
   };
+
+  const adminTabs = [
+    {id:"overview", label:"Vue d'ensemble"},
+    {id:"sellers", label:`Vendeurs${pendingSellers.length>0?` (${pendingSellers.length})`:""}`},
+    {id:"disputes", label:`Litiges${disputes.length>0?` (${disputes.length})`:""}`},
+    {id:"orders", label:"Commandes"},
+    {id:"users", label:"Utilisateurs"},
+  ];
 
   return (
     <div>
       <Navbar styles={styles} c={c} isDark={isDark} navigate={navigate} user={user} logout={logout} theme={theme} setTheme={setTheme} />
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 32 }}>⚙️</span>
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 900 }}>Administration</h1>
-              <p style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 14 }}>Panneau de contrôle CryptoP2P</p>
-            </div>
+      <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 24px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
+          <span style={{ fontSize:28 }}>⚙️</span>
+          <div>
+            <h1 style={{ fontSize:22, fontWeight:900 }}>Administration</h1>
+            <p style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:13, marginTop:2 }}>Panneau de contrôle CryptoP2P</p>
           </div>
         </div>
 
-        {/* Admin Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 32 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px,1fr))", gap:12, marginBottom:28 }}>
           {[
-            { label: "Commandes totales", value: stats.totalOrders, icon: "📦", color: COLORS.blue },
-            { label: "Volume total (FCFA)", value: fmt(stats.totalVolumeFCFA), icon: "💰", color: COLORS.primary },
-            { label: "Vendeurs en attente", value: stats.pendingValidations, icon: "⏳", color: COLORS.primary },
-            { label: "Litiges actifs", value: stats.activeDisputes, icon: "⚠️", color: COLORS.red },
+            { label:"Commandes", value:stats.totalOrders, icon:"📦", color:COLORS.blue },
+            { label:"Volume FCFA", value:fmt(stats.totalVolume), icon:"💰", color:COLORS.primary },
+            { label:"Utilisateurs", value:stats.totalUsers, icon:"👥", color:COLORS.purple },
+            { label:"Vendeurs en attente", value:stats.pendingValidations, icon:"⏳", color:COLORS.primary },
+            { label:"Litiges actifs", value:stats.activeDisputes, icon:"⚠️", color:COLORS.red },
           ].map(s => (
-            <div key={s.label} style={{ ...styles.card, padding: 20, borderLeft: `3px solid ${s.color}` }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{s.label}</div>
+            <div key={s.label} style={{ ...styles.card, padding:18, borderLeft:`3px solid ${s.color}` }}>
+              <div style={{ fontSize:22, marginBottom:6 }}>{s.icon}</div>
+              <div style={{ fontSize:20, fontWeight:900, color:s.color }}>{s.value}</div>
+              <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light), marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-          {[
-            { id: "overview", label: "Vue d'ensemble" },
-            { id: "sellers", label: `Vendeurs (${pendingSellers.length} en attente)` },
-            { id: "disputes", label: `Litiges (${disputes.length})` },
-            { id: "orders", label: "Commandes" },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={styles.btn(activeTab === tab.id ? "primary" : "secondary", "sm")}>{tab.label}</button>
+        <div style={{ display:"flex", gap:6, marginBottom:24, flexWrap:"wrap" }}>
+          {adminTabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={styles.btn(activeTab===tab.id?"primary":"secondary","sm")}>{tab.label}</button>
           ))}
         </div>
 
-        {/* Overview */}
-        {activeTab === "overview" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        {activeTab==="overview" && (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
             <div style={styles.card}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16 }}>📋 Statut des commandes</h3>
-              {Object.entries(statusConfig).map(([k, v]) => {
-                const count = orders.filter(o => o.status === k).length;
+              <h3 style={{ fontWeight:700, marginBottom:16, fontSize:15 }}>📋 Statut des commandes</h3>
+              {Object.entries(statusConfig).map(([k,v]) => {
+                const count = orders.filter(o=>o.status===k).length;
                 return (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: v.color }} />
-                      <span style={{ fontSize: 14 }}>{v.label}</span>
+                  <div key={k} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
+                    <span style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
+                      <span style={{ width:8, height:8, borderRadius:"50%", background:v.color, display:"inline-block" }} />
+                      {v.label}
                     </span>
-                    <span style={{ fontWeight: 700, background: v.bg, color: v.color, padding: "2px 12px", borderRadius: 100, fontSize: 13 }}>{count}</span>
+                    <span style={{ fontWeight:700, background:v.bg, color:v.color, padding:"2px 10px", borderRadius:100, fontSize:12 }}>{count}</span>
                   </div>
                 );
               })}
             </div>
             <div style={styles.card}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16 }}>🪙 Cryptos les plus échangées</h3>
-              {CRYPTOS.slice(0, 4).map(cr => {
-                const count = offers.filter(o => o.crypto === cr.id).length;
+              <h3 style={{ fontWeight:700, marginBottom:16, fontSize:15 }}>🪙 Cryptos en offres</h3>
+              {CRYPTOS.slice(0,5).map(cr => {
+                const count = offers.filter(o=>o.crypto===cr.id).length;
                 return (
-                  <div key={cr.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ color: cr.color, fontSize: 18 }}>{cr.icon}</span>
-                      <span style={{ fontSize: 14 }}>{cr.name}</span>
+                  <div key={cr.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${c(COLORS.cardBorder.dark, COLORS.cardBorder.light)}` }}>
+                    <span style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
+                      <span style={{ color:cr.color, fontSize:16 }}>{cr.icon}</span>
+                      {cr.name}
                     </span>
-                    <span style={{ fontWeight: 700 }}>{count} offres</span>
+                    <span style={{ fontWeight:700, fontSize:13 }}>{count} offre{count!==1?"s":""}</span>
                   </div>
                 );
               })}
@@ -1286,24 +1162,22 @@ function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, 
           </div>
         )}
 
-        {/* Sellers Tab */}
-        {activeTab === "sellers" && (
+        {activeTab==="sellers" && (
           <div>
-            {pendingSellers.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: COLORS.primary }}>⏳ Demandes en attente de validation</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {pendingSellers.length>0 && (
+              <div style={{ marginBottom:24 }}>
+                <h3 style={{ fontSize:15, fontWeight:700, marginBottom:14, color:COLORS.primary }}>⏳ Demandes en attente</h3>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   {pendingSellers.map(s => (
-                    <div key={s.id} style={{ ...styles.card, padding: 18, border: `1px solid rgba(245,158,11,0.3)` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
-                          <div style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 13 }}>{s.email}</div>
+                    <div key={s.id} style={{ ...styles.card, padding:18, border:`1px solid rgba(245,158,11,0.25)` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:700, fontSize:14 }}>{s.name}</div>
+                          <div style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:12, marginTop:2 }}>{s.email}</div>
                         </div>
-                        <span style={{ background: "rgba(245,158,11,0.15)", color: COLORS.primary, padding: "4px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700 }}>En attente</span>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => validateSeller(s.id)} style={styles.btn("green", "sm")}>✅ Valider</button>
-                          <button onClick={() => rejectSeller(s.id)} style={styles.btn("red", "sm")}>❌ Refuser</button>
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => validateSeller(s.id)} style={styles.btn("green","sm")}>✅ Valider</button>
+                          <button onClick={() => rejectSeller(s.id)} style={styles.btn("red","sm")}>❌ Refuser</button>
                         </div>
                       </div>
                     </div>
@@ -1311,21 +1185,21 @@ function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, 
                 </div>
               </div>
             )}
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Tous les vendeurs</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {sellers.map(s => (
-                <div key={s.id} style={{ ...styles.card, padding: 18 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: "1 1 160px" }}>
-                      <div style={{ fontWeight: 700 }}>{s.name}</div>
-                      <div style={{ color: c(COLORS.muted.dark, COLORS.muted.light), fontSize: 13 }}>{s.email}</div>
+            <h3 style={{ fontSize:15, fontWeight:700, marginBottom:14 }}>Tous les vendeurs</h3>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {allSellers.map(s => (
+                <div key={s.id} style={{ ...styles.card, padding:18 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                    <div style={{ flex:"1 1 150px" }}>
+                      <div style={{ fontWeight:700, fontSize:14 }}>{s.name}</div>
+                      <div style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:12 }}>{s.email}</div>
                     </div>
-                    <div style={{ flex: "1 1 140px", fontSize: 13 }}>
+                    <div style={{ flex:"1 1 130px", fontSize:13, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
                       <div>{s.trades} trades</div>
-                      <div style={{ color: c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(s.volume)} FCFA</div>
+                      <div>{fmt(s.volume)} FCFA</div>
                     </div>
-                    <span style={{ background: s.verified ? "rgba(16,185,129,0.15)" : "rgba(245,158,11,0.15)", color: s.verified ? COLORS.green : COLORS.primary, padding: "4px 12px", borderRadius: 100, fontSize: 12, fontWeight: 700 }}>
-                      {s.verified ? "✓ Vérifié" : "⏳ En attente"}
+                    <span style={{ background:s.verified?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.12)", color:s.verified?COLORS.green:COLORS.primary, padding:"4px 12px", borderRadius:100, fontSize:12, fontWeight:700 }}>
+                      {s.verified?"✓ Vérifié":"⏳ En attente"}
                     </span>
                   </div>
                 </div>
@@ -1334,33 +1208,56 @@ function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, 
           </div>
         )}
 
-        {/* Disputes Tab */}
-        {activeTab === "disputes" && (
+        {activeTab==="disputes" && (
           <div>
-            {disputes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                <div style={{ fontSize: 48 }}>✅</div>
+            {disputes.length===0 ? (
+              <div style={{ textAlign:"center", padding:"60px 0", color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
                 <p>Aucun litige actif</p>
               </div>
-            ) : disputes.map(order => {
-              const crypto = getCrypto(order.crypto);
-              return (
-                <div key={order.id} style={{ ...styles.card, padding: 20, border: `1px solid rgba(239,68,68,0.3)`, marginBottom: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: "1 1 160px" }}>
-                      <div style={{ fontWeight: 700, color: COLORS.red }}>{order.id}</div>
-                      <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>
-                        {new Date(order.createdAt).toLocaleDateString("fr-FR")}
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {disputes.map(order => {
+                  const crypto = getCrypto(order.crypto);
+                  return (
+                    <div key={order.id} style={{ ...styles.card, padding:18, border:`1px solid rgba(239,68,68,0.25)` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                        <div style={{ flex:"1 1 150px" }}>
+                          <div style={{ fontWeight:700, color:COLORS.red, fontSize:13 }}>{order.id}</div>
+                          <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{new Date(order.createdAt).toLocaleDateString("fr-FR")}</div>
+                        </div>
+                        <div style={{ flex:"1 1 130px" }}>
+                          <div style={{ fontWeight:700, fontSize:14 }}>{order.amount} {crypto.symbol}</div>
+                          <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>Vendeur : {order.seller}</div>
+                        </div>
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => validateDispute(order.id)} style={styles.btn("primary","sm")}>✅ Valider manuellement</button>
+                          <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("secondary","sm"), textDecoration:"none" }}>💬 Contacter</a>
+                        </div>
                       </div>
                     </div>
-                    <div style={{ flex: "1 1 140px" }}>
-                      <div style={{ fontWeight: 700 }}>{order.amount} {crypto.symbol}</div>
-                      <div style={{ fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Vendeur : {order.seller}</div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab==="orders" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {orders.map(order => {
+              const crypto = getCrypto(order.crypto);
+              const status = statusConfig[order.status]||statusConfig.pending;
+              return (
+                <div key={order.id} style={{ ...styles.card, padding:16 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                    <span style={{ fontWeight:700, fontSize:13, color:COLORS.primary, flex:"0 0 90px" }}>{order.id}</span>
+                    <div style={{ flex:"1 1 120px" }}>
+                      <span style={{ color:crypto.color }}>{crypto.icon}</span> {order.amount} {crypto.symbol}
+                      <div style={{ fontSize:12, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => validateDispute(order.id)} style={styles.btn("primary", "sm")}>✅ Valider manuellement</button>
-                      <a href="https://wa.me/22901 55237685" target="_blank" rel="noreferrer" style={{ ...styles.btn("secondary", "sm"), textDecoration: "none" }}>💬 Contacter</a>
-                    </div>
+                    <div style={{ flex:"1 1 110px", fontSize:13, color:c(COLORS.muted.dark, COLORS.muted.light) }}>{order.seller}</div>
+                    <span style={{ background:status.bg, color:status.color, padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:700 }}>{status.label}</span>
                   </div>
                 </div>
               );
@@ -1368,28 +1265,31 @@ function AdminPage({ styles, c, isDark, navigate, user, logout, offers, orders, 
           </div>
         )}
 
-        {/* Orders Tab */}
-        {activeTab === "orders" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {orders.map(order => {
-              const crypto = getCrypto(order.crypto);
-              const status = statusConfig[order.status] || statusConfig.pending;
-              return (
-                <div key={order.id} style={{ ...styles.card, padding: 18 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: "0 0 90px" }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: COLORS.primary }}>{order.id}</div>
-                    </div>
-                    <div style={{ flex: "1 1 120px" }}>
-                      <span style={{ color: crypto.color }}>{crypto.icon}</span> {order.amount} {crypto.symbol}
-                      <div style={{ fontSize: 12, color: c(COLORS.muted.dark, COLORS.muted.light) }}>{fmt(order.amountFCFA)} FCFA</div>
-                    </div>
-                    <div style={{ flex: "1 1 120px", fontSize: 13, color: c(COLORS.muted.dark, COLORS.muted.light) }}>Vendeur : {order.seller}</div>
-                    <span style={{ background: status.bg, color: status.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>{status.label}</span>
+        {activeTab==="users" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ ...styles.card, padding:14, background:c("rgba(245,158,11,0.07)","rgba(245,158,11,0.06)"), border:"1px solid rgba(245,158,11,0.2)", marginBottom:6 }}>
+              <p style={{ fontSize:13, color:c(COLORS.muted.dark, COLORS.muted.light) }}>
+                <strong>{accounts.length}</strong> compte{accounts.length>1?"s":""} enregistré{accounts.length>1?"s":""}
+              </p>
+            </div>
+            {accounts.map(acc => (
+              <div key={acc.id} style={{ ...styles.card, padding:16 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+                  <div style={{ width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg, #1e3a5f, #0f2035)", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, color:COLORS.primary, fontSize:14, flexShrink:0 }}>
+                    {acc.name[0]}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:700, fontSize:14 }}>{acc.name}</div>
+                    <div style={{ color:c(COLORS.muted.dark, COLORS.muted.light), fontSize:12 }}>{acc.email}</div>
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {acc.isAdmin && <span style={{ background:"rgba(239,68,68,0.12)", color:COLORS.red, padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:700 }}>Admin</span>}
+                    {acc.isSeller && <span style={{ background:"rgba(16,185,129,0.12)", color:COLORS.green, padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:700 }}>Vendeur</span>}
+                    {!acc.isAdmin && !acc.isSeller && <span style={{ background:c("rgba(255,255,255,0.07)","rgba(0,0,0,0.06)"), color:c(COLORS.muted.dark, COLORS.muted.light), padding:"3px 10px", borderRadius:100, fontSize:11, fontWeight:600 }}>Acheteur</span>}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
