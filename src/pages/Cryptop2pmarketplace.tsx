@@ -1338,7 +1338,7 @@ export default function App() {
 
   const logout = () => { setUser(null); setPage("login"); notify("Déconnexion réussie","info"); };
 
-  const navigate = (p, opts={}) => {
+  const navigate = (p: any, opts: any={}) => {
     if (opts.offer) setSelOffer(opts.offer);
     setPageOpts(opts);
     setPage(p);
