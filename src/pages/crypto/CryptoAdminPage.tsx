@@ -625,6 +625,7 @@ export default function CryptoAdminPage({
               ))}
             </div>
 
+            
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <Card>
                 <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 15, color: C.text }}>📋 Statut des commandes</h3>
