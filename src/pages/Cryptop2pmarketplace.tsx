@@ -86,7 +86,7 @@ function Ham({ onClick }) {
 }
 
 // ─── SIDEBAR LAYOUT ───────────────────────────────────────────────────────────
-function SidebarLayout({ st, user, logout, navigate, active, setActive, menu, title, children }) {
+function SidebarLayout({ user, logout, navigate, active, setActive, menu, title, children }: any) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ display:"flex", minHeight:"100vh", background:C.bg }}>

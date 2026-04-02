@@ -266,14 +266,14 @@ export default function AdminPanelPage() {
         messagesData,
         transfertsData,
       ] = await Promise.all([
-        safeQuery(() => supabase.from("nexora_users" as any).select("*").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("boutiques" as any).select("*").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("produits" as any).select("*").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("commandes" as any).select("*").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("abonnements" as any).select("*").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("nexora_logs" as any).select("*, nexora_users(nom_prenom, username)").order("created_at", { ascending: false }).limit(100)),
-        safeQuery(() => supabase.from("nexora_messages" as any).select("*, nexora_users(nom_prenom, username, avatar_url)").order("created_at", { ascending: false })),
-        safeQuery(() => supabase.from("transferts" as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("nexora_users") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("boutiques") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("produits") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("commandes") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("abonnements") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("nexora_logs") as any).select("*").order("created_at", { ascending: false }).limit(100)),
+        safeQuery(async () => await (supabase.from("chat_messages") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("nexora_transactions") as any).select("*").order("created_at", { ascending: false })),
       ]);
 
       const u  = usersData       as NexoraUser[];
