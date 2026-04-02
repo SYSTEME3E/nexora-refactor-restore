@@ -991,6 +991,10 @@ export default function AdminPanelPage() {
           })}
         </nav>
         <div className="p-4 border-t border-border space-y-2">
+          <button onClick={() => navigate("/admin/crypto")}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-amber-500 hover:bg-amber-50/10 transition-colors">
+            <span className="text-base">₿</span> Panel Admin Crypto
+          </button>
           <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
