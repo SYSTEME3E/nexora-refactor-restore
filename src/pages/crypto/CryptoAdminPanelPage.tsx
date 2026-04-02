@@ -439,6 +439,7 @@ export default function CryptoAdminPanelPage({ navigate, user, onLogout, offers,
           </div>
         )}
 
+        
       </SidebarLayout>
     </>
   );
