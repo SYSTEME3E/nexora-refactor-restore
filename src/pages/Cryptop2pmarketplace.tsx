@@ -1005,7 +1005,7 @@ function SellerPage({ navigate, user, logout, offers, setOffers, orders, setOrde
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ navigate, user, logout, offers, setOffers, orders, setOrders, accounts, setAccounts, promoteToSeller, notify }) {
+function AdminPage({ navigate, user, logout, offers, setOffers, orders, setOrders, accounts, setAccounts, promoteToSeller, notify, updateAccount }: any) {
   const st = makeStyles();
   const [active, setActive] = useState("overview");
   const [editSeller, setEditSeller] = useState(null); // { id, ... }
