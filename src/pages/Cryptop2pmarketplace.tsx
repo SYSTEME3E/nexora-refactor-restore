@@ -72,7 +72,7 @@ const makeStyles = () => ({
     ghost:     { background:"transparent", color:C.muted, fontWeight:500, border:"none", cursor:"pointer", borderRadius:10, padding:sz==="sm"?"7px 14px":"11px 22px", fontSize:sz==="sm"?13:14, display:"inline-flex", alignItems:"center", gap:6 },
     danger:    { background:"rgba(239,68,68,0.1)", color:C.red, fontWeight:600, border:`1px solid rgba(239,68,68,0.3)`, cursor:"pointer", borderRadius:10, padding:sz==="sm"?"7px 14px":"11px 22px", fontSize:sz==="sm"?13:14, display:"inline-flex", alignItems:"center", gap:6 },
   }[v]||{}),
-  input: { background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, width:"100%", outline:"none", boxSizing:"border-box" },
+  input: { background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, width:"100%", outline:"none", boxSizing:"border-box" as const },
   label: { display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:C.muted },
 });
 
@@ -86,7 +86,7 @@ function Ham({ onClick }) {
 }
 
 // ─── SIDEBAR LAYOUT ───────────────────────────────────────────────────────────
-function SidebarLayout({ st, user, logout, navigate, active, setActive, menu, title, children }) {
+function SidebarLayout({ user, logout, navigate, active, setActive, menu, title, children }: any) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ display:"flex", minHeight:"100vh", background:C.bg }}>
@@ -388,7 +388,7 @@ function OfferCard({ offer, navigate, user, notify }) {
   );
 }
 
-function BuyPage({ navigate, user, offer, orders, setOrders, accounts, notify }) {
+function BuyPage({ navigate, user, offer, orders, setOrders, accounts, notify }: any) {
   const st = makeStyles();
   const [step, setStep]       = useState(1);
   const [wallet, setWallet]   = useState("");
@@ -1005,7 +1005,7 @@ function SellerPage({ navigate, user, logout, offers, setOffers, orders, setOrde
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ navigate, user, logout, offers, setOffers, orders, setOrders, accounts, setAccounts, promoteToSeller, notify }) {
+function AdminPage({ navigate, user, logout, offers, setOffers, orders, setOrders, accounts, setAccounts, promoteToSeller, notify, updateAccount }: any) {
   const st = makeStyles();
   const [active, setActive] = useState("overview");
   const [editSeller, setEditSeller] = useState(null); // { id, ... }
@@ -1338,7 +1338,7 @@ export default function App() {
 
   const logout = () => { setUser(null); setPage("login"); notify("Déconnexion réussie","info"); };
 
-  const navigate = (p, opts={}) => {
+  const navigate = (p: any, opts: any={}) => {
     if (opts.offer) setSelOffer(opts.offer);
     setPageOpts(opts);
     setPage(p);
@@ -1374,7 +1374,7 @@ export default function App() {
       )}
 
       {page==="login"       && <LoginPage      {...shared} login={login} />}
-      {page==="admin-code"  && <AdminCodePage  {...shared} login={login} pendingUser={pageOpts.pendingUser} />}
+      {page==="admin-code"  && <AdminCodePage  {...shared} login={login} pendingUser={(pageOpts as any).pendingUser} />}
       {page==="register"    && <RegisterPage   {...shared} login={login} />}
       {page==="marketplace" && <MarketplacePage {...shared} logout={logout} />}
       {page==="buy"         && <BuyPage        {...shared} logout={logout} offer={selOffer} />}
