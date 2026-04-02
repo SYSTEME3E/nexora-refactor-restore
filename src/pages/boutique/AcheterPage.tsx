@@ -70,7 +70,7 @@ export default function AcheterPage() {
         .from("boutiques" as any).select("id,nom,slug,devise,whatsapp,telephone")
         .eq("slug", slug).eq("actif", true).maybeSingle();
       if (!b) { setLoading(false); return; }
-      setBoutique(b as BoutiqueInfo);
+      setBoutique(b as unknown as BoutiqueInfo);
 
       const { data: p } = await supabase
         .from("produits" as any)

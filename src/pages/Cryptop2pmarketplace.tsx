@@ -1374,7 +1374,7 @@ export default function App() {
       )}
 
       {page==="login"       && <LoginPage      {...shared} login={login} />}
-      {page==="admin-code"  && <AdminCodePage  {...shared} login={login} pendingUser={pageOpts.pendingUser} />}
+      {page==="admin-code"  && <AdminCodePage  {...shared} login={login} pendingUser={(pageOpts as any).pendingUser} />}
       {page==="register"    && <RegisterPage   {...shared} login={login} />}
       {page==="marketplace" && <MarketplacePage {...shared} logout={logout} />}
       {page==="buy"         && <BuyPage        {...shared} logout={logout} offer={selOffer} />}
