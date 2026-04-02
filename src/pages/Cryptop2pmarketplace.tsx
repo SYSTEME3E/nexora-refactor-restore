@@ -388,7 +388,7 @@ function OfferCard({ offer, navigate, user, notify }) {
   );
 }
 
-function BuyPage({ navigate, user, offer, orders, setOrders, accounts, notify }) {
+function BuyPage({ navigate, user, offer, orders, setOrders, accounts, notify }: any) {
   const st = makeStyles();
   const [step, setStep]       = useState(1);
   const [wallet, setWallet]   = useState("");
