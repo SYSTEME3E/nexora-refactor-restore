@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-
 interface CryptoUser {
   id: string;
   nom_prenom: string;
