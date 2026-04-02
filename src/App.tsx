@@ -51,6 +51,7 @@ import PaymentCallbackPage from "@/pages/PaymentCallbackPage";
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
+import CryptoAdminPanelPage from "@/pages/crypto/CryptoAdminPanelPage";
 
 import NotFound from "@/pages/NotFound";
 
@@ -169,7 +170,8 @@ const App = () => (
           <Route path="/commande/:commandeId"                     element={<CommandeTrackingPage />} />
 
           {/* Admin */}
-          <Route path="/admin"  element={<AdminPage><AdminPanelPage /></AdminPage>} />
+          <Route path="/admin"        element={<AdminPage><AdminPanelPage /></AdminPage>} />
+          <Route path="/admin/crypto" element={<AdminPage><CryptoAdminPanelPage /></AdminPage>} />
           <Route path="/medias" element={<AdminPage><MediasPage /></AdminPage>} />
 
           {/* 404 */}
