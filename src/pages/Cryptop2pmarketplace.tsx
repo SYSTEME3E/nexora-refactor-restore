@@ -72,7 +72,7 @@ const makeStyles = () => ({
     ghost:     { background:"transparent", color:C.muted, fontWeight:500, border:"none", cursor:"pointer", borderRadius:10, padding:sz==="sm"?"7px 14px":"11px 22px", fontSize:sz==="sm"?13:14, display:"inline-flex", alignItems:"center", gap:6 },
     danger:    { background:"rgba(239,68,68,0.1)", color:C.red, fontWeight:600, border:`1px solid rgba(239,68,68,0.3)`, cursor:"pointer", borderRadius:10, padding:sz==="sm"?"7px 14px":"11px 22px", fontSize:sz==="sm"?13:14, display:"inline-flex", alignItems:"center", gap:6 },
   }[v]||{}),
-  input: { background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, width:"100%", outline:"none", boxSizing:"border-box" },
+  input: { background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontSize:14, width:"100%", outline:"none", boxSizing:"border-box" as const },
   label: { display:"block", fontSize:13, fontWeight:600, marginBottom:6, color:C.muted },
 });
 
