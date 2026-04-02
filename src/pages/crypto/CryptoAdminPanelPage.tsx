@@ -1,775 +1,718 @@
-import { useState } from "react";
-import { C, CRYPTOS, getCr, fmt, makeStyles, STATUS, SELLER_STATUS } from "./crypto-constants";
-import { SidebarLayout } from "./CryptoSharedComponents";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  ShieldCheck, ArrowLeft, Menu, X, RefreshCw,
+  BarChart3, Users, TrendingUp, AlertTriangle,
+  CheckCircle, XCircle, Clock, DollarSign,
+  Search, Eye, EyeOff, Ban, Unlock,
+  Bitcoin, Activity, Package, MessageSquare,
+  ChevronDown, ChevronUp, Star, Flag,
+  Wallet, ArrowRightLeft, Hash, Globe,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-interface SellerLimits {
-  reserve: number;           // Dépôt de garantie en FCFA
-  maxSell: number;           // Vente max par transaction (FCFA)
-  minSell: number;           // Vente min par transaction (FCFA)
-  dailyLimit: number;        // Plafond journalier (FCFA)
-  allowedCryptos: string[];  // Cryptos autorisées à vendre
-  expiresAt: string | null;  // Date expiration compte vendeur (ISO)
-  activeDays: number;        // Durée activation en jours
+interface CryptoUser {
+  id: string;
+  nom_prenom: string;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  created_at: string;
+  is_active: boolean;
+  status: string;
+  plan: string;
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+interface CryptoTransaction {
+  id: string;
+  user_id: string;
+  type: "buy" | "sell" | "transfer";
+  crypto: string;
+  montant_crypto: number;
+  montant_fcfa: number;
+  statut: "pending" | "confirmed" | "disputed" | "cancelled";
+  wallet_adresse?: string;
+  seller_id?: string;
+  created_at: string;
+  user?: { nom_prenom: string; username: string };
+  seller?: { nom_prenom: string; username: string };
+}
 
-const fmtDate = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+interface CryptoOffer {
+  id: string;
+  seller_id: string;
+  crypto: string;
+  taux: number;
+  montant_min: number;
+  montant_max: number;
+  disponible: number;
+  actif: boolean;
+  created_at: string;
+  seller?: { nom_prenom: string; username: string };
+  completed_trades?: number;
+}
 
-const fmtDatetime = (d: string) =>
-  new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+interface CryptoDispute {
+  id: string;
+  transaction_id: string;
+  user_id: string;
+  seller_id: string;
+  raison: string;
+  statut: "open" | "resolved" | "closed";
+  created_at: string;
+  user?: { nom_prenom: string; username: string };
+  seller?: { nom_prenom: string; username: string };
+}
 
-const daysLeft = (expiresAt: string | null): number | null => {
-  if (!expiresAt) return null;
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  return Math.ceil(diff / 86400000);
+interface CryptoStats {
+  totalTransactions: number;
+  volumeTotal: number;
+  volumeUSD: number;
+  transactionsPending: number;
+  transactionsConfirmed: number;
+  transactionsDisputed: number;
+  totalOffers: number;
+  offresActives: number;
+  totalVendeurs: number;
+  totalAcheteurs: number;
+  fraisTotal: number;
+  newTransactionsToday: number;
+}
+
+type CryptoAdminTab = "stats" | "transactions" | "offers" | "users" | "disputes" | "logs";
+
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+
+const ADMIN_CODE = "CRYPTO2024";
+
+const C = {
+  bg:      "#06090f",
+  bgCard:  "#0d1526",
+  bgCard2: "#111e35",
+  border:  "#1a2d4d",
+  gold:    "#f59e0b",
+  goldD:   "#d97706",
+  green:   "#10b981",
+  red:     "#ef4444",
+  blue:    "#3b82f6",
+  purple:  "#8b5cf6",
+  cyan:    "#06b6d4",
+  text:    "#e2e8f0",
+  muted:   "#64748b",
 };
 
-const addDays = (days: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
+const CRYPTOS_LIST = [
+  { id: "usdt_trc20", name: "USDT TRC20", symbol: "USDT", color: "#26a17b", icon: "₮" },
+  { id: "usdt_bep20", name: "USDT BEP20", symbol: "USDT", color: "#f0b90b", icon: "₮" },
+  { id: "bnb",        name: "BNB",        symbol: "BNB",  color: "#f0b90b", icon: "Ⓑ" },
+  { id: "eth",        name: "Ethereum",   symbol: "ETH",  color: "#627eea", icon: "Ξ" },
+  { id: "btc",        name: "Bitcoin",    symbol: "BTC",  color: "#f7931a", icon: "₿" },
+  { id: "matic",      name: "Polygon",    symbol: "MATIC",color: "#8247e5", icon: "⬡" },
+];
+
+const TX_STATUS: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
+  pending:   { label: "En attente",  color: "#f59e0b", bg: "rgba(245,158,11,0.15)",  Icon: Clock        },
+  confirmed: { label: "Confirmé",    color: "#10b981", bg: "rgba(16,185,129,0.15)",  Icon: CheckCircle  },
+  disputed:  { label: "Litige",      color: "#ef4444", bg: "rgba(239,68,68,0.15)",   Icon: AlertTriangle},
+  cancelled: { label: "Annulé",      color: "#64748b", bg: "rgba(100,116,139,0.15)", Icon: XCircle      },
 };
 
-const DEFAULT_LIMITS: SellerLimits = {
-  reserve: 0,
-  maxSell: 500000,
-  minSell: 5000,
-  dailyLimit: 2000000,
-  allowedCryptos: [],
-  expiresAt: null,
-  activeDays: 30,
-};
+const fmt      = (n: number) => Math.round(n).toLocaleString("fr-FR");
+const fmtUSD   = (fcfa: number) => `$${(fcfa / 615).toFixed(2)}`;
+const fmtDate  = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDatetime = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+// ─── MOCK DATA (remplace les appels Supabase si les tables crypto n'existent pas encore) ──
+
+const MOCK_TRANSACTIONS: CryptoTransaction[] = [
+  { id: "tx_001", user_id: "u1", type: "buy", crypto: "usdt_trc20", montant_crypto: 50, montant_fcfa: 32000, statut: "confirmed", wallet_adresse: "TXXX1234", seller_id: "s1", created_at: new Date(Date.now() - 3600000).toISOString(), user: { nom_prenom: "Kokou Mensah", username: "kokou" }, seller: { nom_prenom: "Ama Dossou", username: "ama_sell" } },
+  { id: "tx_002", user_id: "u2", type: "buy", crypto: "btc",        montant_crypto: 0.002, montant_fcfa: 120000, statut: "pending", wallet_adresse: "bc1qxy", seller_id: "s2", created_at: new Date(Date.now() - 7200000).toISOString(), user: { nom_prenom: "Fatou Ba", username: "fatou_b" }, seller: { nom_prenom: "Moussa Diallo", username: "moussa_btc" } },
+  { id: "tx_003", user_id: "u3", type: "buy", crypto: "eth",        montant_crypto: 0.1, montant_fcfa: 65000, statut: "disputed", wallet_adresse: "0xabc123", seller_id: "s1", created_at: new Date(Date.now() - 86400000).toISOString(), user: { nom_prenom: "Ibrahim Traoré", username: "ibra_t" }, seller: { nom_prenom: "Ama Dossou", username: "ama_sell" } },
+  { id: "tx_004", user_id: "u4", type: "buy", crypto: "bnb",        montant_crypto: 0.5, montant_fcfa: 18500, statut: "confirmed", wallet_adresse: "0xdef456", seller_id: "s3", created_at: new Date(Date.now() - 172800000).toISOString(), user: { nom_prenom: "Aissatou Diop", username: "aissa_d" }, seller: { nom_prenom: "Seydou Kone", username: "seydou_bnb" } },
+  { id: "tx_005", user_id: "u5", type: "buy", crypto: "usdt_bep20", montant_crypto: 100, montant_fcfa: 63000, statut: "confirmed", wallet_adresse: "0xghi789", seller_id: "s2", created_at: new Date(Date.now() - 259200000).toISOString(), user: { nom_prenom: "Lamine Coulibaly", username: "lamine_c" }, seller: { nom_prenom: "Moussa Diallo", username: "moussa_btc" } },
+];
+
+const MOCK_OFFERS: CryptoOffer[] = [
+  { id: "o1", seller_id: "s1", crypto: "usdt_trc20", taux: 640, montant_min: 5000, montant_max: 500000, disponible: 500, actif: true, created_at: new Date(Date.now() - 86400000).toISOString(), seller: { nom_prenom: "Ama Dossou", username: "ama_sell" }, completed_trades: 47 },
+  { id: "o2", seller_id: "s2", crypto: "btc",        taux: 60000000, montant_min: 10000, montant_max: 1000000, disponible: 0.01, actif: true, created_at: new Date(Date.now() - 172800000).toISOString(), seller: { nom_prenom: "Moussa Diallo", username: "moussa_btc" }, completed_trades: 23 },
+  { id: "o3", seller_id: "s3", crypto: "bnb",        taux: 37000, montant_min: 2000, montant_max: 200000, disponible: 5, actif: false, created_at: new Date(Date.now() - 259200000).toISOString(), seller: { nom_prenom: "Seydou Kone", username: "seydou_bnb" }, completed_trades: 12 },
+  { id: "o4", seller_id: "s1", crypto: "eth",        taux: 650000, montant_min: 10000, montant_max: 2000000, disponible: 0.5, actif: true, created_at: new Date(Date.now() - 345600000).toISOString(), seller: { nom_prenom: "Ama Dossou", username: "ama_sell" }, completed_trades: 8 },
+];
+
+const MOCK_DISPUTES: CryptoDispute[] = [
+  { id: "d1", transaction_id: "tx_003", user_id: "u3", seller_id: "s1", raison: "La crypto n'a pas été envoyée après paiement confirmé.", statut: "open", created_at: new Date(Date.now() - 86400000).toISOString(), user: { nom_prenom: "Ibrahim Traoré", username: "ibra_t" }, seller: { nom_prenom: "Ama Dossou", username: "ama_sell" } },
+];
 
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────────
 
-export default function CryptoAdminPage({
-  navigate, user, onLogout,
-  offers, setOffers,
-  orders, setOrders,
-  accounts, setAccounts,
-  promoteToSeller, notify, updateAccount,
-}: any) {
-  const st = makeStyles();
-  const [active, setActive] = useState("overview");
+export default function CryptoAdminPanelPage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Modales
-  const [sellerModal,   setSellerModal]   = useState<any | null>(null);  // Gérer vendeur existant
-  const [promoteModal,  setPromoteModal]  = useState<any | null>(null);  // Promouvoir acheteur
-  const [disputeModal,  setDisputeModal]  = useState<any | null>(null);  // Résoudre litige
-  const [passwordModal, setPasswordModal] = useState<any | null>(null);  // Voir mot de passe
+  const [codeInput, setCodeInput]         = useState("");
+  const [codeError, setCodeError]         = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const disputes = orders.filter((o: any) => o.status === "disputed");
-  const buyers   = accounts.filter((a: any) => !a.isAdmin && !a.isSeller);
-  const sellers  = accounts.filter((a: any) => a.isSeller && !a.isAdmin);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tab, setTab] = useState<CryptoAdminTab>("stats");
+  const [loading, setLoading] = useState(false);
 
-  const menu = [
-    { id: "overview",  label: "Vue d'ensemble",      icon: "📊", badge: 0 },
-    { id: "users",     label: "Utilisateurs",         icon: "👥", badge: buyers.length },
-    { id: "sellers",   label: "Vendeurs",             icon: "🏪", badge: 0 },
-    { id: "orders",    label: "Toutes les commandes", icon: "📦", badge: 0 },
-    { id: "disputes",  label: "Litiges",              icon: "⚠️", badge: disputes.length },
-    { id: "offers",    label: "Toutes les annonces",  icon: "🏷️", badge: 0 },
-  ];
+  const [transactions, setTransactions] = useState<CryptoTransaction[]>(MOCK_TRANSACTIONS);
+  const [offers, setOffers]             = useState<CryptoOffer[]>(MOCK_OFFERS);
+  const [disputes, setDisputes]         = useState<CryptoDispute[]>(MOCK_DISPUTES);
+  const [users, setUsers]               = useState<CryptoUser[]>([]);
 
-  const titles: any = {
-    overview: "Vue d'ensemble",
-    users: "Utilisateurs — Activer comme Annonceur",
-    sellers: "Gestion des Vendeurs",
-    orders: "Toutes les Commandes",
-    disputes: "Litiges & Transfert de Fonds",
-    offers: "Annonces P2P",
+  const [searchTx,    setSearchTx]    = useState("");
+  const [filterStatut, setFilterStatut] = useState("");
+  const [filterCrypto, setFilterCrypto] = useState("");
+  const [searchOffer,  setSearchOffer]  = useState("");
+  const [searchUser,   setSearchUser]   = useState("");
+
+  const [expandedTx,    setExpandedTx]    = useState<string | null>(null);
+  const [expandedOffer, setExpandedOffer] = useState<string | null>(null);
+
+  // ── Stats calculées ──
+  const stats: CryptoStats = {
+    totalTransactions:     transactions.length,
+    volumeTotal:           transactions.reduce((s, t) => s + t.montant_fcfa, 0),
+    volumeUSD:             transactions.reduce((s, t) => s + t.montant_fcfa / 615, 0),
+    transactionsPending:   transactions.filter(t => t.statut === "pending").length,
+    transactionsConfirmed: transactions.filter(t => t.statut === "confirmed").length,
+    transactionsDisputed:  transactions.filter(t => t.statut === "disputed").length,
+    totalOffers:           offers.length,
+    offresActives:         offers.filter(o => o.actif).length,
+    totalVendeurs:         [...new Set(offers.map(o => o.seller_id))].length,
+    totalAcheteurs:        [...new Set(transactions.map(t => t.user_id))].length,
+    fraisTotal:            transactions.filter(t => t.statut === "confirmed").reduce((s, t) => s + t.montant_fcfa * 0.015, 0),
+    newTransactionsToday:  transactions.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString()).length,
   };
 
-  const updateAcc = (id: string, patch: any) =>
-    setAccounts((prev: any[]) => prev.map((a: any) => a.id === id ? { ...a, ...patch } : a));
+  // ── Auth ──
+  useEffect(() => {
+    try {
+      const auth = sessionStorage.getItem("nexora_crypto_admin_auth");
+      if (auth === "true") setIsAuthenticated(true);
+    } catch {}
+  }, []);
 
-  // ── MODAL : PROMOUVOIR UN ACHETEUR EN VENDEUR ──────────────────────────────
-  const PromoteModal = () => {
-    const acc = promoteModal;
-    const [form, setForm] = useState<SellerLimits>({
-      ...DEFAULT_LIMITS,
-      allowedCryptos: CRYPTOS.map(c => c.id),
-      activeDays: 30,
-    });
-    const [showPwd, setShowPwd] = useState(false);
+  const handleLogin = () => {
+    if (codeInput.trim().toUpperCase() === ADMIN_CODE) {
+      try { sessionStorage.setItem("nexora_crypto_admin_auth", "true"); } catch {}
+      setIsAuthenticated(true);
+      setCodeError(false);
+    } else {
+      setCodeError(true);
+      setCodeInput("");
+    }
+  };
 
-    const activate = () => {
-      const expiresAt = addDays(form.activeDays);
-      updateAcc(acc.id, {
-        isSeller: true,
-        sellerStatus: "active",
-        sellerLimits: { ...form, expiresAt },
-        sellerActivatedAt: new Date().toISOString(),
-      });
-      promoteToSeller(acc.id);
-      setPromoteModal(null);
-      notify(`✅ ${acc.name} activé comme annonceur pour ${form.activeDays} jours. Dépôt de garantie : ${fmt(form.reserve)} FCFA`);
-    };
+  // ── Load data from Supabase (si tables existantes) ──
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Utilisateurs
+      const { data: usersData } = await supabase
+        .from("nexora_users")
+        .select("id, nom_prenom, username, email, avatar_url, created_at, is_active, status, plan")
+        .order("created_at", { ascending: false });
+      if (usersData) setUsers(usersData as CryptoUser[]);
 
+      // Transactions crypto (table à créer si elle n'existe pas encore)
+      // const { data: txData } = await supabase.from("crypto_transactions").select("*, user:nexora_users!user_id(nom_prenom,username), seller:nexora_users!seller_id(nom_prenom,username)").order("created_at", { ascending: false });
+      // if (txData) setTransactions(txData as CryptoTransaction[]);
+
+    } catch (err) {
+      console.warn("Erreur chargement crypto admin:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) loadData();
+  }, [isAuthenticated, loadData]);
+
+  // ── Actions ──
+  const toggleOffer = (offerId: string) => {
+    setOffers(prev => prev.map(o => o.id === offerId ? { ...o, actif: !o.actif } : o));
+    toast({ title: "Annonce mise à jour", description: "Le statut de l'annonce a été modifié." });
+  };
+
+  const resolveDispute = (disputeId: string, favor: "buyer" | "seller") => {
+    setDisputes(prev => prev.map(d => d.id === disputeId ? { ...d, statut: "resolved" } : d));
+    const txId = disputes.find(d => d.id === disputeId)?.transaction_id;
+    if (txId) {
+      setTransactions(prev => prev.map(t =>
+        t.id === txId ? { ...t, statut: favor === "buyer" ? "cancelled" : "confirmed" } : t
+      ));
+    }
+    toast({ title: "Litige résolu", description: `Résolution en faveur de l'${favor === "buyer" ? "acheteur" : "vendeur"}.` });
+  };
+
+  const cancelTransaction = (txId: string) => {
+    if (!window.confirm("Annuler cette transaction ?")) return;
+    setTransactions(prev => prev.map(t => t.id === txId ? { ...t, statut: "cancelled" } : t));
+    toast({ title: "Transaction annulée" });
+  };
+
+  const confirmTransaction = (txId: string) => {
+    setTransactions(prev => prev.map(t => t.id === txId ? { ...t, statut: "confirmed" } : t));
+    toast({ title: "Transaction confirmée", description: "La livraison de crypto a été confirmée." });
+  };
+
+  // ── Tabs nav ──
+  const TABS = [
+    { id: "stats",        label: "Vue d'ensemble",    Icon: BarChart3,       badge: 0 },
+    { id: "transactions", label: "Transactions",       Icon: ArrowRightLeft,  badge: stats.transactionsPending },
+    { id: "offers",       label: "Annonces P2P",       Icon: Package,         badge: 0 },
+    { id: "users",        label: "Utilisateurs",       Icon: Users,           badge: 0 },
+    { id: "disputes",     label: "Litiges",            Icon: AlertTriangle,   badge: disputes.filter(d => d.statut === "open").length },
+    { id: "logs",         label: "Logs & Activité",    Icon: Activity,        badge: 0 },
+  ] as const;
+
+  // ─── ÉCRAN LOGIN ──────────────────────────────────────────────────────────
+  if (!isAuthenticated) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
-        <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28, width: "100%", maxWidth: 540, maxHeight: "92vh", overflowY: "auto" }}>
-
-          {/* En-tête */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg,#f59e0b,#d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🏪</div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 17, color: C.text }}>Activer comme Annonceur</div>
-              <div style={{ color: C.muted, fontSize: 13 }}>{acc.name} — {acc.email}</div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "linear-gradient(135deg, #06090f 0%, #0d1526 100%)" }}>
+        <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 24, padding: 36, width: "100%", maxWidth: 400 }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, #f59e0b, #d97706)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 32px rgba(245,158,11,0.35)" }}>
+              <span style={{ fontSize: 28 }}>₿</span>
             </div>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: C.text, marginBottom: 6 }}>Crypto Admin</h1>
+            <p style={{ color: C.muted, fontSize: 14 }}>Espace d'administration sécurisé</p>
           </div>
-
-          {/* Mot de passe */}
-          {acc.password && (
-            <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ color: C.gold, fontSize: 12, fontWeight: 700, marginBottom: 4 }}>🔑 MOT DE PASSE DU COMPTE</div>
-                  <div style={{ color: C.text, fontSize: 15, fontWeight: 700, letterSpacing: showPwd ? 1 : 3 }}>
-                    {showPwd ? acc.password : "••••••••"}
-                  </div>
-                </div>
-                <button onClick={() => setShowPwd(p => !p)}
-                  style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", color: C.muted, cursor: "pointer", fontSize: 12 }}>
-                  {showPwd ? "🙈 Masquer" : "👁 Voir"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Dépôt de garantie */}
-          <div style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#ef4444", marginBottom: 4 }}>🔒 Dépôt de Garantie (FCFA)</div>
-            <div style={{ color: C.muted, fontSize: 12, marginBottom: 12 }}>
-              Montant déposé par le vendeur. En cas de litige non résolu, ce fonds sera transféré à l'acheteur lésé.
-            </div>
-            <input
-              type="number"
-              value={form.reserve}
-              onChange={e => setForm({ ...form, reserve: parseFloat(e.target.value) || 0 })}
-              placeholder="Ex: 50000"
-              style={{ ...st.input, fontSize: 16, fontWeight: 700 }}
-            />
-            <div style={{ color: C.muted, fontSize: 11, marginTop: 6 }}>
-              ≈ ${((form.reserve || 0) / 615).toFixed(2)} USD
-            </div>
-          </div>
-
-          {/* Durée d'activation */}
           <div style={{ marginBottom: 16 }}>
-            <label style={st.label}>⏱ Durée d'activation (jours)</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {[7, 14, 30, 60, 90].map(d => (
-                <button key={d} onClick={() => setForm({ ...form, activeDays: d })}
-                  style={{
-                    padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none",
-                    background: form.activeDays === d ? C.gold : "rgba(255,255,255,0.06)",
-                    color: form.activeDays === d ? "#000" : C.muted,
-                  }}>
-                  {d}j
-                </button>
-              ))}
-            </div>
             <input
-              type="number"
-              value={form.activeDays}
-              onChange={e => setForm({ ...form, activeDays: parseInt(e.target.value) || 30 })}
-              style={st.input}
-              placeholder="Nombre de jours personnalisé"
-            />
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>
-              Expire le : <strong style={{ color: C.text }}>{fmtDate(addDays(form.activeDays))}</strong>
-            </div>
-          </div>
-
-          {/* Limites de vente */}
-          <div style={{ background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: C.cyan, marginBottom: 14 }}>📊 Limites de Vente (FCFA)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div>
-                <label style={st.label}>Vente minimum</label>
-                <input type="number" value={form.minSell} onChange={e => setForm({ ...form, minSell: parseFloat(e.target.value) || 0 })} style={st.input} placeholder="Ex: 5000" />
-              </div>
-              <div>
-                <label style={st.label}>Vente maximum</label>
-                <input type="number" value={form.maxSell} onChange={e => setForm({ ...form, maxSell: parseFloat(e.target.value) || 0 })} style={st.input} placeholder="Ex: 500000" />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={st.label}>Plafond journalier</label>
-                <input type="number" value={form.dailyLimit} onChange={e => setForm({ ...form, dailyLimit: parseFloat(e.target.value) || 0 })} style={st.input} placeholder="Ex: 2000000" />
-              </div>
-            </div>
-          </div>
-
-          {/* Cryptos autorisées */}
-          <div style={{ marginBottom: 22 }}>
-            <label style={{ ...st.label, marginBottom: 10 }}>₿ Cryptomonnaies autorisées à vendre</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {CRYPTOS.map(cr => {
-                const on = form.allowedCryptos.includes(cr.id);
-                return (
-                  <button key={cr.id}
-                    onClick={() => setForm(f => ({
-                      ...f,
-                      allowedCryptos: on
-                        ? f.allowedCryptos.filter(c => c !== cr.id)
-                        : [...f.allowedCryptos, cr.id],
-                    }))}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "6px 12px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                      border: `1px solid ${on ? cr.color : C.border}`,
-                      background: on ? `${cr.color}22` : "transparent",
-                      color: on ? cr.color : C.muted,
-                    }}>
-                    <span>{cr.icon}</span> {cr.symbol}
-                    {on && <span style={{ fontSize: 10 }}>✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-            {form.allowedCryptos.length === 0 && (
-              <div style={{ color: "#ef4444", fontSize: 12, marginTop: 8 }}>⚠ Sélectionnez au moins une crypto</div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={activate}
-              disabled={form.allowedCryptos.length === 0}
+              type="password"
+              value={codeInput}
+              onChange={e => { setCodeInput(e.target.value); setCodeError(false); }}
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              placeholder="Code d'accès admin"
+              autoFocus
               style={{
-                flex: 1, padding: "13px", borderRadius: 12, border: "none", cursor: form.allowedCryptos.length === 0 ? "not-allowed" : "pointer",
-                background: form.allowedCryptos.length === 0 ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#10b981,#059669)",
-                color: form.allowedCryptos.length === 0 ? C.muted : "#fff",
-                fontWeight: 800, fontSize: 14,
-              }}>
-              ✅ Activer le compte Annonceur
-            </button>
-            <button onClick={() => setPromoteModal(null)}
-              style={{ padding: "13px 20px", borderRadius: 12, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              Annuler
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ── MODAL : GÉRER UN VENDEUR EXISTANT ─────────────────────────────────────
-  const SellerModal = () => {
-    const acc = sellerModal;
-    if (!acc) return null;
-    const limits: SellerLimits = acc.sellerLimits || DEFAULT_LIMITS;
-    const [form, setForm] = useState<SellerLimits>({ ...DEFAULT_LIMITS, ...limits, allowedCryptos: limits.allowedCryptos?.length ? limits.allowedCryptos : CRYPTOS.map(c => c.id) });
-    const [showPwd, setShowPwd] = useState(false);
-    const [sellerStatus, setSellerStatus] = useState(acc.sellerStatus || "active");
-    const [extendDays, setExtendDays] = useState(30);
-
-    const days = daysLeft(form.expiresAt);
-    const isExpired = days !== null && days <= 0;
-
-    const save = () => {
-      updateAcc(acc.id, { sellerStatus, sellerLimits: form });
-      setSellerModal(null);
-      notify(`✅ ${acc.name} mis à jour.`);
-    };
-
-    const extendAccount = () => {
-      const newExpiry = addDays(extendDays);
-      setForm(f => ({ ...f, expiresAt: newExpiry }));
-      updateAcc(acc.id, { sellerStatus: "active", sellerLimits: { ...form, expiresAt: newExpiry } });
-      notify(`✅ Compte de ${acc.name} prolongé de ${extendDays} jours.`);
-    };
-
-    return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.82)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
-        <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28, width: "100%", maxWidth: 560, maxHeight: "92vh", overflowY: "auto" }}>
-
-          {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0f2035,#1e3a5f)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: C.gold, fontSize: 20 }}>
-              {acc.name?.[0]}
-            </div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 17, color: C.text }}>{acc.name}</div>
-              <div style={{ color: C.muted, fontSize: 13 }}>{acc.email}</div>
-            </div>
-          </div>
-
-          {/* Mot de passe */}
-          {acc.password && (
-            <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ color: C.gold, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>🔑 MOT DE PASSE DU COMPTE</div>
-                  <div style={{ color: C.text, fontSize: 16, fontWeight: 800, letterSpacing: showPwd ? 1 : 4 }}>
-                    {showPwd ? acc.password : "••••••••"}
-                  </div>
-                </div>
-                <button onClick={() => setShowPwd(p => !p)}
-                  style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px 13px", color: C.muted, cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
-                  {showPwd ? "🙈 Masquer" : "👁 Voir"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Expiration */}
-          <div style={{ background: isExpired ? "rgba(239,68,68,0.1)" : days !== null && days <= 7 ? "rgba(245,158,11,0.1)" : "rgba(16,185,129,0.07)", border: `1px solid ${isExpired ? "rgba(239,68,68,0.3)" : days !== null && days <= 7 ? "rgba(245,158,11,0.3)" : "rgba(16,185,129,0.2)"}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: isExpired ? "#ef4444" : days !== null && days <= 7 ? C.gold : C.green, marginBottom: 4 }}>
-                  {isExpired ? "⛔ COMPTE EXPIRÉ" : days !== null && days <= 7 ? "⚠️ EXPIRE BIENTÔT" : "✅ COMPTE ACTIF"}
-                </div>
-                <div style={{ color: C.text, fontSize: 13 }}>
-                  {form.expiresAt ? `Expire le ${fmtDate(form.expiresAt)}` : "Pas de limite de durée"}
-                  {days !== null && !isExpired && <span style={{ color: C.muted, fontSize: 12 }}> ({days} jour{days > 1 ? "s" : ""} restant{days > 1 ? "s" : ""})</span>}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ color: C.muted, fontSize: 13 }}>Prolonger de :</span>
-              {[7, 14, 30, 60, 90].map(d => (
-                <button key={d} onClick={() => setExtendDays(d)}
-                  style={{ padding: "5px 11px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "none", background: extendDays === d ? C.gold : "rgba(255,255,255,0.08)", color: extendDays === d ? "#000" : C.muted }}>
-                  +{d}j
-                </button>
-              ))}
-              <button onClick={extendAccount}
-                style={{ padding: "7px 16px", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", border: "none", background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#fff" }}>
-                ✓ Appliquer
-              </button>
-            </div>
-          </div>
-
-          {/* Dépôt de garantie */}
-          <div style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.22)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#ef4444", marginBottom: 6 }}>🔒 Dépôt de Garantie</div>
-            <div style={{ color: C.muted, fontSize: 12, marginBottom: 10 }}>
-              En cas de litige non résolu, ce montant sera transféré à l'acheteur lésé.
-            </div>
-            <input type="number" value={form.reserve} onChange={e => setForm({ ...form, reserve: parseFloat(e.target.value) || 0 })} style={st.input} placeholder="Ex: 50000 FCFA" />
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>
-              Actuellement : <strong style={{ color: C.gold }}>{fmt(form.reserve)} FCFA</strong> (≈ ${(form.reserve / 615).toFixed(2)})
-            </div>
-          </div>
-
-          {/* Statut vendeur */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={st.label}>Statut du compte</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {(["active", "restricted", "blocked"] as const).map(s => (
-                <button key={s} onClick={() => setSellerStatus(s)}
-                  style={{
-                    padding: "8px 16px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    border: `1px solid ${sellerStatus === s ? (s === "active" ? C.green : s === "restricted" ? C.gold : "#ef4444") : C.border}`,
-                    background: sellerStatus === s ? (s === "active" ? "rgba(16,185,129,0.15)" : s === "restricted" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)") : "transparent",
-                    color: sellerStatus === s ? (s === "active" ? C.green : s === "restricted" ? C.gold : "#ef4444") : C.muted,
-                  }}>
-                  {s === "active" ? "✅ Actif" : s === "restricted" ? "⚠️ Restreint" : "🚫 Bloqué"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Limites */}
-          <div style={{ background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: C.cyan, marginBottom: 14 }}>📊 Limites de Vente (FCFA)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <label style={st.label}>Minimum par vente</label>
-                <input type="number" value={form.minSell} onChange={e => setForm({ ...form, minSell: parseFloat(e.target.value) || 0 })} style={st.input} />
-              </div>
-              <div>
-                <label style={st.label}>Maximum par vente</label>
-                <input type="number" value={form.maxSell} onChange={e => setForm({ ...form, maxSell: parseFloat(e.target.value) || 0 })} style={st.input} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={st.label}>Plafond journalier</label>
-                <input type="number" value={form.dailyLimit} onChange={e => setForm({ ...form, dailyLimit: parseFloat(e.target.value) || 0 })} style={st.input} />
-              </div>
-            </div>
-          </div>
-
-          {/* Cryptos autorisées */}
-          <div style={{ marginBottom: 22 }}>
-            <label style={{ ...st.label, marginBottom: 10 }}>₿ Cryptos autorisées</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {CRYPTOS.map(cr => {
-                const on = form.allowedCryptos?.includes(cr.id);
-                return (
-                  <button key={cr.id}
-                    onClick={() => setForm(f => ({
-                      ...f,
-                      allowedCryptos: on
-                        ? (f.allowedCryptos || []).filter(c => c !== cr.id)
-                        : [...(f.allowedCryptos || []), cr.id],
-                    }))}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "6px 12px", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                      border: `1px solid ${on ? cr.color : C.border}`,
-                      background: on ? `${cr.color}22` : "transparent",
-                      color: on ? cr.color : C.muted,
-                    }}>
-                    <span>{cr.icon}</span> {cr.symbol}
-                    {on && <span style={{ fontSize: 10 }}>✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button onClick={save}
-              style={{ flex: 1, padding: "13px", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#000", fontWeight: 800, fontSize: 14 }}>
-              💾 Sauvegarder
-            </button>
-            <button
-              onClick={() => {
-                if (window.confirm(`Supprimer le compte vendeur de ${acc.name} ?`)) {
-                  updateAcc(acc.id, { isSeller: false, sellerStatus: null, sellerLimits: null });
-                  setSellerModal(null);
-                  notify(`${acc.name} retiré des vendeurs.`);
-                }
+                width: "100%", boxSizing: "border-box",
+                background: "rgba(255,255,255,0.04)",
+                border: `1px solid ${codeError ? C.red : C.border}`,
+                borderRadius: 12, padding: "14px 18px",
+                color: C.text, fontSize: 16, fontWeight: 700,
+                textAlign: "center", letterSpacing: 6, outline: "none",
               }}
-              style={{ padding: "13px 18px", borderRadius: 12, border: "none", cursor: "pointer", background: "rgba(239,68,68,0.12)", color: "#ef4444", fontWeight: 700, fontSize: 13, border: `1px solid rgba(239,68,68,0.3)` }}>
-              🗑 Révoquer
-            </button>
-            <button onClick={() => setSellerModal(null)}
-              style={{ padding: "13px 18px", borderRadius: 12, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ── MODAL : RÉSOLUTION LITIGE + TRANSFERT FONDS ───────────────────────────
-  const DisputeModal = () => {
-    const order = disputeModal;
-    if (!order) return null;
-    const cr = getCr(order.crypto);
-    const seller = accounts.find((a: any) => a.id === order.sellerId);
-    const sellerReserve = seller?.sellerLimits?.reserve || 0;
-    const [favor, setFavor] = useState<"buyer" | "seller" | null>(null);
-    const [transferAmount, setTransferAmount] = useState(order.amountFCFA || order.totalFCFA || 0);
-    const [note, setNote] = useState("");
-
-    const resolve = () => {
-      if (!favor) return;
-      if (favor === "buyer") {
-        // Déduire du dépôt de garantie du vendeur
-        if (seller) {
-          const newReserve = Math.max(0, sellerReserve - transferAmount);
-          updateAcc(seller.id, { sellerLimits: { ...seller.sellerLimits, reserve: newReserve } });
-        }
-        setOrders((prev: any[]) => prev.map((o: any) => o.id === order.id ? { ...o, status: "refunded", disputeNote: note } : o));
-        notify(`✅ Litige résolu — ${fmt(transferAmount)} FCFA transféré à l'acheteur depuis le dépôt du vendeur.`);
-      } else {
-        setOrders((prev: any[]) => prev.map((o: any) => o.id === order.id ? { ...o, status: "confirmed", disputeNote: note } : o));
-        notify(`✅ Litige résolu en faveur du vendeur.`);
-      }
-      setDisputeModal(null);
-    };
-
-    return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-        <div style={{ background: C.bgCard, border: "1px solid rgba(239,68,68,0.4)", borderRadius: 20, padding: 28, width: "100%", maxWidth: 520, maxHeight: "92vh", overflowY: "auto" }}>
-
-          <div style={{ fontWeight: 900, fontSize: 17, color: C.text, marginBottom: 6 }}>⚖️ Résolution de Litige</div>
-          <div style={{ color: C.muted, fontSize: 13, marginBottom: 22 }}>Commande {order.id} — {order.amount} {cr.symbol}</div>
-
-          {/* Parties */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-            <div style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 12, padding: 14 }}>
-              <div style={{ color: C.blue, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>👤 ACHETEUR</div>
-              <div style={{ color: C.text, fontWeight: 700 }}>{order.buyerName}</div>
-              <div style={{ color: C.muted, fontSize: 12 }}>A payé {fmt(order.totalFCFA || order.amountFCFA)} FCFA</div>
-              <div style={{ color: "#ef4444", fontSize: 11, marginTop: 4 }}>N'a pas reçu la crypto</div>
-            </div>
-            <div style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 12, padding: 14 }}>
-              <div style={{ color: C.purple, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>🏪 VENDEUR</div>
-              <div style={{ color: C.text, fontWeight: 700 }}>{order.seller || seller?.name || "—"}</div>
-              <div style={{ color: C.muted, fontSize: 12 }}>Dépôt de garantie</div>
-              <div style={{ color: C.gold, fontSize: 13, fontWeight: 800, marginTop: 4 }}>{fmt(sellerReserve)} FCFA</div>
-            </div>
-          </div>
-
-          {/* Choix résolution */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ ...st.label, marginBottom: 12 }}>Résoudre en faveur de :</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => setFavor("buyer")}
-                style={{
-                  padding: 14, borderRadius: 12, textAlign: "left", cursor: "pointer", fontSize: 14, fontWeight: 700,
-                  border: `2px solid ${favor === "buyer" ? C.blue : C.border}`,
-                  background: favor === "buyer" ? "rgba(59,130,246,0.12)" : "transparent",
-                  color: favor === "buyer" ? C.blue : C.muted,
-                }}>
-                <div>👤 Acheteur — Rembourser + Transférer fonds</div>
-                <div style={{ fontSize: 12, fontWeight: 500, marginTop: 4, color: C.muted }}>
-                  Le dépôt de garantie du vendeur sera déduit et remis à l'acheteur.
-                </div>
-              </button>
-              <button onClick={() => setFavor("seller")}
-                style={{
-                  padding: 14, borderRadius: 12, textAlign: "left", cursor: "pointer", fontSize: 14, fontWeight: 700,
-                  border: `2px solid ${favor === "seller" ? C.purple : C.border}`,
-                  background: favor === "seller" ? "rgba(139,92,246,0.12)" : "transparent",
-                  color: favor === "seller" ? C.purple : C.muted,
-                }}>
-                <div>🏪 Vendeur — Transaction confirmée</div>
-                <div style={{ fontSize: 12, fontWeight: 500, marginTop: 4, color: C.muted }}>
-                  La crypto a bien été envoyée. Litige rejeté.
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Montant à transférer (si faveur acheteur) */}
-          {favor === "buyer" && (
-            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
-              <label style={{ ...st.label, color: "#ef4444" }}>💸 Montant à transférer depuis le dépôt (FCFA)</label>
-              <input type="number" value={transferAmount} onChange={e => setTransferAmount(parseFloat(e.target.value) || 0)} style={{ ...st.input, fontWeight: 800 }} />
-              {transferAmount > sellerReserve && (
-                <div style={{ color: "#ef4444", fontSize: 12, marginTop: 6 }}>
-                  ⚠ Montant supérieur au dépôt disponible ({fmt(sellerReserve)} FCFA)
-                </div>
-              )}
-              <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>
-                Dépôt restant après transfert : <strong style={{ color: Math.max(0, sellerReserve - transferAmount) === 0 ? "#ef4444" : C.green }}>
-                  {fmt(Math.max(0, sellerReserve - transferAmount))} FCFA
-                </strong>
-              </div>
-            </div>
-          )}
-
-          {/* Note admin */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={st.label}>📝 Note de résolution (optionnel)</label>
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Ex: Vendeur n'a pas fourni de preuve d'envoi..."
-              rows={3}
-              style={{ ...st.input, resize: "vertical", fontFamily: "inherit" }}
             />
+            {codeError && <p style={{ color: C.red, fontSize: 13, textAlign: "center", marginTop: 8 }}>Code incorrect</p>}
           </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={resolve} disabled={!favor}
-              style={{
-                flex: 1, padding: "13px", borderRadius: 12, border: "none", fontWeight: 800, fontSize: 14,
-                cursor: favor ? "pointer" : "not-allowed",
-                background: !favor ? "rgba(255,255,255,0.06)" : favor === "buyer" ? "linear-gradient(135deg,#3b82f6,#1d4ed8)" : "linear-gradient(135deg,#8b5cf6,#6d28d9)",
-                color: !favor ? C.muted : "#fff",
-              }}>
-              ✅ Confirmer la résolution
-            </button>
-            <button onClick={() => setDisputeModal(null)}
-              style={{ padding: "13px 20px", borderRadius: 12, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              Annuler
-            </button>
-          </div>
+          <button
+            onClick={handleLogin}
+            style={{ width: "100%", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#000", fontWeight: 800, fontSize: 15, border: "none", borderRadius: 12, padding: "14px", cursor: "pointer" }}>
+            Accéder au Panel Crypto
+          </button>
+          <button onClick={() => navigate(-1)}
+            style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px auto 0", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 14 }}>
+            <ArrowLeft size={16} /> Retour
+          </button>
         </div>
       </div>
     );
-  };
+  }
 
-  // ── CARD helper ───────────────────────────────────────────────────────────
-  const Card = ({ children, style = {} }: any) => (
-    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 22, ...style }}>{children}</div>
+  // ─── PANEL PRINCIPAL ──────────────────────────────────────────────────────
+
+  // Filtres transactions
+  const filteredTx = transactions.filter(t => {
+    const matchSearch = !searchTx || t.user?.nom_prenom.toLowerCase().includes(searchTx.toLowerCase()) || t.user?.username.toLowerCase().includes(searchTx.toLowerCase()) || t.id.includes(searchTx);
+    const matchStatut = !filterStatut || t.statut === filterStatut;
+    const matchCrypto = !filterCrypto || t.crypto === filterCrypto;
+    return matchSearch && matchStatut && matchCrypto;
+  });
+
+  // Filtres offres
+  const filteredOffers = offers.filter(o =>
+    !searchOffer || o.seller?.nom_prenom.toLowerCase().includes(searchOffer.toLowerCase()) || o.crypto.includes(searchOffer)
   );
 
-  const fmtUSD = (fcfa: number) => `$${(fcfa / 615).toFixed(2)}`;
+  // Filtres users
+  const filteredUsers = users.filter(u =>
+    !searchUser || u.nom_prenom.toLowerCase().includes(searchUser.toLowerCase()) || u.username.toLowerCase().includes(searchUser.toLowerCase())
+  );
 
-  // ── RENDU ──────────────────────────────────────────────────────────────────
+  const Chip = ({ label, color, bg }: { label: string; color: string; bg: string }) => (
+    <span style={{ background: bg, color, fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 8px", whiteSpace: "nowrap" }}>{label}</span>
+  );
+
+  const getCrypto = (id: string) => CRYPTOS_LIST.find(c => c.id === id) || CRYPTOS_LIST[0];
+
   return (
-    <>
-      {promoteModal && <PromoteModal />}
-      {sellerModal  && <SellerModal  />}
-      {disputeModal && <DisputeModal />}
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text }}>
 
-      <SidebarLayout
-        user={user} onLogout={onLogout} navigate={navigate}
-        active={active} setActive={setActive}
-        menu={menu} title={titles[active] || "Administration"}
-      >
+      {/* Overlay menu */}
+      {menuOpen && <div style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.7)" }} onClick={() => setMenuOpen(false)} />}
 
-        {/* ── OVERVIEW ────────────────────────────────────────────────────── */}
-        {active === "overview" && (
-          <>
-            {/* KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 24 }}>
+      {/* Sidebar */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, height: "100%", zIndex: 50, width: 280,
+        background: "#04070e", borderRight: `1px solid ${C.border}`,
+        boxShadow: "4px 0 30px rgba(0,0,0,0.5)",
+        transform: menuOpen ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.3s ease",
+        display: "flex", flexDirection: "column",
+      }}>
+        {/* Sidebar header */}
+        <div style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#f59e0b,#d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>₿</div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: C.text }}>Crypto Admin</div>
+              <div style={{ fontSize: 11, color: C.muted }}>Panel P2P</div>
+            </div>
+          </div>
+          <button onClick={() => setMenuOpen(false)} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", padding: 4 }}><X size={18} /></button>
+        </div>
+
+        {/* Nav */}
+        <nav style={{ flex: 1, padding: "12px 12px", overflowY: "auto" }}>
+          {TABS.map(t => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => { setTab(t.id as CryptoAdminTab); setMenuOpen(false); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+                  borderRadius: 12, marginBottom: 4, border: "none", cursor: "pointer", textAlign: "left",
+                  background: active ? "linear-gradient(135deg,rgba(245,158,11,0.2),rgba(245,158,11,0.1))" : "transparent",
+                  color: active ? C.gold : C.muted,
+                  fontWeight: active ? 700 : 500, fontSize: 14,
+                  borderLeft: active ? `3px solid ${C.gold}` : "3px solid transparent",
+                }}>
+                <t.Icon size={17} />
+                <span style={{ flex: 1 }}>{t.label}</span>
+                {t.badge > 0 && (
+                  <span style={{ background: C.red, color: "#fff", fontSize: 11, fontWeight: 800, borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {t.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar footer */}
+        <div style={{ padding: "12px", borderTop: `1px solid ${C.border}` }}>
+          <button onClick={() => navigate("/admin")}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: "rgba(255,255,255,0.04)", color: C.muted, fontSize: 13, marginBottom: 8 }}>
+            <ShieldCheck size={15} /> Panel Admin Principal
+          </button>
+          <button onClick={() => navigate(-1)}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: "transparent", color: C.muted, fontSize: 13, marginBottom: 8 }}>
+            <ArrowLeft size={15} /> Retour
+          </button>
+          <button onClick={() => { try { sessionStorage.removeItem("nexora_crypto_admin_auth"); } catch {} setIsAuthenticated(false); }}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: "none", cursor: "pointer", background: "rgba(239,68,68,0.08)", color: C.red, fontSize: 13 }}>
+            <XCircle size={15} /> Déconnexion
+          </button>
+        </div>
+      </div>
+
+      {/* Header */}
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(6,9,15,0.95)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={() => setMenuOpen(true)} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 10, padding: 8, cursor: "pointer", color: C.text }}>
+          <Menu size={18} />
+        </button>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#f59e0b,#d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>₿</div>
+          <span style={{ fontWeight: 900, fontSize: 16, color: C.text }}>
+            {TABS.find(t => t.id === tab)?.label ?? "Crypto Admin"}
+          </span>
+        </div>
+        {disputes.filter(d => d.statut === "open").length > 0 && tab !== "disputes" && (
+          <button onClick={() => setTab("disputes")}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.15)", border: `1px solid rgba(239,68,68,0.3)`, color: C.red, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <AlertTriangle size={13} /> {disputes.filter(d => d.statut === "open").length} litige(s) ouvert(s)
+          </button>
+        )}
+        <button onClick={loadData} disabled={loading}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 10, background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, color: C.text, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
+          <span>Actualiser</span>
+        </button>
+      </div>
+
+      {/* Contenu */}
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 16px 80px" }}>
+
+        {/* ══ STATS ══════════════════════════════════════════════════════════ */}
+        {tab === "stats" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* KPIs principaux */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
               {[
-                { l: "Utilisateurs",  v: accounts.filter((a:any)=>!a.isAdmin).length, i: "👥", col: C.purple },
-                { l: "Vendeurs actifs", v: sellers.filter((a:any)=>a.sellerStatus==="active").length, i: "🏪", col: C.green },
-                { l: "Commandes",     v: orders.length,   i: "📦", col: C.blue },
-                { l: "Annonces",      v: offers.length,   i: "🏷️", col: C.gold },
-                { l: "Litiges",       v: disputes.length, i: "⚠️", col: C.red  },
-                { l: "Dépôts totaux", v: `${fmt(sellers.reduce((s:number,a:any)=>s+(a.sellerLimits?.reserve||0),0))} FCFA`, i: "🔒", col: C.cyan },
-              ].map(stat => (
-                <div key={stat.l} style={{ background: C.bgCard, borderLeft: `3px solid ${stat.col}`, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-                  <div style={{ fontSize: 22, marginBottom: 6 }}>{stat.i}</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: stat.col }}>{stat.v}</div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{stat.l}</div>
+                { label: "Volume Total", value: `${fmt(stats.volumeTotal)} FCFA`, sub: fmtUSD(stats.volumeTotal), color: C.gold, icon: "💰" },
+                { label: "Transactions", value: stats.totalTransactions, sub: `${stats.newTransactionsToday} aujourd'hui`, color: C.blue, icon: "↔" },
+                { label: "Confirmées", value: stats.transactionsConfirmed, sub: `${stats.transactionsPending} en attente`, color: C.green, icon: "✓" },
+                { label: "Litiges", value: stats.transactionsDisputed, sub: `${disputes.filter(d => d.statut === "open").length} ouverts`, color: C.red, icon: "⚠" },
+                { label: "Vendeurs", value: stats.totalVendeurs, sub: `${stats.offresActives} annonces actives`, color: C.purple, icon: "🏪" },
+                { label: "Frais Générés", value: `${fmt(stats.fraisTotal)} FCFA`, sub: fmtUSD(stats.fraisTotal), color: C.cyan, icon: "%" },
+              ].map(s => (
+                <div key={s.label} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${s.color}`, borderRadius: 14, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{s.label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, opacity: 0.7 }}>{s.sub}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <Card>
-                <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 15, color: C.text }}>📋 Statut des commandes</h3>
-                {Object.entries(STATUS).map(([k, v]) => {
-                  const count = orders.filter((o: any) => o.status === k).length;
-                  return (
-                    <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.text }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: (v as any).color, display: "inline-block" }} />
-                        {(v as any).label}
-                      </span>
-                      <span style={{ fontWeight: 700, background: (v as any).bg, color: (v as any).color, padding: "2px 10px", borderRadius: 100, fontSize: 12 }}>{count}</span>
+            {/* Répartition par crypto */}
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 22 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 16, color: C.text }}>📊 Volume par Crypto</div>
+              {CRYPTOS_LIST.map(cr => {
+                const vol = transactions.filter(t => t.crypto === cr.id).reduce((s, t) => s + t.montant_fcfa, 0);
+                const pct = stats.volumeTotal > 0 ? (vol / stats.volumeTotal) * 100 : 0;
+                if (vol === 0) return null;
+                return (
+                  <div key={cr.id} style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{cr.icon} {cr.name}</span>
+                      <span style={{ color: C.muted, fontSize: 13 }}>{fmt(vol)} FCFA ({pct.toFixed(1)}%)</span>
                     </div>
-                  );
-                })}
-              </Card>
-              <Card>
-                <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 15, color: C.text }}>🔒 Dépôts de garantie</h3>
-                {sellers.map((acc: any) => (
-                  <div key={acc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                    <span style={{ fontSize: 13, color: C.text }}>{acc.name}</span>
-                    <span style={{ fontWeight: 700, color: C.gold, fontSize: 13 }}>{fmt(acc.sellerLimits?.reserve || 0)} FCFA</span>
+                    <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: cr.color, borderRadius: 99, transition: "width 0.6s ease" }} />
+                    </div>
                   </div>
-                ))}
-                {sellers.length === 0 && <div style={{ color: C.muted, fontSize: 13 }}>Aucun vendeur</div>}
-              </Card>
+                );
+              })}
             </div>
-          </>
-        )}
 
-        {/* ── USERS (Acheteurs → Promouvoir) ──────────────────────────────── */}
-        {active === "users" && (
-          <div>
-            <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: C.muted }}>
-              Sélectionnez un utilisateur pour l'activer comme annonceur et configurer ses limites, son dépôt de garantie et les cryptos autorisées.
+            {/* Dernières transactions */}
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 22 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 16, color: C.text }}>⚡ Transactions Récentes</div>
+              {transactions.slice(0, 5).map(t => {
+                const cr = getCrypto(t.crypto);
+                const st = TX_STATUS[t.statut];
+                return (
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${cr.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: cr.color, flexShrink: 0 }}>{cr.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>{t.user?.nom_prenom ?? "—"}</div>
+                      <div style={{ color: C.muted, fontSize: 11 }}>{t.montant_crypto} {cr.symbol} · {fmt(t.montant_fcfa)} FCFA</div>
+                    </div>
+                    <Chip label={st.label} color={st.color} bg={st.bg} />
+                    <div style={{ color: C.muted, fontSize: 11, flexShrink: 0 }}>{fmtDate(t.created_at)}</div>
+                  </div>
+                );
+              })}
             </div>
-            {buyers.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: C.muted }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>👤</div>
-                <p>Aucun utilisateur acheteur</p>
-              </div>
-            ) : buyers.map((acc: any) => (
-              <div key={acc.id} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#0f2035,#1e3a5f)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.gold, fontSize: 16, flexShrink: 0 }}>
-                    {acc.name?.[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{acc.name}</div>
-                    <div style={{ fontSize: 12, color: C.muted }}>{acc.email}</div>
-                    {acc.whatsapp && <div style={{ fontSize: 12, color: C.muted }}>📱 {acc.whatsapp}</div>}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {acc.password && (
-                      <button
-                        onClick={() => setPasswordModal(acc)}
-                        style={{ ...st.btn("secondary", "sm") }}>
-                        🔑 Mot de passe
-                      </button>
-                    )}
-                    <button onClick={() => setPromoteModal(acc)}
-                      style={{ ...st.btn("green", "sm") }}>
-                      🏪 Activer Annonceur
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
-        {/* ── SELLERS (Vendeurs → Gérer) ───────────────────────────────────── */}
-        {active === "sellers" && (
-          <div>
-            {sellers.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: C.muted }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🏪</div>
-                <p>Aucun vendeur actif</p>
+        {/* ══ TRANSACTIONS ══════════════════════════════════════════════════ */}
+        {tab === "transactions" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Filtres */}
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+                <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted }} />
+                <input value={searchTx} onChange={e => setSearchTx(e.target.value)}
+                  placeholder="Rechercher (utilisateur, ID...)"
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px 9px 34px", color: C.text, fontSize: 13, outline: "none" }} />
               </div>
-            ) : sellers.map((acc: any) => {
-              const sStatus = SELLER_STATUS[acc.sellerStatus] || SELLER_STATUS.active;
-              const days = daysLeft(acc.sellerLimits?.expiresAt);
-              const isExpired = days !== null && days <= 0;
+              <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", color: C.text, fontSize: 13, cursor: "pointer" }}>
+                <option value="">Tous les statuts</option>
+                {Object.entries(TX_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+              <select value={filterCrypto} onChange={e => setFilterCrypto(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", color: C.text, fontSize: 13, cursor: "pointer" }}>
+                <option value="">Toutes les cryptos</option>
+                {CRYPTOS_LIST.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ color: C.muted, fontSize: 13 }}>{filteredTx.length} transaction(s)</div>
+
+            {filteredTx.map(t => {
+              const cr = getCrypto(t.crypto);
+              const st = TX_STATUS[t.statut];
+              const expanded = expandedTx === t.id;
               return (
-                <div key={acc.id} style={{ background: C.bgCard, border: `1px solid ${isExpired ? "rgba(239,68,68,0.4)" : C.border}`, borderRadius: 16, padding: 18, marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
-                    <div style={{ width: 46, height: 46, borderRadius: "50%", background: "linear-gradient(135deg,#0f2035,#1e3a5f)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.gold, fontSize: 18, flexShrink: 0 }}>
-                      {acc.name?.[0]}
-                    </div>
+                <div key={t.id} style={{ background: C.bgCard, border: `1px solid ${expanded ? C.gold : C.border}`, borderRadius: 16, overflow: "hidden", transition: "border-color 0.2s" }}>
+                  <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+                    onClick={() => setExpandedTx(expanded ? null : t.id)}>
+                    <div style={{ width: 42, height: 42, borderRadius: 12, background: `${cr.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: cr.color, flexShrink: 0 }}>{cr.icon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{acc.name}</div>
-                      <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>{acc.email}</div>
-
-                      {/* Badges */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        <span style={{ background: sStatus.bg, color: sStatus.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                          {sStatus.label}
-                        </span>
-                        {isExpired ? (
-                          <span style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                            ⛔ Expiré
-                          </span>
-                        ) : days !== null ? (
-                          <span style={{ background: days <= 7 ? "rgba(245,158,11,0.15)" : "rgba(16,185,129,0.1)", color: days <= 7 ? C.gold : C.green, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                            ⏱ {days}j restant{days > 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                        <span style={{ background: "rgba(245,158,11,0.1)", color: C.gold, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                          🔒 {fmt(acc.sellerLimits?.reserve || 0)} FCFA
-                        </span>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{t.user?.nom_prenom ?? "Inconnu"} <span style={{ color: C.muted, fontWeight: 500 }}>→ {t.seller?.nom_prenom ?? "Vendeur"}</span></div>
+                      <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{t.montant_crypto} {cr.symbol} · {fmt(t.montant_fcfa)} FCFA · {fmtDate(t.created_at)}</div>
+                    </div>
+                    <Chip label={st.label} color={st.color} bg={st.bg} />
+                    {expanded ? <ChevronUp size={16} style={{ color: C.muted }} /> : <ChevronDown size={16} style={{ color: C.muted }} />}
+                  </div>
+                  {expanded && (
+                    <div style={{ padding: "0 18px 18px", borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ paddingTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                        {[
+                          { label: "ID Transaction", value: t.id },
+                          { label: "Crypto", value: `${cr.name} (${cr.symbol})` },
+                          { label: "Montant Crypto", value: `${t.montant_crypto} ${cr.symbol}` },
+                          { label: "Montant FCFA", value: `${fmt(t.montant_fcfa)} FCFA` },
+                          { label: "Équivalent USD", value: fmtUSD(t.montant_fcfa) },
+                          { label: "Adresse Wallet", value: t.wallet_adresse ?? "—" },
+                          { label: "Acheteur", value: `@${t.user?.username ?? "—"}` },
+                          { label: "Vendeur", value: `@${t.seller?.username ?? "—"}` },
+                          { label: "Date", value: fmtDatetime(t.created_at) },
+                          { label: "Statut", value: st.label },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <div style={{ color: C.muted, fontSize: 11, fontWeight: 600, marginBottom: 3 }}>{label}</div>
+                            <div style={{ color: C.text, fontSize: 13, fontWeight: 600, wordBreak: "break-all" }}>{value}</div>
+                          </div>
+                        ))}
                       </div>
-
-                      {/* Cryptos autorisées */}
-                      {acc.sellerLimits?.allowedCryptos?.length > 0 && (
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
-                          {acc.sellerLimits.allowedCryptos.map((cid: string) => {
-                            const cr = getCr(cid);
-                            return (
-                              <span key={cid} style={{ color: cr.color, fontSize: 13, background: `${cr.color}15`, padding: "2px 8px", borderRadius: 6 }}>
-                                {cr.icon} {cr.symbol}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Limites */}
-                      {acc.sellerLimits && (
-                        <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
-                          Min: {fmt(acc.sellerLimits.minSell || 0)} · Max: {fmt(acc.sellerLimits.maxSell || 0)} · Jour: {fmt(acc.sellerLimits.dailyLimit || 0)} FCFA
-                        </div>
-                      )}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {t.statut === "pending" && (
+                          <button onClick={() => confirmTransaction(t.id)}
+                            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, background: "linear-gradient(135deg,#10b981,#059669)", color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}>
+                            <CheckCircle size={14} /> Confirmer livraison
+                          </button>
+                        )}
+                        {(t.statut === "pending" || t.statut === "paid") && (
+                          <button onClick={() => cancelTransaction(t.id)}
+                            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, background: "rgba(239,68,68,0.12)", color: C.red, fontWeight: 700, fontSize: 13, border: `1px solid rgba(239,68,68,0.3)`, cursor: "pointer" }}>
+                            <XCircle size={14} /> Annuler
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  )}
+                </div>
+              );
+            })}
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <button onClick={() => setSellerModal(acc)} style={{ ...st.btn("cyan", "sm") }}>⚙️ Gérer</button>
-                      {acc.sellerStatus !== "blocked" && (
-                        <button onClick={() => { updateAcc(acc.id, { sellerStatus: "blocked" }); notify(`${acc.name} bloqué.`); }}
-                          style={{ ...st.btn("red", "sm") }}>🚫 Bloquer</button>
-                      )}
-                      {acc.sellerStatus === "blocked" && (
-                        <button onClick={() => { updateAcc(acc.id, { sellerStatus: "active" }); notify(`${acc.name} débloqué. ✅`); }}
-                          style={{ ...st.btn("green", "sm") }}>✅ Débloquer</button>
-                      )}
+            {filteredTx.length === 0 && (
+              <div style={{ textAlign: "center", padding: 48, color: C.muted }}>
+                <ArrowRightLeft size={40} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
+                <div>Aucune transaction trouvée</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ ANNONCES P2P ══════════════════════════════════════════════════ */}
+        {tab === "offers" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted }} />
+                <input value={searchOffer} onChange={e => setSearchOffer(e.target.value)}
+                  placeholder="Rechercher un vendeur ou une crypto..."
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px 9px 34px", color: C.text, fontSize: 13, outline: "none" }} />
+              </div>
+            </div>
+
+            <div style={{ color: C.muted, fontSize: 13 }}>{filteredOffers.length} annonce(s)</div>
+
+            {filteredOffers.map(o => {
+              const cr = getCrypto(o.crypto);
+              const expanded = expandedOffer === o.id;
+              return (
+                <div key={o.id} style={{ background: C.bgCard, border: `1px solid ${expanded ? C.gold : C.border}`, borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+                    onClick={() => setExpandedOffer(expanded ? null : o.id)}>
+                    <div style={{ width: 42, height: 42, borderRadius: 12, background: `${cr.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: cr.color, flexShrink: 0 }}>{cr.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{o.seller?.nom_prenom ?? "Vendeur"} <span style={{ color: C.muted, fontWeight: 500 }}>· {cr.name}</span></div>
+                      <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+                        Taux: {fmt(o.taux)} FCFA · Dispo: {o.disponible} {cr.symbol} · {o.completed_trades ?? 0} trades
+                      </div>
                     </div>
+                    <Chip label={o.actif ? "Active" : "Inactive"} color={o.actif ? C.green : C.muted} bg={o.actif ? "rgba(16,185,129,0.15)" : "rgba(100,116,139,0.12)"} />
+                    {expanded ? <ChevronUp size={16} style={{ color: C.muted }} /> : <ChevronDown size={16} style={{ color: C.muted }} />}
+                  </div>
+                  {expanded && (
+                    <div style={{ padding: "0 18px 18px", borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ paddingTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                        {[
+                          { label: "Vendeur", value: `@${o.seller?.username ?? "—"}` },
+                          { label: "Crypto", value: cr.name },
+                          { label: "Taux", value: `${fmt(o.taux)} FCFA/${cr.symbol}` },
+                          { label: "Minimum", value: `${fmt(o.montant_min)} FCFA` },
+                          { label: "Maximum", value: `${fmt(o.montant_max)} FCFA` },
+                          { label: "Disponible", value: `${o.disponible} ${cr.symbol}` },
+                          { label: "Trades Complétés", value: o.completed_trades ?? 0 },
+                          { label: "Créée le", value: fmtDate(o.created_at) },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <div style={{ color: C.muted, fontSize: 11, fontWeight: 600, marginBottom: 3 }}>{label}</div>
+                            <div style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => toggleOffer(o.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, background: o.actif ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: o.actif ? C.red : C.green, fontWeight: 700, fontSize: 13, border: `1px solid ${o.actif ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`, cursor: "pointer" }}>
+                          {o.actif ? <><EyeOff size={14} /> Désactiver</> : <><Eye size={14} /> Activer</>}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {filteredOffers.length === 0 && (
+              <div style={{ textAlign: "center", padding: 48, color: C.muted }}>
+                <Package size={40} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
+                <div>Aucune annonce trouvée</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ UTILISATEURS ══════════════════════════════════════════════════ */}
+        {tab === "users" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted }} />
+                <input value={searchUser} onChange={e => setSearchUser(e.target.value)}
+                  placeholder="Rechercher un utilisateur..."
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px 9px 34px", color: C.text, fontSize: 13, outline: "none" }} />
+              </div>
+            </div>
+
+            {filteredUsers.length === 0 && users.length === 0 && (
+              <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 32, textAlign: "center" }}>
+                <Users size={40} style={{ color: C.muted, margin: "0 auto 12px" }} />
+                <div style={{ color: C.text, fontWeight: 700, marginBottom: 6 }}>Données depuis Supabase</div>
+                <div style={{ color: C.muted, fontSize: 13 }}>Les utilisateurs Nexora seront listés ici après actualisation.</div>
+                <button onClick={loadData} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 10, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#000", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}>
+                  Charger les utilisateurs
+                </button>
+              </div>
+            )}
+
+            {filteredUsers.map(u => {
+              const txCount = transactions.filter(t => t.user_id === u.id).length;
+              const vol = transactions.filter(t => t.user_id === u.id).reduce((s, t) => s + t.montant_fcfa, 0);
+              const isSeller = offers.some(o => o.seller_id === u.id);
+              return (
+                <div key={u.id} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#1a2d4d,#0d1526)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: C.gold, flexShrink: 0 }}>
+                    {u.nom_prenom?.[0]?.toUpperCase() ?? "?"}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{u.nom_prenom} <span style={{ color: C.muted, fontWeight: 500 }}>@{u.username}</span></div>
+                    <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+                      {txCount} tx · {fmt(vol)} FCFA · Inscrit le {fmtDate(u.created_at)}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    {isSeller && <Chip label="Vendeur" color={C.purple} bg="rgba(139,92,246,0.15)" />}
+                    <Chip label={u.status === "actif" ? "Actif" : "Suspendu"} color={u.status === "actif" ? C.green : C.red} bg={u.status === "actif" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)"} />
                   </div>
                 </div>
               );
@@ -777,125 +720,106 @@ export default function CryptoAdminPage({
           </div>
         )}
 
-        {/* ── ORDERS ───────────────────────────────────────────────────────── */}
-        {active === "orders" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {orders.length === 0
-              ? <div style={{ textAlign: "center", padding: "60px 0", color: C.muted }}><div style={{ fontSize: 48, marginBottom: 12 }}>📭</div><p>Aucune commande</p></div>
-              : orders.map((order: any) => {
-                const cr = getCr(order.crypto);
-                const status = STATUS[order.status] || STATUS.paid;
-                return (
-                  <div key={order.id} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: C.gold, flex: "0 0 105px" }}>{order.id}</span>
-                      <div style={{ flex: "1 1 120px" }}>
-                        <div style={{ color: cr.color }}>{cr.icon} {order.amount} {cr.symbol}</div>
-                        <div style={{ fontSize: 12, color: C.muted }}>{fmtUSD(order.totalFCFA || order.amountFCFA)}</div>
-                      </div>
-                      <div style={{ flex: "1 1 140px", fontSize: 12.5, color: C.muted }}>
-                        <div>Acheteur : <strong style={{ color: C.text }}>{order.buyerName}</strong></div>
-                        <div>Vendeur : <strong style={{ color: C.text }}>{order.seller}</strong></div>
-                      </div>
-                      <span style={{ background: (status as any).bg, color: (status as any).color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                        {(status as any).label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        )}
+        {/* ══ LITIGES ══════════════════════════════════════════════════════ */}
+        {tab === "disputes" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {disputes.length === 0 && (
+              <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 48, textAlign: "center" }}>
+                <CheckCircle size={44} style={{ color: C.green, margin: "0 auto 12px" }} />
+                <div style={{ color: C.text, fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Aucun litige ouvert</div>
+                <div style={{ color: C.muted, fontSize: 13 }}>Toutes les transactions se passent bien ! 🎉</div>
+              </div>
+            )}
 
-        {/* ── DISPUTES ─────────────────────────────────────────────────────── */}
-        {active === "disputes" && (
-          <div>
-            {disputes.length === 0
-              ? <div style={{ textAlign: "center", padding: "60px 0", color: C.muted }}><div style={{ fontSize: 48, marginBottom: 12 }}>✅</div><p>Aucun litige actif</p></div>
-              : disputes.map((order: any) => {
-                const cr = getCr(order.crypto);
-                const seller = accounts.find((a: any) => a.id === order.sellerId);
-                const reserve = seller?.sellerLimits?.reserve || 0;
-                return (
-                  <div key={order.id} style={{ background: C.bgCard, border: "1px solid rgba(239,68,68,0.35)", borderRadius: 16, padding: 18, marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-                      <div style={{ flex: "1 1 140px" }}>
-                        <div style={{ fontWeight: 700, color: C.red, fontSize: 13, marginBottom: 4 }}>⚠️ {order.id}</div>
-                        <div style={{ fontWeight: 700, color: C.text }}>{order.amount} {cr.symbol}</div>
-                        <div style={{ fontSize: 12, color: C.muted }}>{fmtUSD(order.totalFCFA || order.amountFCFA)}</div>
+            {disputes.map(d => {
+              const tx = transactions.find(t => t.id === d.transaction_id);
+              const cr = tx ? getCrypto(tx.crypto) : null;
+              const isOpen = d.statut === "open";
+              return (
+                <div key={d.id} style={{ background: C.bgCard, border: `1px solid ${isOpen ? "rgba(239,68,68,0.4)" : C.border}`, borderRadius: 16, overflow: "hidden" }}>
+                  {isOpen && <div style={{ height: 3, background: "linear-gradient(90deg,#ef4444,#dc2626)" }} />}
+                  <div style={{ padding: "18px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <AlertTriangle size={18} style={{ color: C.red, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 800, fontSize: 15, color: C.text }}>Litige #{d.id.slice(-6).toUpperCase()}</span>
+                      <Chip label={isOpen ? "Ouvert" : "Résolu"} color={isOpen ? C.red : C.green} bg={isOpen ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)"} />
+                    </div>
+
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                      <div style={{ color: C.muted, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>RAISON DU LITIGE</div>
+                      <div style={{ color: C.text, fontSize: 13 }}>{d.raison}</div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 10, padding: 12 }}>
+                        <div style={{ color: C.blue, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>👤 ACHETEUR</div>
+                        <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{d.user?.nom_prenom ?? "—"}</div>
+                        <div style={{ color: C.muted, fontSize: 11 }}>@{d.user?.username ?? "—"}</div>
                       </div>
-                      <div style={{ flex: "1 1 130px", fontSize: 12.5, color: C.muted }}>
-                        <div>Acheteur : <strong style={{ color: C.text }}>{order.buyerName}</strong></div>
-                        <div>Vendeur : <strong style={{ color: C.text }}>{order.seller || seller?.name || "—"}</strong></div>
-                      </div>
-                      <div style={{ flex: "0 0 auto", textAlign: "right" }}>
-                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Dépôt vendeur</div>
-                        <div style={{ fontSize: 16, fontWeight: 900, color: C.gold }}>{fmt(reserve)} FCFA</div>
+                      <div style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 10, padding: 12 }}>
+                        <div style={{ color: C.purple, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>🏪 VENDEUR</div>
+                        <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{d.seller?.nom_prenom ?? "—"}</div>
+                        <div style={{ color: C.muted, fontSize: 11 }}>@{d.seller?.username ?? "—"}</div>
                       </div>
                     </div>
-                    <button onClick={() => setDisputeModal(order)}
-                      style={{ width: "100%", padding: "11px", borderRadius: 11, border: "none", cursor: "pointer", background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontWeight: 800, fontSize: 14 }}>
-                      ⚖️ Résoudre le litige & Transférer fonds
-                    </button>
-                  </div>
-                );
-              })}
-          </div>
-        )}
 
-        {/* ── OFFERS ───────────────────────────────────────────────────────── */}
-        {active === "offers" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {offers.length === 0
-              ? <div style={{ textAlign: "center", padding: "60px 0", color: C.muted }}><div style={{ fontSize: 48, marginBottom: 12 }}>🏷️</div><p>Aucune annonce</p></div>
-              : offers.map((offer: any) => {
-                const cr = getCr(offer.crypto);
-                return (
-                  <div key={offer.id} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                      <div style={{ flex: "1 1 140px", display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ color: cr.color, fontSize: 22 }}>{cr.icon}</span>
+                    {tx && cr && (
+                      <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12, marginBottom: 14, display: "flex", gap: 20 }}>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{cr.name}</div>
-                          <div style={{ fontSize: 11, color: C.muted }}>{cr.network}</div>
+                          <div style={{ color: C.muted, fontSize: 11, fontWeight: 600 }}>TRANSACTION</div>
+                          <div style={{ color: C.text, fontSize: 13, fontWeight: 700, marginTop: 2 }}>{tx.montant_crypto} {cr.symbol} · {fmt(tx.montant_fcfa)} FCFA</div>
+                        </div>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 11, fontWeight: 600 }}>DATE</div>
+                          <div style={{ color: C.text, fontSize: 13, fontWeight: 700, marginTop: 2 }}>{fmtDatetime(d.created_at)}</div>
                         </div>
                       </div>
-                      <div style={{ flex: "1 1 120px" }}>
-                        <div style={{ fontWeight: 800, fontSize: 16, color: C.gold }}>{fmtUSD(offer.rate)} /unité</div>
-                        <div style={{ fontSize: 12, color: C.muted }}>Dispo : {fmt(offer.available)}</div>
+                    )}
+
+                    {isOpen && (
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button onClick={() => resolveDispute(d.id, "buyer")}
+                          style={{ flex: 1, minWidth: 160, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", borderRadius: 10, background: "rgba(59,130,246,0.15)", color: C.blue, fontWeight: 700, fontSize: 13, border: `1px solid rgba(59,130,246,0.3)`, cursor: "pointer" }}>
+                          <CheckCircle size={15} /> Résoudre → Acheteur
+                        </button>
+                        <button onClick={() => resolveDispute(d.id, "seller")}
+                          style={{ flex: 1, minWidth: 160, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", borderRadius: 10, background: "rgba(139,92,246,0.15)", color: C.purple, fontWeight: 700, fontSize: 13, border: `1px solid rgba(139,92,246,0.3)`, cursor: "pointer" }}>
+                          <CheckCircle size={15} /> Résoudre → Vendeur
+                        </button>
                       </div>
-                      <div style={{ flex: "1 1 120px", fontSize: 13, color: C.muted }}>
-                        Vendeur : <strong style={{ color: C.text }}>{offer.sellerName}</strong>
-                      </div>
-                      <button onClick={() => { setOffers(offers.filter((o: any) => o.id !== offer.id)); notify("Annonce supprimée."); }}
-                        style={st.btn("danger", "sm")}>🗑 Supprimer</button>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
         )}
 
-      </SidebarLayout>
-
-      {/* Modal Mot de passe seul */}
-      {passwordModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 18, padding: 28, width: "100%", maxWidth: 380 }}>
-            <div style={{ fontWeight: 900, fontSize: 16, color: C.text, marginBottom: 6 }}>🔑 Mot de passe</div>
-            <div style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>{passwordModal.name} — {passwordModal.email}</div>
-            <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: 16, marginBottom: 20 }}>
-              <div style={{ color: C.text, fontSize: 22, fontWeight: 900, letterSpacing: 4, textAlign: "center" }}>
-                {passwordModal.password || "Non renseigné"}
-              </div>
+        {/* ══ LOGS ══════════════════════════════════════════════════════════ */}
+        {tab === "logs" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: 22 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 16 }}>📋 Journal d'Activité Crypto</div>
+              {[
+                ...transactions.map(t => ({ date: t.created_at, type: "transaction", label: `Transaction ${t.statut} · ${t.montant_crypto} ${getCrypto(t.crypto).symbol} · ${t.user?.nom_prenom}`, color: TX_STATUS[t.statut].color })),
+                ...offers.map(o => ({ date: o.created_at, type: "offer", label: `Annonce créée · ${getCrypto(o.crypto).name} · ${o.seller?.nom_prenom}`, color: C.purple })),
+                ...disputes.map(d => ({ date: d.created_at, type: "dispute", label: `Litige ${d.statut} · ${d.user?.nom_prenom} vs ${d.seller?.nom_prenom}`, color: C.red })),
+              ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((log, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: log.color, marginTop: 5, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: C.text }}>{log.label}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{fmtDatetime(log.date)}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <button onClick={() => setPasswordModal(null)}
-              style={{ width: "100%", padding: 12, borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontWeight: 700, cursor: "pointer" }}>
-              Fermer
-            </button>
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+      </div>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </div>
   );
 }
