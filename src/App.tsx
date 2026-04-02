@@ -16,7 +16,6 @@ import LandingPage from "@/pages/LandingPage";
 import CGUPage from "@/pages/CGUPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 
-
 // Pages Dashboard / Finance
 import DashboardPage from "@/pages/DashboardPage";
 import HistoriquePage from "@/pages/HistoriquePage";
