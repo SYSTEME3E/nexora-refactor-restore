@@ -11,17 +11,13 @@ import CryptoAdminPage from "./crypto/CryptoAdminPage";
 export default function Cryptop2pmarketplace() {
   const routerNavigate = useNavigate();
   const nexoraUser = getNexoraUser();
-
-  // If not authenticated via Nexora, redirect to login
-  if (!isNexoraAuthenticated() || !nexoraUser) {
-    routerNavigate("/login", { replace: true });
-    return null;
-  }
+  const isAuth = isNexoraAuthenticated();
 
   const [page, setPage] = useState("marketplace");
   const [pageOpts, setPageOpts] = useState<any>({});
-  const [accounts, setAccounts] = useState<CryptoAccount[]>([
-    {
+  const [accounts, setAccounts] = useState<CryptoAccount[]>(() => {
+    if (!nexoraUser) return [];
+    return [{
       id: nexoraUser.id,
       name: nexoraUser.nom_prenom,
       email: nexoraUser.email,
@@ -31,8 +27,8 @@ export default function Cryptop2pmarketplace() {
       paymentInfo: { reseau: "", numero: "", lienPaiement: "" },
       sellerLimits: { reserve: 0, maxSell: 0, minSell: 0 },
       whatsapp: "",
-    },
-  ]);
+    }];
+  });
   const [offers, setOffers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [selOffer, setSelOffer] = useState<any>(null);
@@ -40,13 +36,18 @@ export default function Cryptop2pmarketplace() {
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [adminCodeError, setAdminCodeError] = useState("");
 
-  // Current crypto user (from accounts state, synced with Nexora)
-  const currentUser = accounts.find((a) => a.id === nexoraUser.id) || accounts[0];
-
   const notify = useCallback((msg: string, type = "success") => {
     setNotif({ msg, type });
     setTimeout(() => setNotif(null), 4500);
   }, []);
+
+  // Redirect if not authenticated
+  if (!isAuth || !nexoraUser) {
+    routerNavigate("/login", { replace: true });
+    return null;
+  }
+
+  const currentUser = accounts.find((a) => a.id === nexoraUser.id) || accounts[0];
 
   const navigate = (p: string, opts: any = {}) => {
     if (opts.offer) setSelOffer(opts.offer);
@@ -87,7 +88,7 @@ export default function Cryptop2pmarketplace() {
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 44, marginBottom: 12 }}>🔐</div>
               <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6, color: C.text }}>Accès Administrateur</h1>
-              <p style={{ color: C.muted, fontSize: 14 }}>Entrez le code d'autorisation pour accéder au panneau d'administration CryptoP2P</p>
+              <p style={{ color: C.muted, fontSize: 14 }}>Entrez le code d'autorisation CryptoP2P</p>
             </div>
             <div style={{ marginBottom: 22 }}>
               <label style={st.label}>Code d'autorisation</label>
