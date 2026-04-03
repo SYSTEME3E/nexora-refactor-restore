@@ -301,6 +301,9 @@ export default function AdminPanelPage() {
       setLogs(logsData);
       setTransferts(tr);
       setMessages(messagesData.map((m: any) => ({ ...m, user: m.nexora_users || null })));
+      setCryptoSellers(cryptoSellersData);
+      setCryptoOffers(cryptoOffersData);
+      setCryptoOrders(cryptoOrdersData);
 
       const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
       const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
