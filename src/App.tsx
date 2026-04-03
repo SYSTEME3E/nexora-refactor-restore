@@ -171,7 +171,7 @@ const App = () => (
 
           {/* Admin */}
           <Route path="/admin"        element={<AdminPage><AdminPanelPage /></AdminPage>} />
-          <Route path="/admin/crypto" element={<AdminPage><Cryptop2pmarketplace /></AdminPage>} />
+          
           <Route path="/medias" element={<AdminPage><MediasPage /></AdminPage>} />
 
           {/* 404 */}
