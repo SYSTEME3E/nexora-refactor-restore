@@ -12,6 +12,7 @@ import {
   Tag, Image, AlertCircle, Crown, Share2
 } from "lucide-react";
 
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ModeTarification = "unique" | "abonnement_mensuel" | "abonnement_annuel" | "versements";
 
