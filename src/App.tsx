@@ -49,6 +49,9 @@ import Cryptop2pmarketplace from "@/pages/Cryptop2pmarketplace";
 import AbonnementPage from "@/pages/AbonnementPage";
 import PaymentCallbackPage from "@/pages/PaymentCallbackPage";
 
+// Contacts WhatsApp
+import ContactsWhatsAppPage from "@/pages/ContactsWhatsAppPage";
+
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
 import CryptoAdminPanelPage from "@/pages/crypto/CryptoAdminPanelPage";
@@ -153,6 +156,7 @@ const App = () => (
           <Route path="/depenses"          element={<Navigate to="/entrees-depenses" replace />} />
 
           {/* Routes Premium */}
+          <Route path="/contacts-whatsapp"      element={<PremiumPage><ContactsWhatsAppPage /></PremiumPage>} />
           <Route path="/immobilier"             element={<ImmobilierPage />} />
           <Route path="/immobilier/annonce/:id" element={<AnnonceDetailPage />} />
           <Route path="/boutique"               element={<PremiumPage><BoutiqueAccueilPage /></PremiumPage>} />
