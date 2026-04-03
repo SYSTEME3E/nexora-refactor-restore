@@ -856,63 +856,33 @@ export default function AdminPanelPage() {
             )}
           </div>
 
-          {/* Accès Admin */}
-          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-amber-500" /> Accès Panel Admin
-            </div>
-            {u.is_admin ? (
-              <div className="space-y-3">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm mb-2"><BadgeCheck className="w-4 h-4" /> Admin actif</div>
-                  {currentFeatures.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentFeatures.map(f => {
-                        const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
-                        return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
-                      })}
-                    </div>
-                  )}
-                  {u.admin_password && (
-                    <div className="mt-2 text-xs text-amber-600">
-                      Mot de passe admin : <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono">{u.admin_password}</code>
-                    </div>
+          {/* Accès Crypto P2P depuis profil utilisateur */}
+          {(() => {
+            const userSeller = cryptoSellers.find((s: any) => s.user_id === u.id);
+            if (!userSeller) return null;
+            return (
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-amber-500" /> Accès Annonces Crypto P2P
+                </div>
+                <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${userSeller.can_post_offers ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+                  <span className={`text-sm font-semibold ${userSeller.can_post_offers ? "text-green-700" : "text-red-700"}`}>
+                    {userSeller.can_post_offers ? "✅ Annonces activées" : "🚫 Annonces désactivées"}
+                  </span>
+                  <button onClick={() => handleToggleOfferAccess(userSeller)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${userSeller.can_post_offers ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
+                    {userSeller.can_post_offers ? "Révoquer" : "Autoriser"}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                  <span>🛡️ Réserve : <span className="font-semibold text-emerald-600">{Number(userSeller.reserve || 0).toLocaleString("fr-FR")} FCFA</span></span>
+                  {Number(userSeller.max_sell_amount) > 0 && (
+                    <span>Max vente : <span className="font-semibold text-amber-600">{Number(userSeller.max_sell_amount).toLocaleString("fr-FR")} FCFA</span></span>
                   )}
                 </div>
-                <button onClick={() => handleRevokeAdmin(u)}
-                  className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-red-100 hover:text-red-700 font-semibold transition-colors w-full justify-center">
-                  <Lock className="w-4 h-4" /> Retirer l'accès admin
-                </button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Cochez les fonctionnalités accessibles, puis créez un mot de passe.</p>
-                <div className="grid grid-cols-1 gap-1">
-                  {ALL_ADMIN_FEATURES.map(feat => (
-                    <label key={feat.key} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-lg hover:bg-muted transition-colors">
-                      <input type="checkbox" checked={adminFeatures.includes(feat.key)}
-                        onChange={e => {
-                          if (e.target.checked) setAdminFeatures(prev => [...prev, feat.key]);
-                          else setAdminFeatures(prev => prev.filter(k => k !== feat.key));
-                        }}
-                        className="w-4 h-4 rounded accent-amber-500"
-                      />
-                      <span className="text-sm">{feat.label}</span>
-                    </label>
-                  ))}
-                </div>
-                {adminFeatures.length > 0 && (
-                  <div className="space-y-2">
-                    <Input type="password" placeholder="Mot de passe d'accès admin..." value={adminPassword} onChange={e => setAdminPassword(e.target.value)} className="rounded-xl" />
-                    <button onClick={() => handleGrantAdmin(u)}
-                      className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl bg-amber-100 text-amber-800 hover:bg-amber-200 font-semibold transition-colors w-full justify-center">
-                      <ShieldCheck className="w-4 h-4" /> Accorder l'accès admin
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Modifier mot de passe */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -1450,18 +1420,23 @@ export default function AdminPanelPage() {
                               <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
                                 <Lock className="w-3.5 h-3.5 text-blue-500" /> Mot de passe du compte
                               </div>
-                              <div className="flex items-center gap-2">
-                                <code className="flex-1 text-xs bg-muted px-3 py-2.5 rounded-xl font-mono break-all">
-                                  {showSellerPwd[seller.id]
-                                    ? (sellerUser?.password_plain || seller.crypto_password || sellerUser?.admin_password || "—")
-                                    : "••••••••••••"}
+                              {showSellerPwd[seller.id] ? (
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                                  <div className="text-xs text-blue-500 font-semibold mb-1">Mot de passe en clair :</div>
+                                  <code className="text-base font-black text-blue-800 font-mono break-all tracking-widest select-all">
+                                    {sellerUser?.password_plain || seller.crypto_password || sellerUser?.admin_password || "Non disponible"}
+                                  </code>
+                                </div>
+                              ) : (
+                                <code className="block text-sm bg-muted px-3 py-2.5 rounded-xl font-mono text-muted-foreground">
+                                  ••••••••••••
                                 </code>
-                                <button
-                                  onClick={() => setShowSellerPwd(prev => ({ ...prev, [seller.id]: !prev[seller.id] }))}
-                                  className="text-xs px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium flex-shrink-0">
-                                  {showSellerPwd[seller.id] ? "Masquer" : "Révéler"}
-                                </button>
-                              </div>
+                              )}
+                              <button
+                                onClick={() => setShowSellerPwd(prev => ({ ...prev, [seller.id]: !prev[seller.id] }))}
+                                className={`w-full text-xs px-3 py-2 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition-colors ${showSellerPwd[seller.id] ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
+                                {showSellerPwd[seller.id] ? <><Lock className="w-3.5 h-3.5" /> Masquer le mot de passe</> : <><Unlock className="w-3.5 h-3.5" /> Révéler le mot de passe</>}
+                              </button>
                             </div>
 
                             {/* Montant maximum à vendre */}
