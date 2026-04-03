@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Lock, Image, Link2, User, LogOut, Menu, X,
   Search, ChevronRight, TrendingUp, History, Home,
   HandCoins, ArrowLeft, Receipt, Store, BadgeCheck, Map,
-  ShieldCheck, ArrowLeftRight, Sun, Moon
+  ShieldCheck, ArrowLeftRight, Sun, Moon, Phone
 } from "lucide-react";
 import { clearSession, isAdminUser } from "@/lib/app-utils";
 import { logoutUser, getNexoraUser, isNexoraAdmin, refreshNexoraSession } from "@/lib/nexora-auth";
@@ -27,7 +27,8 @@ const getNavItems = (isAdmin: boolean) => {
     { path: "/coffre-fort",      icon: Lock,            label: "Coffre-fort",          color: "text-yellow-300",  bg: "bg-yellow-300/10"  },
     { path: "/liens",            icon: Link2,           label: "Liens & Contacts",     color: "text-green-300",   bg: "bg-green-300/10"   },
     { path: "/boutique",         icon: Store,           label: "Nexora Shop",          color: "text-pink-300",    bg: "bg-pink-300/10"    },
-    { path: "/immobilier",       icon: Map,             label: "Marché Immobilier",    color: "text-blue-300",    bg: "bg-blue-300/10"    },
+    { path: "/contacts-whatsapp", icon: Phone,           label: "Contacts WhatsApp",    color: "text-green-400",   bg: "bg-green-400/10"   },
+    { path: "/immobilier",        icon: Map,             label: "Marché Immobilier",    color: "text-blue-300",    bg: "bg-blue-300/10"    },
   ];
   if (isAdmin) {
     items.push({ path: "/prets",  icon: HandCoins,   label: "Contrats Prêt", color: "text-orange-300", bg: "bg-orange-300/10" });
