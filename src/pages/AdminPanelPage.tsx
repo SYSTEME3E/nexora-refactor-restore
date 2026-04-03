@@ -112,7 +112,7 @@ interface Transfert {
   statut: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs" | "crypto";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
