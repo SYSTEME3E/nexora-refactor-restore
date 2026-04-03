@@ -60,6 +60,7 @@ const FEATURES = [
     title: "Contacts WhatsApp", tag: "Disponible",
     desc: "Accédez aux contacts WhatsApp des membres NEXORA. Téléchargez-les en format .vcf pour les importer directement dans votre téléphone. Réseau de confiance, membres vérifiés.",
     points: ["Contacts membres vérifiés", "Export .vcf (vCard)", "Import direct sur mobile", "Réseau de confiance"],
+  },
   {
     icon: Wallet, color: "#14b8a6", bg: "#f0fdfa",
     title: "Abonnements & Liens", tag: "Disponible",
@@ -351,7 +352,7 @@ export default function LandingPage() {
 
             <p className="anim-fadeup text-gray-500 dark:text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
               style={{ animationDelay: ".18s" }}>
-              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, le crypto P2P et le transfert d'argent... dans une seule application moderne, sécurisée et conçue pour l'Afrique.
+              NEXORA réunit la gestion financière, la facturation, l'e-commerce, l'immobilier, les contacts WhatsApp et le transfert d'argent... dans une seule application moderne, sécurisée et conçue pour l'Afrique.
             </p>
 
             <div className="anim-fadeup flex flex-col sm:flex-row items-center justify-center gap-4 mb-10"
@@ -865,7 +866,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA FINAL ── */
+      {/* ── CTA FINAL ── */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 pb-20">
         <div className="relative bg-gray-950 rounded-3xl overflow-hidden py-16 md:py-24 px-8 md:px-16 text-center">
           <div className="absolute inset-0 pointer-events-none">
