@@ -439,7 +439,7 @@ export default function CryptoAdminPage({
                   notify(`${acc.name} retiré des vendeurs.`);
                 }
               }}
-              style={{ padding: "13px 18px", borderRadius: 12, border: "none", cursor: "pointer", background: "rgba(239,68,68,0.12)", color: "#ef4444", fontWeight: 700, fontSize: 13, border: `1px solid rgba(239,68,68,0.3)` }}>
+              style={{ padding: "13px 18px", borderRadius: 12, cursor: "pointer", background: "rgba(239,68,68,0.12)", color: "#ef4444", fontWeight: 700, fontSize: 13, border: `1px solid rgba(239,68,68,0.3)` }}>
               🗑 Révoquer
             </button>
             <button onClick={() => setSellerModal(null)}
