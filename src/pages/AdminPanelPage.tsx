@@ -268,6 +268,9 @@ export default function AdminPanelPage() {
         logsData,
         messagesData,
         transfertsData,
+        cryptoSellersData,
+        cryptoOffersData,
+        cryptoOrdersData,
       ] = await Promise.all([
         safeQuery(async () => await (supabase.from("nexora_users") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("boutiques") as any).select("*").order("created_at", { ascending: false })),
@@ -277,6 +280,9 @@ export default function AdminPanelPage() {
         safeQuery(async () => await (supabase.from("nexora_logs") as any).select("*").order("created_at", { ascending: false }).limit(100)),
         safeQuery(async () => await (supabase.from("chat_messages") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("nexora_transactions") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_sellers") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_offers") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_orders") as any).select("*").order("created_at", { ascending: false })),
       ]);
 
       const u  = usersData       as NexoraUser[];
