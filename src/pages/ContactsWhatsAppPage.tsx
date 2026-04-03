@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Phone, Download, Users, RefreshCw, Crown,
+  Phone, Download, Users, Crown,
   CheckCircle2, AlertCircle, Wifi, WifiOff, UserPlus,
   Contact
 } from "lucide-react";
@@ -242,26 +242,48 @@ export default function ContactsWhatsAppPage() {
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* ── En-tête ── */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
-              <Phone className="w-6 h-6 text-green-500" />
-              Contacts WhatsApp
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Exportez les membres Nexora vers votre répertoire
+        <div>
+          <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
+            <Phone className="w-6 h-6 text-green-500" />
+            Contacts WhatsApp
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Exportez les membres Nexora vers votre répertoire
+          </p>
+        </div>
+
+        {/* ── NB / Note importante ── */}
+        <div className="bg-card dark:bg-gray-900 border border-border dark:border-gray-800 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 font-bold text-sm text-foreground">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-black flex-shrink-0">NB</span>
+            Note importante
+          </div>
+          <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              Nous mettons à votre disposition cette fonctionnalité afin de vous permettre de{" "}
+              <strong className="text-foreground">communiquer entre utilisateurs</strong>, de partager des opportunités et de{" "}
+              <strong className="text-foreground">promouvoir vos produits via les statuts WhatsApp</strong>.
+            </p>
+            <p>
+              Nous accordons une importance particulière à la{" "}
+              <strong className="text-foreground">confidentialité et à la sécurité des données</strong>.
+              Chaque utilisateur est entièrement responsable de l'usage qu'il fait des contacts mis à disposition.
+              Toute utilisation abusive ou non conforme aux règles engage uniquement la responsabilité de son auteur.
+            </p>
+            <p>
+              Notre objectif est de vous offrir une meilleure{" "}
+              <strong className="text-foreground">visibilité à travers les statuts WhatsApp</strong>{" "}
+              ainsi que de faciliter les échanges et partenariats entre membres.
+            </p>
+            <p>
+              Nous vous remercions de bien vouloir{" "}
+              <strong className="text-foreground">respecter les règles établies</strong>.
+            </p>
+            <p className="pt-2 border-t border-border dark:border-gray-700 text-xs italic">
+              Si aucun contact n'est disponible, le système affichera le message suivant :{" "}
+              <span className="font-semibold not-italic">« Aucun fichier disponible à télécharger »</span>.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Actualiser
-          </Button>
         </div>
 
         {/* ── Erreur ── */}
@@ -419,33 +441,6 @@ export default function ContactsWhatsAppPage() {
                 className="h-16 rounded-xl bg-muted dark:bg-gray-800 animate-pulse"
               />
             ))}
-          </div>
-        )}
-
-        {/* ── Note de bas de page (NB) ── */}
-        {!loading && !error && (
-          <div className="bg-card dark:bg-gray-900 border border-border dark:border-gray-800 rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-black flex-shrink-0">NB</span>
-              Note importante
-            </div>
-            <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-              <p>
-                Nous mettons à votre disposition cette fonctionnalité afin de vous permettre de <strong className="text-foreground">communiquer entre utilisateurs</strong>, de partager des opportunités et de <strong className="text-foreground">promouvoir vos produits via les statuts WhatsApp</strong>.
-              </p>
-              <p>
-                Nous accordons une importance particulière à la <strong className="text-foreground">confidentialité et à la sécurité des données</strong>. Chaque utilisateur est entièrement responsable de l'usage qu'il fait des contacts mis à disposition. Toute utilisation abusive ou non conforme aux règles engage uniquement la responsabilité de son auteur.
-              </p>
-              <p>
-                Notre objectif est de vous offrir une meilleure <strong className="text-foreground">visibilité à travers les statuts WhatsApp</strong> ainsi que de faciliter les échanges et partenariats entre membres.
-              </p>
-              <p>
-                Nous vous remercions de bien vouloir <strong className="text-foreground">respecter les règles établies</strong>.
-              </p>
-              <p className="pt-1 border-t border-border dark:border-gray-700 text-xs italic">
-                Si aucun contact n'est disponible, le système affichera le message suivant sur l'interface : <span className="font-semibold not-italic">« Aucun fichier disponible à télécharger »</span>.
-              </p>
-            </div>
           </div>
         )}
 
