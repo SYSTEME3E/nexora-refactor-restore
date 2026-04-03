@@ -43,7 +43,6 @@ import CommandeTrackingPage from "@/pages/boutique/CommandeTrackingPage";
 import ImmobilierPage from "@/pages/ImmobilierPage";
 import AnnonceDetailPage from "@/pages/AnnonceDetailPage";
 import ProfilVendeurPage from "@/pages/ProfilVendeurPage";
-import Cryptop2pmarketplace from "@/pages/Cryptop2pmarketplace";
 
 // Abonnement & Paiement
 import AbonnementPage from "@/pages/AbonnementPage";
@@ -54,7 +53,6 @@ import ContactsWhatsAppPage from "@/pages/ContactsWhatsAppPage";
 
 // Admin
 import AdminPanelPage from "@/pages/AdminPanelPage";
-import CryptoAdminPanelPage from "@/pages/crypto/CryptoAdminPanelPage";
 
 import NotFound from "@/pages/NotFound";
 
@@ -169,7 +167,7 @@ const App = () => (
           <Route path="/shop/:slug/produit/:produitId"            element={<ProduitDetailPage />} />
           <Route path="/shop/:slug/acheter/:produitId"            element={<AcheterPage />} />
           <Route path="/immobilier/vendeur/:userId"               element={<ProfilVendeurPage />} />
-          <Route path="/crypto-p2p"                                element={<ProtectedPage><Cryptop2pmarketplace /></ProtectedPage>} />
+          <Route path="/crypto-p2p"                                element={<Navigate to="/dashboard" replace />} />
           <Route path="/commande/:commandeId"                     element={<CommandeTrackingPage />} />
 
           {/* Admin */}
