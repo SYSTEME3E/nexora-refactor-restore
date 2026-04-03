@@ -50,6 +50,7 @@ export default function NexoraLoginPage() {
   const [confirmPassword, setConfirmPassword]   = useState("");
   const [showRegPassword, setShowRegPassword]   = useState(false);
   const [showConfirm, setShowConfirm]           = useState(false);
+  const [whatsapp, setWhatsapp]                 = useState("");
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -109,6 +110,12 @@ export default function NexoraLoginPage() {
     if (!nomPrenom.trim() || !username.trim() || !email.trim() || !regPassword) {
       toast({ title: "Remplissez tous les champs obligatoires", variant: "destructive" }); return;
     }
+    if (!whatsapp.trim()) {
+      toast({ title: "Numéro WhatsApp obligatoire", description: "Veuillez entrer votre numéro WhatsApp.", variant: "destructive" }); return;
+    }
+    if (!/^\+?[0-9]{8,15}$/.test(whatsapp.replace(/\s/g, ""))) {
+      toast({ title: "Numéro invalide", description: "Entrez un numéro valide (ex: +22990000000).", variant: "destructive" }); return;
+    }
     if (regPassword !== confirmPassword) {
       toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return;
     }
@@ -117,7 +124,7 @@ export default function NexoraLoginPage() {
       toast({ title: "Mot de passe invalide", description: validation.error, variant: "destructive" }); return;
     }
     setLoading(true);
-    const result = await registerUser({ nom_prenom: nomPrenom, username, email, password: regPassword });
+    const result = await registerUser({ nom_prenom: nomPrenom, username, email, password: regPassword, whatsapp: whatsapp.trim() });
     if (result.success) {
       toast({ title: "✅ Compte créé !", description: "Connectez-vous maintenant." });
       setMode("login");
@@ -266,6 +273,23 @@ export default function NexoraLoginPage() {
                   </label>
                   <Input type="email" value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="exemple@gmail.com" className="h-10 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-green-500" /> WhatsApp *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-green-500">WA</span>
+                    <Input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={e => setWhatsapp(e.target.value)}
+                      placeholder="+229 90 00 00 00"
+                      className="h-10 pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Numéro avec indicatif pays (ex: +229...)</p>
                 </div>
 
                 <div>
