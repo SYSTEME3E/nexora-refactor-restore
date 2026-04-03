@@ -714,17 +714,182 @@ export default function AdminPanelPage() {
             <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <Key className="w-4 h-4 text-blue-500" /> Mot de passe actuel
             </div>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm bg-muted px-3 py-2.5 rounded-xl font-mono">
-                {showUserPassword ? (u.password_plain || "—") : "••••••••••••"}
+            {showUserPassword ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <div className="text-xs text-blue-500 font-semibold mb-1">Mot de passe en clair :</div>
+                <code className="text-lg font-black text-blue-800 font-mono tracking-widest select-all break-all">
+                  {u.password_plain && u.password_plain.trim() !== "" ? u.password_plain : "Non enregistré"}
+                </code>
+              </div>
+            ) : (
+              <code className="block text-sm bg-muted px-3 py-2.5 rounded-xl font-mono text-muted-foreground">
+                ••••••••••••
               </code>
-              <button
-                onClick={() => setShowUserPassword(p => !p)}
-                className="text-xs px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium flex-shrink-0">
-                {showUserPassword ? "Masquer" : "Révéler"}
-              </button>
-            </div>
+            )}
+            <button
+              onClick={() => setShowUserPassword(p => !p)}
+              className={`w-full text-xs px-3 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition-colors ${showUserPassword ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
+              {showUserPassword ? <><Lock className="w-3.5 h-3.5" /> Masquer le mot de passe</> : <><Unlock className="w-3.5 h-3.5" /> Révéler le mot de passe</>}
+            </button>
           </div>
+
+          {/* ── Gestion Crypto P2P ── */}
+          {(() => {
+            const userSeller = cryptoSellers.find((s: any) => s.user_id === u.id);
+            const sellerOffers = userSeller ? cryptoOffers.filter((o: any) => o.seller_id === u.id) : [];
+            const sellerOrders = userSeller ? cryptoOrders.filter((o: any) => o.seller_id === u.id) : [];
+            return (
+              <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+                <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-amber-500" /> Gestion Crypto P2P
+                </div>
+
+                {!userSeller ? (
+                  <div className="text-center py-6 bg-muted/40 rounded-xl text-sm text-muted-foreground">
+                    <div className="text-3xl mb-2">₿</div>
+                    Cet utilisateur n'est pas encore enregistré comme vendeur crypto.
+                  </div>
+                ) : (
+                  <>
+                    {/* Statut + toggle accès annonces */}
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold uppercase text-muted-foreground">Accès aux annonces</div>
+                      <div className={`flex items-center justify-between px-3 py-3 rounded-xl border ${userSeller.can_post_offers ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${userSeller.can_post_offers ? "bg-green-500" : "bg-red-500"}`} />
+                          <span className={`text-sm font-bold ${userSeller.can_post_offers ? "text-green-700" : "text-red-700"}`}>
+                            {userSeller.can_post_offers ? "Annonces activées" : "Annonces désactivées"}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleToggleOfferAccess(userSeller)}
+                          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${userSeller.can_post_offers ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
+                          {userSeller.can_post_offers ? "🚫 Révoquer" : "✅ Autoriser"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stats rapides */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-muted rounded-xl p-3 text-center">
+                        <div className="text-lg font-black text-amber-600">{sellerOffers.length}</div>
+                        <div className="text-xs text-muted-foreground">Annonces</div>
+                      </div>
+                      <div className="bg-muted rounded-xl p-3 text-center">
+                        <div className="text-lg font-black text-blue-600">{sellerOrders.length}</div>
+                        <div className="text-xs text-muted-foreground">Commandes</div>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                        <div className="text-lg font-black text-emerald-700">{Number(userSeller.reserve || 0).toLocaleString("fr-FR")}</div>
+                        <div className="text-xs text-emerald-600">Réserve (FCFA)</div>
+                      </div>
+                    </div>
+
+                    {/* Montant max à vendre */}
+                    <div className="bg-muted/50 border border-border rounded-xl p-3 space-y-2">
+                      <div className="text-xs font-bold uppercase text-muted-foreground">💰 Montant maximum à vendre</div>
+                      <div className="text-xs text-muted-foreground">
+                        Actuel : <span className="font-bold text-amber-600">
+                          {Number(userSeller.max_sell_amount) > 0
+                            ? `${Number(userSeller.max_sell_amount).toLocaleString("fr-FR")} FCFA`
+                            : "Illimité"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          value={sellerMaxAmount[userSeller.id] || ""}
+                          onChange={e => setSellerMaxAmount(prev => ({ ...prev, [userSeller.id]: e.target.value }))}
+                          placeholder="Ex: 500000 — (0 = illimité)"
+                          className="flex-1 rounded-xl text-sm h-9"
+                        />
+                        <Button
+                          onClick={() => handleSetMaxSell(userSeller)}
+                          size="sm"
+                          className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex-shrink-0 h-9 px-4">
+                          Appliquer
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Réserve de garantie */}
+                    <div className="bg-muted/50 border border-border rounded-xl p-3 space-y-2">
+                      <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">🛡️ Réserve de garantie</div>
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                        <span className="text-base font-black text-emerald-700">
+                          {Number(userSeller.reserve || 0).toLocaleString("fr-FR")} FCFA
+                        </span>
+                        <span className="text-xs text-emerald-600">disponible</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Prélever pour rembourser un acheteur lésé.</p>
+                      <Input
+                        type="number"
+                        value={reservePayAmount[userSeller.id] || ""}
+                        onChange={e => setReservePayAmount(prev => ({ ...prev, [userSeller.id]: e.target.value }))}
+                        placeholder="Montant à prélever (FCFA)..."
+                        className="rounded-xl text-sm h-9"
+                      />
+                      <Input
+                        value={reservePayReason[userSeller.id] || ""}
+                        onChange={e => setReservePayReason(prev => ({ ...prev, [userSeller.id]: e.target.value }))}
+                        placeholder="Motif — ex: remboursement acheteur @username"
+                        className="rounded-xl text-sm h-9"
+                      />
+                      <Button
+                        onClick={() => handleReservePayout(userSeller)}
+                        disabled={!reservePayAmount[userSeller.id] || Number(reservePayAmount[userSeller.id]) <= 0}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs h-9 disabled:opacity-40">
+                        Prélever depuis la réserve
+                      </Button>
+                    </div>
+
+                    {/* Annonces du vendeur */}
+                    {sellerOffers.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold uppercase text-muted-foreground">🏷️ Annonces ({sellerOffers.length})</div>
+                        {sellerOffers.map((offer: any) => (
+                          <div key={offer.id} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs gap-2">
+                            <div className="flex-1 min-w-0">
+                              <span className="font-semibold">{offer.custom_crypto_name || offer.crypto}</span>
+                              <span className="text-muted-foreground ml-2">@ {Number(offer.rate || 0).toLocaleString("fr-FR")} FCFA</span>
+                              <div className="text-muted-foreground">Min:{Number(offer.min_amount||0)} / Max:{Number(offer.max_amount||0)}</div>
+                            </div>
+                            <button onClick={async () => {
+                              if (window.confirm("Supprimer cette annonce ?")) {
+                                await (supabase.from("crypto_offers") as any).delete().eq("id", offer.id);
+                                toast({ title: "Annonce supprimée" }); loadAll();
+                              }
+                            }} className="text-red-600 hover:text-red-800 flex-shrink-0">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Bloquer / Débloquer vendeur */}
+                    <div className="flex gap-2">
+                      {userSeller.status !== "blocked" ? (
+                        <button onClick={async () => {
+                          await (supabase.from("crypto_sellers") as any).update({ status: "blocked" }).eq("id", userSeller.id);
+                          toast({ title: "Vendeur bloqué sur Crypto P2P" }); loadAll();
+                        }} className="flex-1 text-xs py-2 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors">
+                          🚫 Bloquer ce vendeur
+                        </button>
+                      ) : (
+                        <button onClick={async () => {
+                          await (supabase.from("crypto_sellers") as any).update({ status: "active" }).eq("id", userSeller.id);
+                          toast({ title: "Vendeur débloqué" }); loadAll();
+                        }} className="flex-1 text-xs py-2 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 font-semibold transition-colors">
+                          ✅ Débloquer ce vendeur
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
             <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</div>
@@ -856,33 +1021,7 @@ export default function AdminPanelPage() {
             )}
           </div>
 
-          {/* Accès Crypto P2P depuis profil utilisateur */}
-          {(() => {
-            const userSeller = cryptoSellers.find((s: any) => s.user_id === u.id);
-            if (!userSeller) return null;
-            return (
-              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <ArrowRightLeft className="w-4 h-4 text-amber-500" /> Accès Annonces Crypto P2P
-                </div>
-                <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${userSeller.can_post_offers ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-                  <span className={`text-sm font-semibold ${userSeller.can_post_offers ? "text-green-700" : "text-red-700"}`}>
-                    {userSeller.can_post_offers ? "✅ Annonces activées" : "🚫 Annonces désactivées"}
-                  </span>
-                  <button onClick={() => handleToggleOfferAccess(userSeller)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${userSeller.can_post_offers ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
-                    {userSeller.can_post_offers ? "Révoquer" : "Autoriser"}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                  <span>🛡️ Réserve : <span className="font-semibold text-emerald-600">{Number(userSeller.reserve || 0).toLocaleString("fr-FR")} FCFA</span></span>
-                  {Number(userSeller.max_sell_amount) > 0 && (
-                    <span>Max vente : <span className="font-semibold text-amber-600">{Number(userSeller.max_sell_amount).toLocaleString("fr-FR")} FCFA</span></span>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+
 
           {/* Modifier mot de passe */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -1420,23 +1559,18 @@ export default function AdminPanelPage() {
                               <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
                                 <Lock className="w-3.5 h-3.5 text-blue-500" /> Mot de passe du compte
                               </div>
-                              {showSellerPwd[seller.id] ? (
-                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                                  <div className="text-xs text-blue-500 font-semibold mb-1">Mot de passe en clair :</div>
-                                  <code className="text-base font-black text-blue-800 font-mono break-all tracking-widest select-all">
-                                    {sellerUser?.password_plain || seller.crypto_password || sellerUser?.admin_password || "Non disponible"}
-                                  </code>
-                                </div>
-                              ) : (
-                                <code className="block text-sm bg-muted px-3 py-2.5 rounded-xl font-mono text-muted-foreground">
-                                  ••••••••••••
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 text-xs bg-muted px-3 py-2.5 rounded-xl font-mono break-all">
+                                  {showSellerPwd[seller.id]
+                                    ? (sellerUser?.password_plain || seller.crypto_password || sellerUser?.admin_password || "—")
+                                    : "••••••••••••"}
                                 </code>
-                              )}
-                              <button
-                                onClick={() => setShowSellerPwd(prev => ({ ...prev, [seller.id]: !prev[seller.id] }))}
-                                className={`w-full text-xs px-3 py-2 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition-colors ${showSellerPwd[seller.id] ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}>
-                                {showSellerPwd[seller.id] ? <><Lock className="w-3.5 h-3.5" /> Masquer le mot de passe</> : <><Unlock className="w-3.5 h-3.5" /> Révéler le mot de passe</>}
-                              </button>
+                                <button
+                                  onClick={() => setShowSellerPwd(prev => ({ ...prev, [seller.id]: !prev[seller.id] }))}
+                                  className="text-xs px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium flex-shrink-0">
+                                  {showSellerPwd[seller.id] ? "Masquer" : "Révéler"}
+                                </button>
+                              </div>
                             </div>
 
                             {/* Montant maximum à vendre */}
