@@ -461,6 +461,192 @@ export type Database = {
           },
         ]
       }
+      crypto_offers: {
+        Row: {
+          allowed_countries: Json
+          available: number
+          created_at: string
+          crypto: string
+          custom_crypto_name: string | null
+          id: string
+          is_active: boolean
+          max_amount: number
+          min_amount: number
+          network_fee: number
+          payment_methods: Json
+          rate: number
+          seller_id: string
+          seller_name: string
+          updated_at: string
+          wallet_address: string | null
+        }
+        Insert: {
+          allowed_countries?: Json
+          available?: number
+          created_at?: string
+          crypto: string
+          custom_crypto_name?: string | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number
+          min_amount?: number
+          network_fee?: number
+          payment_methods?: Json
+          rate?: number
+          seller_id: string
+          seller_name?: string
+          updated_at?: string
+          wallet_address?: string | null
+        }
+        Update: {
+          allowed_countries?: Json
+          available?: number
+          created_at?: string
+          crypto?: string
+          custom_crypto_name?: string | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number
+          min_amount?: number
+          network_fee?: number
+          payment_methods?: Json
+          rate?: number
+          seller_id?: string
+          seller_name?: string
+          updated_at?: string
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      crypto_orders: {
+        Row: {
+          amount: number
+          amount_fcfa: number
+          buyer_country: string | null
+          buyer_id: string
+          buyer_name: string
+          buyer_whatsapp: string | null
+          created_at: string
+          crypto: string
+          id: string
+          network_fee: number
+          offer_id: string | null
+          order_number: string
+          payment_message: string | null
+          seller_id: string
+          seller_name: string
+          status: string
+          total_fcfa: number
+          updated_at: string
+          wallet_addr: string
+        }
+        Insert: {
+          amount?: number
+          amount_fcfa?: number
+          buyer_country?: string | null
+          buyer_id: string
+          buyer_name?: string
+          buyer_whatsapp?: string | null
+          created_at?: string
+          crypto: string
+          id?: string
+          network_fee?: number
+          offer_id?: string | null
+          order_number: string
+          payment_message?: string | null
+          seller_id: string
+          seller_name?: string
+          status?: string
+          total_fcfa?: number
+          updated_at?: string
+          wallet_addr?: string
+        }
+        Update: {
+          amount?: number
+          amount_fcfa?: number
+          buyer_country?: string | null
+          buyer_id?: string
+          buyer_name?: string
+          buyer_whatsapp?: string | null
+          created_at?: string
+          crypto?: string
+          id?: string
+          network_fee?: number
+          offer_id?: string | null
+          order_number?: string
+          payment_message?: string | null
+          seller_id?: string
+          seller_name?: string
+          status?: string
+          total_fcfa?: number
+          updated_at?: string
+          wallet_addr?: string
+        }
+        Relationships: []
+      }
+      crypto_sellers: {
+        Row: {
+          active_days: number
+          allowed_countries: Json
+          allowed_cryptos: Json
+          avatar_url: string | null
+          created_at: string
+          daily_limit: number
+          expires_at: string | null
+          id: string
+          max_sell: number
+          min_sell: number
+          payment_lien: string | null
+          payment_numero: string | null
+          payment_reseau: string | null
+          reserve: number
+          status: string
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          active_days?: number
+          allowed_countries?: Json
+          allowed_cryptos?: Json
+          avatar_url?: string | null
+          created_at?: string
+          daily_limit?: number
+          expires_at?: string | null
+          id?: string
+          max_sell?: number
+          min_sell?: number
+          payment_lien?: string | null
+          payment_numero?: string | null
+          payment_reseau?: string | null
+          reserve?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          active_days?: number
+          allowed_countries?: Json
+          allowed_cryptos?: Json
+          avatar_url?: string | null
+          created_at?: string
+          daily_limit?: number
+          expires_at?: string | null
+          id?: string
+          max_sell?: number
+          min_sell?: number
+          payment_lien?: string | null
+          payment_numero?: string | null
+          payment_reseau?: string | null
+          reserve?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       depenses: {
         Row: {
           annee_num: number | null
