@@ -112,7 +112,7 @@ interface Transfert {
   statut: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs";
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs" | "crypto";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
@@ -189,6 +189,9 @@ export default function AdminPanelPage() {
   const [messages,    setMessages]    = useState<AdminMessage[]>([]);
   const [logs,        setLogs]        = useState<any[]>([]);
   const [transferts,  setTransferts]  = useState<Transfert[]>([]);
+  const [cryptoSellers, setCryptoSellers] = useState<any[]>([]);
+  const [cryptoOffers,  setCryptoOffers]  = useState<any[]>([]);
+  const [cryptoOrders,  setCryptoOrders]  = useState<any[]>([]);
 
   const [searchUser,       setSearchUser]       = useState("");
   const [filterPlan,       setFilterPlan]       = useState("");
@@ -265,6 +268,9 @@ export default function AdminPanelPage() {
         logsData,
         messagesData,
         transfertsData,
+        cryptoSellersData,
+        cryptoOffersData,
+        cryptoOrdersData,
       ] = await Promise.all([
         safeQuery(async () => await (supabase.from("nexora_users") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("boutiques") as any).select("*").order("created_at", { ascending: false })),
@@ -274,6 +280,9 @@ export default function AdminPanelPage() {
         safeQuery(async () => await (supabase.from("nexora_logs") as any).select("*").order("created_at", { ascending: false }).limit(100)),
         safeQuery(async () => await (supabase.from("chat_messages") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("nexora_transactions") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_sellers") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_offers") as any).select("*").order("created_at", { ascending: false })),
+        safeQuery(async () => await (supabase.from("crypto_orders") as any).select("*").order("created_at", { ascending: false })),
       ]);
 
       const u  = usersData       as NexoraUser[];
@@ -292,6 +301,9 @@ export default function AdminPanelPage() {
       setLogs(logsData);
       setTransferts(tr);
       setMessages(messagesData.map((m: any) => ({ ...m, user: m.nexora_users || null })));
+      setCryptoSellers(cryptoSellersData);
+      setCryptoOffers(cryptoOffersData);
+      setCryptoOrders(cryptoOrdersData);
 
       const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
       const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
@@ -580,6 +592,7 @@ export default function AdminPanelPage() {
     { id: "stats",       label: "Statistiques", icon: BarChart3 },
     { id: "users",       label: "Utilisateurs",  icon: Users     },
     { id: "boutiques",   label: "Boutiques",     icon: Store     },
+    { id: "crypto",      label: "Crypto P2P",    icon: ArrowRightLeft },
     { id: "abonnements", label: "Abonnements",   icon: Crown     },
     { id: "messages",    label: "Messages",      icon: MessageSquare, badge: unreadMessages },
     { id: "logs",        label: "Logs",          icon: Activity  },
@@ -991,10 +1004,6 @@ export default function AdminPanelPage() {
           })}
         </nav>
         <div className="p-4 border-t border-border space-y-2">
-          <button onClick={() => navigate("/admin/crypto")}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-amber-500 hover:bg-amber-50/10 transition-colors">
-            <span className="text-base">₿</span> Panel Admin Crypto
-          </button>
           <button onClick={() => navigate(-1)} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
@@ -1360,6 +1369,196 @@ export default function AdminPanelPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── CRYPTO P2P ── */}
+        {tab === "crypto" && (
+          <div className="space-y-6">
+            {/* Stats Crypto */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { l: "Vendeurs", v: cryptoSellers.length, icon: "🏪", col: "text-purple-500" },
+                { l: "Annonces", v: cryptoOffers.length, icon: "🏷️", col: "text-amber-500" },
+                { l: "Commandes", v: cryptoOrders.length, icon: "📦", col: "text-blue-500" },
+                { l: "Volume ($)", v: `$${cryptoOrders.reduce((s: number, o: any) => s + (Number(o.total_fcfa) || 0), 0).toLocaleString("fr-FR")}`, icon: "💰", col: "text-green-500" },
+              ].map(s => (
+                <div key={s.l} className="bg-card border border-border rounded-2xl p-4">
+                  <div className="text-2xl mb-1">{s.icon}</div>
+                  <div className={`text-xl font-black ${s.col}`}>{s.v}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{s.l}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Vendeurs */}
+            <div>
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2">🏪 Vendeurs enregistrés</h3>
+              {cryptoSellers.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <div className="text-4xl mb-2">📭</div>
+                  <p className="text-sm">Aucun vendeur enregistré</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cryptoSellers.map((seller: any) => {
+                    const sellerUser = users.find(u => u.id === seller.user_id);
+                    const sellerOffers = cryptoOffers.filter((o: any) => o.seller_id === seller.user_id);
+                    const sellerOrders = cryptoOrders.filter((o: any) => o.seller_id === seller.user_id);
+                    return (
+                      <div key={seller.id} className="bg-card border border-border rounded-xl p-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            {sellerUser?.nom_prenom?.[0] || "V"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-sm">{sellerUser?.nom_prenom || "Vendeur"}</div>
+                            <div className="text-xs text-muted-foreground">{sellerUser?.email}</div>
+                          </div>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                            seller.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                            seller.status === "blocked" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                            "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}>
+                            {seller.status === "active" ? "✅ Actif" : seller.status === "blocked" ? "🚫 Bloqué" : "⚠️ Restreint"}
+                          </span>
+                        </div>
+                        <div className="flex gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
+                          <span>📦 {sellerOrders.length} commandes</span>
+                          <span>🏷️ {sellerOffers.length} annonces</span>
+                          <span>💰 Réserve: ${Number(seller.reserve || 0).toLocaleString("fr-FR")}</span>
+                          <span>📱 {seller.whatsapp || "—"}</span>
+                        </div>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {seller.status !== "blocked" && (
+                            <Button size="sm" variant="destructive" className="text-xs h-7" onClick={async () => {
+                              await (supabase.from("crypto_sellers") as any).update({ status: "blocked" }).eq("id", seller.id);
+                              toast({ title: "Vendeur bloqué" }); loadAll();
+                            }}>🚫 Bloquer</Button>
+                          )}
+                          {seller.status === "blocked" && (
+                            <Button size="sm" variant="outline" className="text-xs h-7 text-green-600" onClick={async () => {
+                              await (supabase.from("crypto_sellers") as any).update({ status: "active" }).eq("id", seller.id);
+                              toast({ title: "Vendeur débloqué" }); loadAll();
+                            }}>✅ Débloquer</Button>
+                          )}
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-red-600" onClick={async () => {
+                            if (window.confirm("Supprimer ce vendeur ?")) {
+                              await (supabase.from("crypto_sellers") as any).delete().eq("id", seller.id);
+                              toast({ title: "Vendeur supprimé" }); loadAll();
+                            }
+                          }}>🗑 Supprimer</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Annonces */}
+            <div>
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2">🏷️ Annonces crypto (en $)</h3>
+              {cryptoOffers.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <div className="text-4xl mb-2">📭</div>
+                  <p className="text-sm">Aucune annonce</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cryptoOffers.map((offer: any) => (
+                    <div key={offer.id} className="bg-card border border-border rounded-xl p-4">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm">{offer.custom_crypto_name || offer.crypto}</div>
+                          <div className="text-xs text-muted-foreground">Vendeur: {offer.seller_name}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-amber-500">${Number(offer.rate || 0).toLocaleString("fr-FR")}</div>
+                          <div className="text-xs text-muted-foreground">par unité</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                        <span>Min: {Number(offer.min_amount || 0)}</span>
+                        <span>Max: {Number(offer.max_amount || 0)}</span>
+                        <span>Dispo: {Number(offer.available || 0)}</span>
+                        <span>Frais: ${Number(offer.network_fee || 0)}</span>
+                      </div>
+                      {(offer.allowed_countries as any[])?.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">🌍 {(offer.allowed_countries as string[]).join(", ")}</div>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline" className="text-xs h-7 text-red-600" onClick={async () => {
+                          if (window.confirm("Supprimer cette annonce ?")) {
+                            await (supabase.from("crypto_offers") as any).delete().eq("id", offer.id);
+                            toast({ title: "Annonce supprimée" }); loadAll();
+                          }
+                        }}>🗑 Supprimer</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Commandes */}
+            <div>
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2">📦 Commandes crypto (en $)</h3>
+              {cryptoOrders.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <div className="text-4xl mb-2">📭</div>
+                  <p className="text-sm">Aucune commande</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cryptoOrders.map((order: any) => {
+                    const statusConfig: Record<string, { label: string; cls: string }> = {
+                      pending:   { label: "En attente", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+                      paid:      { label: "Payé",       cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+                      confirmed: { label: "Confirmé",   cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+                      disputed:  { label: "Litige",     cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+                    };
+                    const st = statusConfig[order.status] || statusConfig.pending;
+                    return (
+                      <div key={order.id} className="bg-card border border-border rounded-xl p-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-amber-500">{order.order_number}</span>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {order.buyer_name} → {order.seller_name}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-sm">{Number(order.amount || 0)} {order.crypto}</div>
+                            <div className="text-xs text-muted-foreground">${Number(order.total_fcfa || 0).toLocaleString("fr-FR")}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                          {order.buyer_country && <span>🌍 {order.buyer_country}</span>}
+                          {order.buyer_whatsapp && <span>📱 {order.buyer_whatsapp}</span>}
+                          <span>📅 {fmtDatetime(order.created_at)}</span>
+                        </div>
+                        {order.status === "disputed" && (
+                          <div className="flex gap-2 mt-3">
+                            <Button size="sm" className="text-xs h-7 bg-green-600 hover:bg-green-700 text-white" onClick={async () => {
+                              await (supabase.from("crypto_orders") as any).update({ status: "confirmed" }).eq("id", order.id);
+                              toast({ title: "Commande confirmée" }); loadAll();
+                            }}>✅ Forcer confirmation</Button>
+                            <Button size="sm" variant="destructive" className="text-xs h-7" onClick={async () => {
+                              await (supabase.from("crypto_orders") as any).update({ status: "cancelled" }).eq("id", order.id);
+                              toast({ title: "Commande annulée" }); loadAll();
+                            }}>❌ Annuler</Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
