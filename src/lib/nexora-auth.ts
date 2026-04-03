@@ -102,6 +102,7 @@ export async function registerUser(data: {
   username: string;
   email: string;
   password: string;
+  whatsapp?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const { data: existingUser } = await supabase
     .from("nexora_users" as any)
@@ -133,6 +134,7 @@ export async function registerUser(data: {
     is_admin: false,
     plan: "gratuit",
     badge_premium: false,
+    whatsapp: data.whatsapp || null,
   });
 
   if (error) {
