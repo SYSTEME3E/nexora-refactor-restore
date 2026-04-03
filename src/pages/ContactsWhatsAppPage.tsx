@@ -279,10 +279,6 @@ export default function ContactsWhatsAppPage() {
               Nous vous remercions de bien vouloir{" "}
               <strong className="text-foreground">respecter les règles établies</strong>.
             </p>
-            <p className="pt-2 border-t border-border dark:border-gray-700 text-xs italic">
-              Si aucun contact n'est disponible, le système affichera le message suivant :{" "}
-              <span className="font-semibold not-italic">« Aucun fichier disponible à télécharger »</span>.
-            </p>
           </div>
         </div>
 
@@ -524,7 +520,9 @@ export default function ContactsWhatsAppPage() {
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
               <Phone className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-bold text-foreground mb-1">Aucun fichier disponible à télécharger</h3>
+            <h3 className="text-lg font-black text-foreground mb-1">
+              Aucun fichier disponible à télécharger
+            </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
               Les membres qui renseignent leur numéro WhatsApp lors de l'inscription apparaîtront ici.
             </p>
