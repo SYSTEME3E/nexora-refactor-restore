@@ -14,7 +14,6 @@ import nexoraLogo from "@/assets/nexora-logo.png";
 import NexoraNotifications from "@/components/NexoraNotifications";
 import { initTheme, toggleTheme, getTheme } from "@/lib/theme";
 
-
 const getNavItems = (isAdmin: boolean) => {
   const items = [
     { path: "/",                 icon: Home,            label: "Accueil",             color: "text-indigo-400",  bg: "bg-indigo-400/10"  },
@@ -45,6 +44,7 @@ interface AppLayoutProps {
   isDark?: boolean;
   headerActions?: ReactNode;
 }
+
 
 export default function AppLayout({
   children,
