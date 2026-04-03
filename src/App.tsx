@@ -33,7 +33,6 @@ import BoutiqueAccueilPage from "@/pages/boutique/AccueilPage";
 import BoutiqueProduitsPage from "@/pages/boutique/ProduitsPage";
 import CommandesPage from "@/pages/boutique/CommandesPage";
 import BoutiqueParametresPage from "@/pages/boutique/ParametresPage";
-import DigitalFinancePage from "@/pages/boutique/DigitalFinancePage";
 import BoutiqueVitrinePage from "@/pages/boutique/VitrinePage";
 import ProduitDetailPage from "@/pages/boutique/ProduitDetailPage";
 import AcheterPage from "@/pages/boutique/AcheterPage";
@@ -159,7 +158,6 @@ const App = () => (
           <Route path="/boutique/produits"      element={<PremiumPage><BoutiqueProduitsPage /></PremiumPage>} />
           <Route path="/boutique/commandes"     element={<PremiumPage><CommandesPage /></PremiumPage>} />
           <Route path="/boutique/parametres"    element={<PremiumPage><BoutiqueParametresPage /></PremiumPage>} />
-          <Route path="/boutique/finances"      element={<PremiumPage><DigitalFinancePage /></PremiumPage>} />
 
           {/* Vitrines (Accessibles via slugs) */}
           <Route path="/shop/:slug"                               element={<BoutiqueVitrinePage />} />
