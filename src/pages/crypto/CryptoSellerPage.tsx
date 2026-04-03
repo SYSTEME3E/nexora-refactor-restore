@@ -50,6 +50,7 @@ export default function CryptoSellerPage({ navigate, user, onLogout, offers, set
   // Statut vendeur bloqué / restreint
   const isBlocked    = user?.sellerStatus === "blocked";
   const isRestricted = user?.sellerStatus === "restricted";
+  const canPostAnnounce = user?.canPostAnnounce !== false;
 
   const menu = [
     { id:"orders",  label:"Commandes reçues",  icon:"📦", badge:myOrders.filter((o: any) => o.status === "paid").length },
@@ -166,6 +167,11 @@ export default function CryptoSellerPage({ navigate, user, onLogout, offers, set
       {isRestricted && (
         <div style={{ background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:12, padding:"14px 18px", marginBottom:20, color:C.gold, fontWeight:700, fontSize:14 }}>
           ⚠️ Votre compte vendeur est restreint. Certaines fonctionnalités sont limitées.
+        </div>
+      )}
+      {!canPostAnnounce && !isBlocked && (
+        <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.35)", borderRadius:12, padding:"14px 18px", marginBottom:20, color:"#ef4444", fontWeight:700, fontSize:14 }}>
+          📢 L'accès aux annonces a été désactivé par l'administrateur. Vos commandes en cours restent actives.
         </div>
       )}
 
