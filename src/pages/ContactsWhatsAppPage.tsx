@@ -422,6 +422,33 @@ export default function ContactsWhatsAppPage() {
           </div>
         )}
 
+        {/* ── Note de bas de page (NB) ── */}
+        {!loading && !error && (
+          <div className="bg-card dark:bg-gray-900 border border-border dark:border-gray-800 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-sm text-foreground">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-black flex-shrink-0">NB</span>
+              Note importante
+            </div>
+            <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Nous mettons à votre disposition cette fonctionnalité afin de vous permettre de <strong className="text-foreground">communiquer entre utilisateurs</strong>, de partager des opportunités et de <strong className="text-foreground">promouvoir vos produits via les statuts WhatsApp</strong>.
+              </p>
+              <p>
+                Nous accordons une importance particulière à la <strong className="text-foreground">confidentialité et à la sécurité des données</strong>. Chaque utilisateur est entièrement responsable de l'usage qu'il fait des contacts mis à disposition. Toute utilisation abusive ou non conforme aux règles engage uniquement la responsabilité de son auteur.
+              </p>
+              <p>
+                Notre objectif est de vous offrir une meilleure <strong className="text-foreground">visibilité à travers les statuts WhatsApp</strong> ainsi que de faciliter les échanges et partenariats entre membres.
+              </p>
+              <p>
+                Nous vous remercions de bien vouloir <strong className="text-foreground">respecter les règles établies</strong>.
+              </p>
+              <p className="pt-1 border-t border-border dark:border-gray-700 text-xs italic">
+                Si aucun contact n'est disponible, le système affichera le message suivant sur l'interface : <span className="font-semibold not-italic">« Aucun fichier disponible à télécharger »</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Guide d'utilisation ── */}
         {!loading && !error && totalContacts > 0 && (
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 space-y-3">
@@ -502,7 +529,7 @@ export default function ContactsWhatsAppPage() {
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
               <Phone className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-bold text-foreground mb-1">Aucun contact disponible</h3>
+            <h3 className="font-bold text-foreground mb-1">Aucun fichier disponible à télécharger</h3>
             <p className="text-sm text-muted-foreground max-w-xs">
               Les membres qui renseignent leur numéro WhatsApp lors de l'inscription apparaîtront ici.
             </p>
