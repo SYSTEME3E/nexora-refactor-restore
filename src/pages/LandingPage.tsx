@@ -56,11 +56,10 @@ const FEATURES = [
     points: ["Chiffrement bout-en-bout", "Mots de passe & documents", "Accès sécurisé", "Sauvegarde cloud"],
   },
   {
-    icon: CreditCard, color: "#ec4899", bg: "#fdf2f8",
-    title: "Crypto P2P", tag: "Disponible",
-    desc: "Achetez et vendez vos crypto-monnaies dans un espace P2P mieux organisé avec suivi d’opérations, vendeurs et tableau de bord dédié.",
-    points: ["Offres crypto organisées", "Suivi des opérations", "Paiements flexibles", "Vue admin dédiée"],
-  },
+    icon: Users, color: "#25d366", bg: "#f0fdf4",
+    title: "Contacts WhatsApp", tag: "Disponible",
+    desc: "Accédez aux contacts WhatsApp des membres NEXORA. Téléchargez-les en format .vcf pour les importer directement dans votre téléphone. Réseau de confiance, membres vérifiés.",
+    points: ["Contacts membres vérifiés", "Export .vcf (vCard)", "Import direct sur mobile", "Réseau de confiance"],
   {
     icon: Wallet, color: "#14b8a6", bg: "#f0fdfa",
     title: "Abonnements & Liens", tag: "Disponible",
@@ -145,6 +144,27 @@ function AnimatedCounter({ value, suffix }: { value: string; suffix: string }) {
   }, [value]);
   return <span ref={ref}>{display}{suffix}</span>;
 }
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`rounded-2xl border transition-all duration-200 overflow-hidden ${open ? "border-indigo-200 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/30" : "border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-6 py-5 text-left gap-4"
+      >
+        <span className="font-black text-[15px] text-gray-900 dark:text-white">{question}</span>
+        <ChevronDown className={`w-5 h-5 flex-shrink-0 text-indigo-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-6 pb-5">
+          <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
@@ -262,7 +282,7 @@ export default function LandingPage() {
           </button>
 
           <div className="hidden md:flex items-center gap-7 text-[13.5px] font-semibold text-gray-500 dark:text-gray-400">
-            {[["features","Fonctionnalités"],["transfert","Transfert"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
+            {[["features","Fonctionnalités"],["transfert","Transfert"],["roadmap","Roadmap"],["faq","FAQ"],["avis","Avis"]].map(([id,label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="hover:text-gray-900 dark:hover:text-white transition-colors">{label}</button>
             ))}
           </div>
@@ -291,7 +311,7 @@ export default function LandingPage() {
 
         {menuOpen && (
           <div className="md:hidden glass border-b border-gray-100 dark:border-white/10 px-6 pb-5 pt-2 flex flex-col gap-1">
-            {[["features","Fonctionnalités"],["transfert","Transfert Africa"],["roadmap","Roadmap"],["avis","Avis"]].map(([id,label]) => (
+            {[["features","Fonctionnalités"],["transfert","Transfert Africa"],["roadmap","Roadmap"],["faq","FAQ"],["avis","Avis"]].map(([id,label]) => (
               <button key={id} onClick={() => scrollTo(id)} className="text-left px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors">
                 {label}
               </button>
@@ -797,7 +817,55 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA FINAL ── */}
+
+      {/* ── FAQ ── */}
+      <section id="faq" className="max-w-4xl mx-auto px-5 md:px-8 py-20 md:py-28">
+        <div className="text-center mb-14">
+          <SectionBadge text="Questions fréquentes" color="#6366f1" />
+          <h2 className="text-4xl md:text-5xl font-black mt-5 mb-4 text-gray-950 dark:text-white">Tout ce que vous<br />devez savoir</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto text-lg">Retrouvez les réponses aux questions les plus posées sur NEXORA.</p>
+        </div>
+        <div className="space-y-3">
+          {[
+            {
+              q: "NEXORA est-il gratuit ?",
+              a: "Oui, l'inscription est 100% gratuite et sans carte bancaire. Vous pouvez accéder à la plupart des modules gratuitement. Certaines fonctionnalités avancées (comme le téléchargement de contacts WhatsApp) nécessitent un abonnement Premium."
+            },
+            {
+              q: "Comment fonctionne le Transfert d'Argent Africa ?",
+              a: "Rechargez votre compte NEXORA via Mobile Money (MTN, Orange, Moov…) pour seulement 100 FCFA de frais. Ensuite, transférez vers n'importe lequel des 24 pays actifs avec 3% de frais seulement. Une facture PDF est générée automatiquement."
+            },
+            {
+              q: "Qu'est-ce que la fonctionnalité Contacts WhatsApp ?",
+              a: "Cette fonctionnalité vous permet d'accéder aux contacts WhatsApp des membres NEXORA. Vous pouvez les télécharger au format .vcf (vCard) et les importer directement dans votre téléphone. Idéal pour agrandir votre réseau professionnel en Afrique."
+            },
+            {
+              q: "Mes données sont-elles sécurisées ?",
+              a: "Absolument. NEXORA utilise un chiffrement AES-256 pour les données au repos et TLS 1.3 pour les données en transit. Votre coffre-fort digital est inaccessible même pour nos équipes. Vos données vous appartiennent et vous pouvez les exporter ou supprimer votre compte à tout moment."
+            },
+            {
+              q: "Dans quels pays NEXORA est-il disponible ?",
+              a: "NEXORA est disponible partout, mais le service Transfert couvre 24 pays africains : Bénin, Côte d'Ivoire, Togo, Sénégal, Mali, Burkina Faso, Cameroun, Ghana, Nigéria, Kenya, Tanzanie, Ouganda, Rwanda, Guinée, RD Congo, Gabon, Congo, Maroc, Gambie, Sierra Leone, Liberia, Mozambique, Zambie et Niger."
+            },
+            {
+              q: "Comment créer des factures PDF professionnelles ?",
+              a: "Depuis le module Facturation, remplissez les informations de votre client et vos services, puis générez votre facture PDF en un clic. Le document est personnalisé avec votre branding et numéroté automatiquement. Vous pouvez le télécharger ou le partager instantanément."
+            },
+            {
+              q: "Puis-je vendre des produits physiques et digitaux ?",
+              a: "Oui ! La boutique e-commerce NEXORA permet de vendre aussi bien des produits physiques (avec gestion des stocks et suivi des commandes) que des produits digitaux (fichiers, formations, templates…). Votre vitrine est publique et personnalisée."
+            },
+            {
+              q: "Comment contacter le support ?",
+              a: "Vous pouvez nous joindre par email à support@nexora.africa. Notre équipe répond dans les meilleurs délais. Vous pouvez aussi utiliser le chat intégré à la plateforme une fois connecté."
+            },
+          ].map((item, i) => (
+            <FAQItem key={i} question={item.q} answer={item.a} />
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA FINAL ── */
       <section className="max-w-7xl mx-auto px-5 md:px-8 pb-20">
         <div className="relative bg-gray-950 rounded-3xl overflow-hidden py-16 md:py-24 px-8 md:px-16 text-center">
           <div className="absolute inset-0 pointer-events-none">
@@ -863,7 +931,7 @@ export default function LandingPage() {
             <div>
               <p className="text-white font-black text-sm mb-4 uppercase tracking-wider">Modules</p>
               <div className="flex flex-col gap-2">
-                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Crypto P2P","Liens"].map(l => (
+                {["Finances","Facturation","Boutique","Transfert","Immobilier","Coffre-Fort","Contacts WhatsApp","Liens"].map(l => (
                   <button key={l} onClick={() => navigate("/login")} className="text-sm text-gray-500 hover:text-white text-left transition-colors">{l}</button>
                 ))}
               </div>
