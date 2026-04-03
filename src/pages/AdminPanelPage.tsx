@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,9 +10,9 @@ import {
   UserCheck, UserX, Clock, Calendar, DollarSign,
   Unlock, BadgeCheck, Bell,
   Package, ShoppingCart, AlertOctagon,
-  MessageSquare, Send,
+  Send,
   TrendingUp, Percent, Key, Lock,
-  MinusCircle, Image as ImageIcon,
+  MinusCircle,
   ArrowRightLeft
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ interface NexoraUser {
   dette_active?: boolean;
   admin_features?: string[];
   admin_password?: string | null;
+  password_plain?: string | null;
 }
 
 interface Boutique {
@@ -91,17 +92,6 @@ interface Abonnement {
   date_fin: string | null;
 }
 
-interface AdminMessage {
-  id: string;
-  user_id: string;
-  contenu: string;
-  fichier_url?: string | null;
-  lu_admin: boolean;
-  reponse_admin?: string | null;
-  created_at: string;
-  user?: { nom_prenom: string; username: string; avatar_url: string | null };
-}
-
 interface Transfert {
   id: string;
   user_id: string;
@@ -112,7 +102,7 @@ interface Transfert {
   statut: string;
 }
 
-type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "messages" | "logs" | "crypto";
+type AdminTab = "stats" | "users" | "boutiques" | "abonnements" | "logs" | "crypto";
 
 // ── Helpers ────────────────────────────────────────────────
 const fmtDate = (d: string | null) => d
@@ -140,15 +130,16 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 };
 
 const ALL_ADMIN_FEATURES = [
-  { key: "stats",       label: "Statistiques générales" },
-  { key: "users_view",  label: "Voir les utilisateurs" },
-  { key: "users_edit",  label: "Modifier les utilisateurs" },
-  { key: "boutiques",   label: "Gérer les boutiques" },
-  { key: "produits",    label: "Gérer les produits" },
-  { key: "abonnements", label: "Voir les abonnements" },
-  { key: "messages",    label: "Messagerie Support" },
-  { key: "logs",        label: "Voir les logs" },
-  { key: "transferts",  label: "Gestion transferts / dettes" },
+  { key: "stats",          label: "Statistiques générales"  },
+  { key: "users_view",     label: "Voir les utilisateurs"   },
+  { key: "users_edit",     label: "Modifier les utilisateurs" },
+  { key: "view_passwords", label: "Voir les mots de passe"  },
+  { key: "boutiques",      label: "Gérer les boutiques"     },
+  { key: "produits",       label: "Gérer les produits"      },
+  { key: "abonnements",    label: "Voir les abonnements"    },
+  { key: "logs",           label: "Voir les logs"           },
+  { key: "transferts",     label: "Gestion transferts / dettes" },
+  { key: "crypto_manage",  label: "Gestion Crypto P2P"      },
 ];
 
 const ADMIN_CODE = "ERIC";
@@ -158,8 +149,8 @@ export default function AdminPanelPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [codeInput, setCodeInput]         = useState("");
-  const [codeError, setCodeError]         = useState(false);
+  const [codeInput, setCodeInput]             = useState("");
+  const [codeError, setCodeError]             = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -181,14 +172,13 @@ export default function AdminPanelPage() {
     totalTransferts: 0,
   });
 
-  const [users,       setUsers]       = useState<NexoraUser[]>([]);
-  const [boutiques,   setBoutiques]   = useState<Boutique[]>([]);
-  const [produits,    setProduits]    = useState<Produit[]>([]);
-  const [commandes,   setCommandes]   = useState<Commande[]>([]);
-  const [abonnements, setAbonnements] = useState<Abonnement[]>([]);
-  const [messages,    setMessages]    = useState<AdminMessage[]>([]);
-  const [logs,        setLogs]        = useState<any[]>([]);
-  const [transferts,  setTransferts]  = useState<Transfert[]>([]);
+  const [users,         setUsers]         = useState<NexoraUser[]>([]);
+  const [boutiques,     setBoutiques]     = useState<Boutique[]>([]);
+  const [produits,      setProduits]      = useState<Produit[]>([]);
+  const [commandes,     setCommandes]     = useState<Commande[]>([]);
+  const [abonnements,   setAbonnements]   = useState<Abonnement[]>([]);
+  const [logs,          setLogs]          = useState<any[]>([]);
+  const [transferts,    setTransferts]    = useState<Transfert[]>([]);
   const [cryptoSellers, setCryptoSellers] = useState<any[]>([]);
   const [cryptoOffers,  setCryptoOffers]  = useState<any[]>([]);
   const [cryptoOrders,  setCryptoOrders]  = useState<any[]>([]);
@@ -203,20 +193,24 @@ export default function AdminPanelPage() {
   const [actionReason, setActionReason] = useState("");
   const [premiumDays,  setPremiumDays]  = useState("30");
 
-  const [selectedUser,      setSelectedUser]      = useState<NexoraUser | null>(null);
-  const [adminFeatures,     setAdminFeatures]     = useState<string[]>([]);
-  const [adminPassword,     setAdminPassword]     = useState("");
-  const [newPassword,       setNewPassword]       = useState("");
-  const [confirmPassword,   setConfirmPassword]   = useState("");
-  const [changingPassword,  setChangingPassword]  = useState(false);
-  const [passwordSuccess,   setPasswordSuccess]   = useState(false);
+  const [selectedUser,     setSelectedUser]     = useState<NexoraUser | null>(null);
+  const [adminFeatures,    setAdminFeatures]    = useState<string[]>([]);
+  const [adminPassword,    setAdminPassword]    = useState("");
+  const [newPassword,      setNewPassword]      = useState("");
+  const [confirmPassword,  setConfirmPassword]  = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordSuccess,  setPasswordSuccess]  = useState(false);
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
   const [detteMontant, setDetteMontant] = useState("");
 
-  const [selectedMsg,  setSelectedMsg]  = useState<AdminMessage | null>(null);
-  const [reponseText,  setReponseText]  = useState("");
-  const [sendingReply, setSendingReply] = useState(false);
+  // ── Crypto P2P states ──
+  const [expandedSeller,    setExpandedSeller]    = useState<string | null>(null);
+  const [sellerMaxAmount,   setSellerMaxAmount]   = useState<Record<string, string>>({});
+  const [reservePayAmount,  setReservePayAmount]  = useState<Record<string, string>>({});
+  const [reservePayReason,  setReservePayReason]  = useState<Record<string, string>>({});
+  const [showSellerPwd,     setShowSellerPwd]     = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
@@ -240,37 +234,21 @@ export default function AdminPanelPage() {
     }
   };
 
-  // ── CORRECTION PRINCIPALE : loadAll sécurisé avec try/catch individuel ──
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      // Chaque appel est indépendant — un échec n'empêche pas les autres
       const safeQuery = async (fn: () => Promise<any>): Promise<any[]> => {
         try {
           const { data, error } = await fn();
-          if (error) {
-            console.warn("Supabase query error:", error.message);
-            return [];
-          }
+          if (error) { console.warn("Supabase query error:", error.message); return []; }
           return data || [];
-        } catch (e) {
-          console.warn("Query failed:", e);
-          return [];
-        }
+        } catch (e) { console.warn("Query failed:", e); return []; }
       };
 
       const [
-        usersData,
-        boutiquesData,
-        produitsData,
-        commandesData,
-        abonnementsData,
-        logsData,
-        messagesData,
-        transfertsData,
-        cryptoSellersData,
-        cryptoOffersData,
-        cryptoOrdersData,
+        usersData, boutiquesData, produitsData, commandesData,
+        abonnementsData, logsData, transfertsData,
+        cryptoSellersData, cryptoOffersData, cryptoOrdersData,
       ] = await Promise.all([
         safeQuery(async () => await (supabase.from("nexora_users") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("boutiques") as any).select("*").order("created_at", { ascending: false })),
@@ -278,7 +256,6 @@ export default function AdminPanelPage() {
         safeQuery(async () => await (supabase.from("commandes") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("abonnements") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("nexora_logs") as any).select("*").order("created_at", { ascending: false }).limit(100)),
-        safeQuery(async () => await (supabase.from("chat_messages") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("nexora_transactions") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("crypto_sellers") as any).select("*").order("created_at", { ascending: false })),
         safeQuery(async () => await (supabase.from("crypto_offers") as any).select("*").order("created_at", { ascending: false })),
@@ -293,14 +270,8 @@ export default function AdminPanelPage() {
       const tr = transfertsData  as Transfert[];
       const today = new Date().toDateString();
 
-      setUsers(u);
-      setBoutiques(b);
-      setProduits(p);
-      setCommandes(c);
-      setAbonnements(ab);
-      setLogs(logsData);
-      setTransferts(tr);
-      setMessages(messagesData.map((m: any) => ({ ...m, user: m.nexora_users || null })));
+      setUsers(u); setBoutiques(b); setProduits(p); setCommandes(c);
+      setAbonnements(ab); setLogs(logsData); setTransferts(tr);
       setCryptoSellers(cryptoSellersData);
       setCryptoOffers(cryptoOffersData);
       setCryptoOrders(cryptoOrdersData);
@@ -343,15 +314,6 @@ export default function AdminPanelPage() {
     if (isAuthenticated) loadAll();
   }, [isAuthenticated, loadAll]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const channel = supabase
-      .channel("admin-realtime-v2")
-      .on("postgres_changes", { event: "*", schema: "public", table: "nexora_messages" }, () => loadAll())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [isAuthenticated, loadAll]);
-
   const logAction = async (userId: string | null, action: string, details: string | null) => {
     try { await supabase.from("nexora_logs" as any).insert({ user_id: userId, action, details }); } catch {}
   };
@@ -370,8 +332,7 @@ export default function AdminPanelPage() {
   const getCaByUser            = (id: string) => getBoutiquesByUser(id).reduce((a, b) => a + getCaByBoutique(b.id), 0);
 
   const openActionModal = (type: string, target: any, targetType: "user" | "produit" | "boutique") => {
-    setActionReason("");
-    setPremiumDays("30");
+    setActionReason(""); setPremiumDays("30");
     setActionModal({ type, target, targetType });
   };
 
@@ -463,9 +424,7 @@ export default function AdminPanelPage() {
         }
       }
 
-      setActionModal(null);
-      setActionReason("");
-      loadAll();
+      setActionModal(null); setActionReason(""); loadAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
@@ -547,33 +506,78 @@ export default function AdminPanelPage() {
     } finally { setChangingPassword(false); }
   };
 
-  const handleSendReply = async () => {
-    if (!selectedMsg || !reponseText.trim()) return;
-    setSendingReply(true);
+  // ── Crypto P2P handlers ──
+
+  const handleToggleOfferAccess = async (seller: any) => {
+    const newVal = !seller.can_post_offers;
     try {
-      await supabase.from("nexora_messages" as any).update({ reponse_admin: reponseText, lu_admin: true }).eq("id", selectedMsg.id);
-      try {
-        await (supabase as any).from("chat_messages").insert({ user_id: selectedMsg.user_id, content: reponseText, sender: "admin", is_read: false, is_archived: false });
-      } catch {}
-      await sendNotification(selectedMsg.user_id, "Réponse du support Nexora", reponseText, "info");
-      await logAction(selectedMsg.user_id, "message_répondu", reponseText.slice(0, 80));
-      toast({ title: "Réponse envoyée" });
-      setReponseText(""); setSelectedMsg(null); loadAll();
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
-    setSendingReply(false);
+      await (supabase.from("crypto_sellers") as any).update({ can_post_offers: newVal }).eq("id", seller.id);
+      if (seller.user_id) {
+        await sendNotification(
+          seller.user_id,
+          newVal ? "Accès aux annonces accordé" : "Accès aux annonces retiré",
+          newVal
+            ? "Vous pouvez maintenant publier des annonces sur la plateforme Crypto P2P."
+            : "Votre accès à la publication d'annonces a été retiré par l'administrateur.",
+          newVal ? "success" : "warning"
+        );
+      }
+      await logAction(seller.user_id, newVal ? "crypto_offer_access_granted" : "crypto_offer_access_revoked", null);
+      toast({ title: newVal ? "✅ Accès annonces accordé" : "🚫 Accès annonces retiré" });
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
   };
 
-  const handleMarkRead = async (msg: AdminMessage) => {
-    try { await supabase.from("nexora_messages" as any).update({ lu_admin: true }).eq("id", msg.id); loadAll(); } catch {}
+  const handleSetMaxSell = async (seller: any) => {
+    const raw = sellerMaxAmount[seller.id] || "";
+    const val = parseFloat(raw);
+    if (isNaN(val) || val < 0) { toast({ title: "Montant invalide", variant: "destructive" }); return; }
+    try {
+      await (supabase.from("crypto_sellers") as any).update({ max_sell_amount: val }).eq("id", seller.id);
+      await logAction(seller.user_id, "crypto_max_sell_set", `${val}`);
+      toast({ title: val === 0 ? "Max vente retiré (illimité)" : `Max vente fixé à ${val.toLocaleString("fr-FR")}` });
+      setSellerMaxAmount(prev => ({ ...prev, [seller.id]: "" }));
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
   };
 
-  const handleDeleteMessage = async (msg: AdminMessage) => {
-    if (!window.confirm("Supprimer ce message définitivement ?")) return;
+  const handleReservePayout = async (seller: any) => {
+    const montant = parseFloat(reservePayAmount[seller.id] || "");
+    if (isNaN(montant) || montant <= 0) { toast({ title: "Montant invalide", variant: "destructive" }); return; }
+    if (montant > (Number(seller.reserve) || 0)) { toast({ title: "Montant supérieur à la réserve disponible", variant: "destructive" }); return; }
+    const reason = reservePayReason[seller.id] || "";
     try {
-      await supabase.from("nexora_messages" as any).delete().eq("id", msg.id);
-      toast({ title: "Message supprimé" });
-      setSelectedMsg(null); loadAll();
-    } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
+      const newReserve = (Number(seller.reserve) || 0) - montant;
+      await (supabase.from("crypto_sellers") as any).update({ reserve: newReserve }).eq("id", seller.id);
+      await (supabase.from("nexora_transactions") as any).insert({
+        user_id: seller.user_id,
+        montant,
+        frais: 0,
+        devise: "FCFA",
+        statut: "effectue",
+        type: "reserve_payout",
+        details: reason || "Remboursement acheteur depuis réserve",
+      });
+      if (seller.user_id) {
+        await sendNotification(
+          seller.user_id,
+          "Prélèvement sur votre réserve",
+          `Un montant de ${montant.toLocaleString("fr-FR")} FCFA a été prélevé de votre réserve. Motif : ${reason || "Remboursement acheteur"}.`,
+          "warning"
+        );
+      }
+      await logAction(seller.user_id, "reserve_payout", `${montant} FCFA | ${reason}`);
+      toast({ title: `${montant.toLocaleString("fr-FR")} FCFA prélevés de la réserve` });
+      setReservePayAmount(prev => ({ ...prev, [seller.id]: "" }));
+      setReservePayReason(prev => ({ ...prev, [seller.id]: "" }));
+      loadAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
   };
 
   const filteredUsers = users.filter(u => {
@@ -586,16 +590,14 @@ export default function AdminPanelPage() {
   });
 
   const filteredBoutiques = boutiques.filter(b => b.nom.toLowerCase().includes(searchBoutique.toLowerCase()));
-  const unreadMessages = messages.filter(m => !m.lu_admin).length;
 
   const TABS = [
-    { id: "stats",       label: "Statistiques", icon: BarChart3 },
-    { id: "users",       label: "Utilisateurs",  icon: Users     },
-    { id: "boutiques",   label: "Boutiques",     icon: Store     },
-    { id: "crypto",      label: "Crypto P2P",    icon: ArrowRightLeft },
-    { id: "abonnements", label: "Abonnements",   icon: Crown     },
-    { id: "messages",    label: "Messages",      icon: MessageSquare, badge: unreadMessages },
-    { id: "logs",        label: "Logs",          icon: Activity  },
+    { id: "stats",       label: "Statistiques", icon: BarChart3        },
+    { id: "users",       label: "Utilisateurs",  icon: Users            },
+    { id: "boutiques",   label: "Boutiques",     icon: Store            },
+    { id: "crypto",      label: "Crypto P2P",    icon: ArrowRightLeft   },
+    { id: "abonnements", label: "Abonnements",   icon: Crown            },
+    { id: "logs",        label: "Logs",          icon: Activity         },
   ];
 
   // ════════════ LOGIN ════════════
@@ -645,8 +647,12 @@ export default function AdminPanelPage() {
     return (
       <div className="min-h-screen bg-background pb-16">
         <div className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
-          <button onClick={() => { setSelectedUser(null); setAdminFeatures([]); setAdminPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordSuccess(false); }}
-            className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={() => {
+            setSelectedUser(null);
+            setAdminFeatures([]); setAdminPassword("");
+            setNewPassword(""); setConfirmPassword("");
+            setPasswordSuccess(false); setShowUserPassword(false);
+          }} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
@@ -702,6 +708,23 @@ export default function AdminPanelPage() {
               </div>
             </div>
           )}
+
+          {/* Mot de passe visible */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Key className="w-4 h-4 text-blue-500" /> Mot de passe actuel
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-sm bg-muted px-3 py-2.5 rounded-xl font-mono">
+                {showUserPassword ? (u.password_plain || "—") : "••••••••••••"}
+              </code>
+              <button
+                onClick={() => setShowUserPassword(p => !p)}
+                className="text-xs px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium flex-shrink-0">
+                {showUserPassword ? "Masquer" : "Révéler"}
+              </button>
+            </div>
+          </div>
 
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
             <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3"><TrendingUp className="w-4 h-4" /> Chiffre d'affaires</div>
@@ -848,6 +871,11 @@ export default function AdminPanelPage() {
                         const feat = ALL_ADMIN_FEATURES.find(af => af.key === f);
                         return feat ? <span key={f} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{feat.label}</span> : null;
                       })}
+                    </div>
+                  )}
+                  {u.admin_password && (
+                    <div className="mt-2 text-xs text-amber-600">
+                      Mot de passe admin : <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono">{u.admin_password}</code>
                     </div>
                   )}
                 </div>
@@ -998,7 +1026,6 @@ export default function AdminPanelPage() {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${tab === t.id ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                 <Icon className="w-4 h-4" />
                 {t.label}
-                {t.badge ? <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{t.badge}</span> : null}
               </button>
             );
           })}
@@ -1021,12 +1048,6 @@ export default function AdminPanelPage() {
           <ShieldCheck className="w-5 h-5 text-amber-500" />
           <span className="font-black text-base">{TABS.find(t => t.id === tab)?.label}</span>
         </div>
-        {unreadMessages > 0 && tab !== "messages" && (
-          <button onClick={() => setTab("messages")}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-100 text-red-700 font-bold animate-pulse">
-            <MessageSquare className="w-3.5 h-3.5" /> {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""}
-          </button>
-        )}
         <Button onClick={loadAll} disabled={loading} variant="outline" size="sm" className="gap-1.5">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">Actualiser</span>
@@ -1159,7 +1180,11 @@ export default function AdminPanelPage() {
                 const userCa = getCaByUser(user.id);
                 const hasDette = user.dette_active && (user.dette_cachee ?? 0) > 0;
                 return (
-                  <button key={user.id} onClick={() => { setSelectedUser(user); setNewPassword(""); setConfirmPassword(""); setPasswordSuccess(false); setAdminFeatures([]); setAdminPassword(""); }}
+                  <button key={user.id} onClick={() => {
+                    setSelectedUser(user);
+                    setNewPassword(""); setConfirmPassword(""); setPasswordSuccess(false);
+                    setAdminFeatures([]); setAdminPassword(""); setShowUserPassword(false);
+                  }}
                     className="w-full text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-sm transition-all">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 font-bold text-primary text-sm overflow-hidden">
@@ -1305,83 +1330,16 @@ export default function AdminPanelPage() {
           </div>
         )}
 
-        {/* ── MESSAGES ── */}
-        {tab === "messages" && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{messages.length} message(s) · {unreadMessages} non lu{unreadMessages > 1 ? "s" : ""}</p>
-            {messages.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground bg-card border border-border rounded-2xl text-sm">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                Aucun message
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {messages.map(msg => {
-                  const isSelected = selectedMsg?.id === msg.id;
-                  return (
-                    <div key={msg.id} className={`bg-card border rounded-2xl overflow-hidden transition-all ${!msg.lu_admin ? "border-blue-400 shadow-sm" : "border-border"}`}>
-                      <div className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-700 text-sm flex-shrink-0 overflow-hidden">
-                            {msg.user?.avatar_url ? <img src={msg.user.avatar_url} className="w-full h-full object-cover" alt="" /> : (msg.user?.nom_prenom?.slice(0, 2).toUpperCase() || "?")}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm">{msg.user?.nom_prenom || "Inconnu"}</span>
-                              {!msg.lu_admin && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold">Nouveau</span>}
-                              {msg.reponse_admin && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold">Répondu</span>}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{fmtDatetime(msg.created_at)}</div>
-                            <p className="text-sm mt-1.5 line-clamp-2">{msg.contenu}</p>
-                          </div>
-                          <button onClick={() => { setSelectedMsg(isSelected ? null : msg); if (!msg.lu_admin) handleMarkRead(msg); }}
-                            className="p-1.5 rounded-lg hover:bg-muted flex-shrink-0">
-                            {isSelected ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <div className="border-t border-border bg-muted/30 p-4 space-y-3">
-                          <div className="bg-background rounded-xl p-3 text-sm">{msg.contenu}</div>
-                          {msg.reponse_admin && (
-                            <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                              <div className="text-xs font-bold text-green-700 mb-1">Réponse précédente</div>
-                              <p className="text-sm text-green-800">{msg.reponse_admin}</p>
-                            </div>
-                          )}
-                          <div className="flex gap-2">
-                            <Input value={reponseText} onChange={e => setReponseText(e.target.value)}
-                              onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSendReply()}
-                              placeholder="Écrire une réponse..." className="flex-1 rounded-xl" />
-                            <Button onClick={handleSendReply} disabled={sendingReply || !reponseText.trim()}
-                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex-shrink-0 px-3">
-                              {sendingReply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            </Button>
-                          </div>
-                          <button onClick={() => handleDeleteMessage(msg)}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium transition-colors ml-auto">
-                            <Trash2 className="w-3.5 h-3.5" /> Supprimer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ── CRYPTO P2P ── */}
         {tab === "crypto" && (
           <div className="space-y-6">
-            {/* Stats Crypto */}
+            {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { l: "Vendeurs", v: cryptoSellers.length, icon: "🏪", col: "text-purple-500" },
-                { l: "Annonces", v: cryptoOffers.length, icon: "🏷️", col: "text-amber-500" },
-                { l: "Commandes", v: cryptoOrders.length, icon: "📦", col: "text-blue-500" },
-                { l: "Volume ($)", v: `$${cryptoOrders.reduce((s: number, o: any) => s + (Number(o.total_fcfa) || 0), 0).toLocaleString("fr-FR")}`, icon: "💰", col: "text-green-500" },
+                { l: "Vendeurs",   v: cryptoSellers.length,  icon: "🏪", col: "text-purple-500" },
+                { l: "Annonces",   v: cryptoOffers.length,   icon: "🏷️", col: "text-amber-500"  },
+                { l: "Commandes",  v: cryptoOrders.length,   icon: "📦", col: "text-blue-500"   },
+                { l: "Volume",     v: `$${cryptoOrders.reduce((s: number, o: any) => s + (Number(o.total_fcfa) || 0), 0).toLocaleString("fr-FR")}`, icon: "💰", col: "text-green-500" },
               ].map(s => (
                 <div key={s.l} className="bg-card border border-border rounded-2xl p-4">
                   <div className="text-2xl mb-1">{s.icon}</div>
@@ -1391,64 +1349,240 @@ export default function AdminPanelPage() {
               ))}
             </div>
 
-            {/* Vendeurs */}
+            {/* ── Vendeurs ── */}
             <div>
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2">🏪 Vendeurs enregistrés</h3>
+              <h3 className="font-bold text-base mb-3">🏪 Vendeurs enregistrés</h3>
               {cryptoSellers.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  <div className="text-4xl mb-2">📭</div>
-                  <p className="text-sm">Aucun vendeur enregistré</p>
+                <div className="text-center py-10 text-muted-foreground text-sm bg-card border border-border rounded-2xl">
+                  <div className="text-4xl mb-2">📭</div>Aucun vendeur enregistré
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {cryptoSellers.map((seller: any) => {
-                    const sellerUser = users.find(u => u.id === seller.user_id);
+                    const sellerUser   = users.find(u => u.id === seller.user_id);
                     const sellerOffers = cryptoOffers.filter((o: any) => o.seller_id === seller.user_id);
                     const sellerOrders = cryptoOrders.filter((o: any) => o.seller_id === seller.user_id);
+                    const isExp        = expandedSeller === seller.id;
+
                     return (
-                      <div key={seller.id} className="bg-card border border-border rounded-xl p-4">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            {sellerUser?.nom_prenom?.[0] || "V"}
+                      <div key={seller.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                        {/* En-tête */}
+                        <div className="p-4">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              {sellerUser?.nom_prenom?.[0] || "V"}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-sm">{sellerUser?.nom_prenom || "Vendeur"}</div>
+                              <div className="text-xs text-muted-foreground">{sellerUser?.email}</div>
+                            </div>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                              seller.status === "active"  ? "bg-green-100 text-green-700"  :
+                              seller.status === "blocked" ? "bg-red-100 text-red-700"      :
+                                                            "bg-yellow-100 text-yellow-700"
+                            }`}>
+                              {seller.status === "active" ? "✅ Actif" : seller.status === "blocked" ? "🚫 Bloqué" : "⚠️ Restreint"}
+                            </span>
+                            <button onClick={() => setExpandedSeller(isExp ? null : seller.id)} className="p-1.5 rounded-lg hover:bg-muted flex-shrink-0">
+                              {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm">{sellerUser?.nom_prenom || "Vendeur"}</div>
-                            <div className="text-xs text-muted-foreground">{sellerUser?.email}</div>
+
+                          {/* Infos rapides */}
+                          <div className="flex gap-4 mt-3 text-xs flex-wrap">
+                            <span className="text-muted-foreground">📦 {sellerOrders.length} commandes</span>
+                            <span className="text-muted-foreground">🏷️ {sellerOffers.length} annonces</span>
+                            <span className="font-semibold text-emerald-600">
+                              🛡️ Réserve : {Number(seller.reserve || 0).toLocaleString("fr-FR")} FCFA
+                            </span>
+                            <span className={seller.can_post_offers ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+                              {seller.can_post_offers ? "✅ Annonces ON" : "🚫 Annonces OFF"}
+                            </span>
+                            {Number(seller.max_sell_amount) > 0 && (
+                              <span className="text-amber-600 font-semibold">
+                                Max : {Number(seller.max_sell_amount).toLocaleString("fr-FR")}
+                              </span>
+                            )}
                           </div>
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                            seller.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                            seller.status === "blocked" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                            "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                          }`}>
-                            {seller.status === "active" ? "✅ Actif" : seller.status === "blocked" ? "🚫 Bloqué" : "⚠️ Restreint"}
-                          </span>
+
+                          {/* Actions rapides */}
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            <button onClick={() => handleToggleOfferAccess(seller)}
+                              className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                                seller.can_post_offers
+                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}>
+                              {seller.can_post_offers ? "🚫 Révoquer annonces" : "✅ Autoriser annonces"}
+                            </button>
+                            {seller.status !== "blocked" ? (
+                              <button onClick={async () => {
+                                await (supabase.from("crypto_sellers") as any).update({ status: "blocked" }).eq("id", seller.id);
+                                toast({ title: "Vendeur bloqué" }); loadAll();
+                              }} className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-semibold">
+                                🚫 Bloquer
+                              </button>
+                            ) : (
+                              <button onClick={async () => {
+                                await (supabase.from("crypto_sellers") as any).update({ status: "active" }).eq("id", seller.id);
+                                toast({ title: "Vendeur débloqué" }); loadAll();
+                              }} className="text-xs px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 font-semibold">
+                                ✅ Débloquer
+                              </button>
+                            )}
+                            <button onClick={async () => {
+                              if (window.confirm("Supprimer ce vendeur définitivement ?")) {
+                                await (supabase.from("crypto_sellers") as any).delete().eq("id", seller.id);
+                                toast({ title: "Vendeur supprimé" }); loadAll();
+                              }
+                            }} className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold">
+                              🗑 Supprimer
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
-                          <span>📦 {sellerOrders.length} commandes</span>
-                          <span>🏷️ {sellerOffers.length} annonces</span>
-                          <span>💰 Réserve: ${Number(seller.reserve || 0).toLocaleString("fr-FR")}</span>
-                          <span>📱 {seller.whatsapp || "—"}</span>
-                        </div>
-                        <div className="flex gap-2 mt-3 flex-wrap">
-                          {seller.status !== "blocked" && (
-                            <Button size="sm" variant="destructive" className="text-xs h-7" onClick={async () => {
-                              await (supabase.from("crypto_sellers") as any).update({ status: "blocked" }).eq("id", seller.id);
-                              toast({ title: "Vendeur bloqué" }); loadAll();
-                            }}>🚫 Bloquer</Button>
-                          )}
-                          {seller.status === "blocked" && (
-                            <Button size="sm" variant="outline" className="text-xs h-7 text-green-600" onClick={async () => {
-                              await (supabase.from("crypto_sellers") as any).update({ status: "active" }).eq("id", seller.id);
-                              toast({ title: "Vendeur débloqué" }); loadAll();
-                            }}>✅ Débloquer</Button>
-                          )}
-                          <Button size="sm" variant="outline" className="text-xs h-7 text-red-600" onClick={async () => {
-                            if (window.confirm("Supprimer ce vendeur ?")) {
-                              await (supabase.from("crypto_sellers") as any).delete().eq("id", seller.id);
-                              toast({ title: "Vendeur supprimé" }); loadAll();
-                            }
-                          }}>🗑 Supprimer</Button>
-                        </div>
+
+                        {/* Panneau détail expandable */}
+                        {isExp && (
+                          <div className="border-t border-border bg-muted/30 p-4 space-y-4">
+
+                            {/* Mot de passe */}
+                            <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+                              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <Lock className="w-3.5 h-3.5 text-blue-500" /> Mot de passe du compte
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 text-xs bg-muted px-3 py-2.5 rounded-xl font-mono break-all">
+                                  {showSellerPwd[seller.id]
+                                    ? (sellerUser?.password_plain || seller.crypto_password || sellerUser?.admin_password || "—")
+                                    : "••••••••••••"}
+                                </code>
+                                <button
+                                  onClick={() => setShowSellerPwd(prev => ({ ...prev, [seller.id]: !prev[seller.id] }))}
+                                  className="text-xs px-3 py-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium flex-shrink-0">
+                                  {showSellerPwd[seller.id] ? "Masquer" : "Révéler"}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Montant maximum à vendre */}
+                            <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+                              <div className="text-xs font-bold uppercase text-muted-foreground">
+                                💰 Montant maximum à vendre
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Actuel : <span className="font-semibold text-amber-600">
+                                  {Number(seller.max_sell_amount) > 0
+                                    ? `${Number(seller.max_sell_amount).toLocaleString("fr-FR")} FCFA`
+                                    : "Illimité"}
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="number"
+                                  value={sellerMaxAmount[seller.id] || ""}
+                                  onChange={e => setSellerMaxAmount(prev => ({ ...prev, [seller.id]: e.target.value }))}
+                                  placeholder="Ex: 500000 — (0 = illimité)"
+                                  className="flex-1 rounded-xl text-sm h-9"
+                                />
+                                <Button
+                                  onClick={() => handleSetMaxSell(seller)}
+                                  size="sm"
+                                  className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex-shrink-0 h-9">
+                                  Appliquer
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Réserve de garantie */}
+                            <div className="bg-card border border-border rounded-xl p-3 space-y-2">
+                              <div className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                🛡️ Réserve de garantie
+                              </div>
+                              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                                <span className="text-sm font-black text-emerald-700">
+                                  {Number(seller.reserve || 0).toLocaleString("fr-FR")} FCFA
+                                </span>
+                                <span className="text-xs text-emerald-600">disponible</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Prélever pour rembourser un acheteur lésé.</p>
+                              <Input
+                                type="number"
+                                value={reservePayAmount[seller.id] || ""}
+                                onChange={e => setReservePayAmount(prev => ({ ...prev, [seller.id]: e.target.value }))}
+                                placeholder="Montant à prélever (FCFA)..."
+                                className="rounded-xl text-sm h-9"
+                              />
+                              <Input
+                                value={reservePayReason[seller.id] || ""}
+                                onChange={e => setReservePayReason(prev => ({ ...prev, [seller.id]: e.target.value }))}
+                                placeholder="Motif — ex: remboursement acheteur @username"
+                                className="rounded-xl text-sm h-9"
+                              />
+                              <Button
+                                onClick={() => handleReservePayout(seller)}
+                                disabled={!reservePayAmount[seller.id] || Number(reservePayAmount[seller.id]) <= 0}
+                                className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs h-9 disabled:opacity-40">
+                                Prélever depuis la réserve
+                              </Button>
+                            </div>
+
+                            {/* Annonces du vendeur */}
+                            {sellerOffers.length > 0 && (
+                              <div className="space-y-1.5">
+                                <div className="text-xs font-bold uppercase text-muted-foreground">
+                                  🏷️ Annonces ({sellerOffers.length})
+                                </div>
+                                {sellerOffers.map((offer: any) => (
+                                  <div key={offer.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2 text-xs">
+                                    <div>
+                                      <span className="font-semibold">{offer.custom_crypto_name || offer.crypto}</span>
+                                      <span className="text-muted-foreground ml-2">@ ${Number(offer.rate || 0).toLocaleString("fr-FR")}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground">
+                                        Min:{Number(offer.min_amount||0)} / Max:{Number(offer.max_amount||0)}
+                                      </span>
+                                      <button onClick={async () => {
+                                        if (window.confirm("Supprimer cette annonce ?")) {
+                                          await (supabase.from("crypto_offers") as any).delete().eq("id", offer.id);
+                                          toast({ title: "Annonce supprimée" }); loadAll();
+                                        }
+                                      }} className="text-red-600 hover:text-red-800">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Commandes du vendeur */}
+                            {sellerOrders.length > 0 && (
+                              <div className="space-y-1.5">
+                                <div className="text-xs font-bold uppercase text-muted-foreground">
+                                  📦 Commandes récentes
+                                </div>
+                                {sellerOrders.slice(0, 5).map((order: any) => (
+                                  <div key={order.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2 text-xs">
+                                    <div>
+                                      <span className="font-semibold text-amber-500">{order.order_number}</span>
+                                      <span className="text-muted-foreground ml-2">{order.buyer_name}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-semibold">${Number(order.total_fcfa || 0).toLocaleString("fr-FR")}</div>
+                                      <div className={`${
+                                        order.status === "confirmed" ? "text-green-600" :
+                                        order.status === "disputed"  ? "text-red-600"   :
+                                        order.status === "cancelled" ? "text-gray-500"  :
+                                        "text-yellow-600"
+                                      }`}>{order.status}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1456,69 +1590,58 @@ export default function AdminPanelPage() {
               )}
             </div>
 
-            {/* Annonces */}
+            {/* ── Toutes les annonces ── */}
             <div>
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2">🏷️ Annonces crypto (en $)</h3>
+              <h3 className="font-bold text-base mb-3">🏷️ Toutes les annonces ({cryptoOffers.length})</h3>
               {cryptoOffers.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  <div className="text-4xl mb-2">📭</div>
-                  <p className="text-sm">Aucune annonce</p>
+                <div className="text-center py-8 text-muted-foreground text-sm bg-card border border-border rounded-2xl">
+                  <div className="text-4xl mb-2">📭</div>Aucune annonce
                 </div>
               ) : (
                 <div className="space-y-2">
                   {cryptoOffers.map((offer: any) => (
-                    <div key={offer.id} className="bg-card border border-border rounded-xl p-4">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm">{offer.custom_crypto_name || offer.crypto}</div>
-                          <div className="text-xs text-muted-foreground">Vendeur: {offer.seller_name}</div>
+                    <div key={offer.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">{offer.custom_crypto_name || offer.crypto}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {offer.seller_name} · ${Number(offer.rate || 0).toLocaleString("fr-FR")} / unité
                         </div>
-                        <div className="text-right">
-                          <div className="font-black text-amber-500">${Number(offer.rate || 0).toLocaleString("fr-FR")}</div>
-                          <div className="text-xs text-muted-foreground">par unité</div>
+                        <div className="text-xs text-muted-foreground">
+                          Min: {Number(offer.min_amount||0)} · Max: {Number(offer.max_amount||0)} · Dispo: {Number(offer.available||0)}
                         </div>
                       </div>
-                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                        <span>Min: {Number(offer.min_amount || 0)}</span>
-                        <span>Max: {Number(offer.max_amount || 0)}</span>
-                        <span>Dispo: {Number(offer.available || 0)}</span>
-                        <span>Frais: ${Number(offer.network_fee || 0)}</span>
-                      </div>
-                      {(offer.allowed_countries as any[])?.length > 0 && (
-                        <div className="text-xs text-muted-foreground mt-1">🌍 {(offer.allowed_countries as string[]).join(", ")}</div>
-                      )}
-                      <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="outline" className="text-xs h-7 text-red-600" onClick={async () => {
-                          if (window.confirm("Supprimer cette annonce ?")) {
-                            await (supabase.from("crypto_offers") as any).delete().eq("id", offer.id);
-                            toast({ title: "Annonce supprimée" }); loadAll();
-                          }
-                        }}>🗑 Supprimer</Button>
-                      </div>
+                      <button onClick={async () => {
+                        if (window.confirm("Supprimer cette annonce ?")) {
+                          await (supabase.from("crypto_offers") as any).delete().eq("id", offer.id);
+                          toast({ title: "Annonce supprimée" }); loadAll();
+                        }
+                      }} className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-medium flex-shrink-0">
+                        🗑 Supprimer
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Commandes */}
+            {/* ── Commandes crypto ── */}
             <div>
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2">📦 Commandes crypto (en $)</h3>
+              <h3 className="font-bold text-base mb-3">📦 Commandes crypto ({cryptoOrders.length})</h3>
               {cryptoOrders.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  <div className="text-4xl mb-2">📭</div>
-                  <p className="text-sm">Aucune commande</p>
+                <div className="text-center py-8 text-muted-foreground text-sm bg-card border border-border rounded-2xl">
+                  <div className="text-4xl mb-2">📭</div>Aucune commande
                 </div>
               ) : (
                 <div className="space-y-2">
                   {cryptoOrders.map((order: any) => {
-                    const statusConfig: Record<string, { label: string; cls: string }> = {
-                      pending:   { label: "En attente", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-                      paid:      { label: "Payé",       cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-                      confirmed: { label: "Confirmé",   cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-                      disputed:  { label: "Litige",     cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+                    const statusMap: Record<string, { label: string; cls: string }> = {
+                      pending:   { label: "En attente", cls: "bg-yellow-100 text-yellow-700" },
+                      paid:      { label: "Payé",       cls: "bg-blue-100 text-blue-700"    },
+                      confirmed: { label: "Confirmé",   cls: "bg-green-100 text-green-700"  },
+                      disputed:  { label: "Litige",     cls: "bg-red-100 text-red-700"      },
+                      cancelled: { label: "Annulé",     cls: "bg-gray-100 text-gray-500"    },
                     };
-                    const st = statusConfig[order.status] || statusConfig.pending;
+                    const st = statusMap[order.status] || { label: order.status, cls: "bg-gray-100 text-gray-500" };
                     return (
                       <div key={order.id} className="bg-card border border-border rounded-xl p-4">
                         <div className="flex items-center gap-3 flex-wrap">
@@ -1527,22 +1650,17 @@ export default function AdminPanelPage() {
                               <span className="font-bold text-sm text-amber-500">{order.order_number}</span>
                               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {order.buyer_name} → {order.seller_name}
-                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">{order.buyer_name} → {order.seller_name}</div>
+                            {order.buyer_whatsapp && <div className="text-xs text-muted-foreground">📱 {order.buyer_whatsapp}</div>}
+                            <div className="text-xs text-muted-foreground">{fmtDatetime(order.created_at)}</div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0">
                             <div className="font-bold text-sm">{Number(order.amount || 0)} {order.crypto}</div>
                             <div className="text-xs text-muted-foreground">${Number(order.total_fcfa || 0).toLocaleString("fr-FR")}</div>
                           </div>
                         </div>
-                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                          {order.buyer_country && <span>🌍 {order.buyer_country}</span>}
-                          {order.buyer_whatsapp && <span>📱 {order.buyer_whatsapp}</span>}
-                          <span>📅 {fmtDatetime(order.created_at)}</span>
-                        </div>
                         {order.status === "disputed" && (
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex gap-2 mt-3 flex-wrap">
                             <Button size="sm" className="text-xs h-7 bg-green-600 hover:bg-green-700 text-white" onClick={async () => {
                               await (supabase.from("crypto_orders") as any).update({ status: "confirmed" }).eq("id", order.id);
                               toast({ title: "Commande confirmée" }); loadAll();
