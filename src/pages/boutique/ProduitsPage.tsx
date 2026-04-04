@@ -39,34 +39,11 @@ const CATEGORIES_PHYSIQUE = [
   "Sport", "Enfants", "Auto & Moto", "Autre"
 ];
 
-const CATEGORIES_DIGITAL = [
-  "Marketing Digital", "Développement Web", "Design Graphique",
-  "Business & Finance", "Photographie", "Musique & Audio",
-  "Développement Personnel", "Langues", "Cuisine", "Sport & Fitness",
-  "Informatique", "Art & Créativité", "Autre"
-];
-
-
-const MODES_TARIFICATION: Record<ModeTarification, string> = {
-  unique:             "Paiement unique",
-  abonnement_mensuel: "Abonnement mensuel",
-  abonnement_annuel:  "Abonnement annuel",
-  versements:         "Paiement en plusieurs fois",
-};
-
 const SECTIONS_PHYSIQUE = [
   { id: "general", label: "Général" }, { id: "media", label: "Médias" },
   { id: "prix", label: "Prix & Stock" }, { id: "variations", label: "Variations" },
   { id: "paiement", label: "Paiement" }, { id: "reseaux", label: "Réseaux" },
   { id: "politiques", label: "Politiques" }, { id: "seo", label: "SEO" },
-];
-
-const SECTIONS_DIGITAL = [
-  { id: "type", label: "Type" }, { id: "general", label: "Général" },
-  { id: "media", label: "Couverture" }, { id: "contenu", label: "Contenu" },
-  { id: "prix", label: "Prix" }, { id: "paiement", label: "Paiement" },
-  { id: "reseaux", label: "Réseaux" }, { id: "politiques", label: "Politiques" },
-  { id: "seo", label: "SEO" },
 ];
 
 function formatPrix(prix: number, devise: string = "XOF"): string {

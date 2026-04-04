@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hashPassword } from "@/lib/nexora-auth";
 import { playSuccessSound } from "@/lib/app-utils";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   User, Key, Save, Mail, AtSign,
-  BadgeCheck, Crown, Zap, Lock, CheckCircle2, X
+  BadgeCheck, Crown, Zap, Camera, CheckCircle2, X
 } from "lucide-react";
 import { getNexoraUser } from "@/lib/nexora-auth";
 import { Link } from "react-router-dom";
