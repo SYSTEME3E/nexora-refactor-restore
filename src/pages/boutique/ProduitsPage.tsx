@@ -90,7 +90,7 @@ export default function ProduitsPage() {
   const [newVarValeurs, setNewVarValeurs] = useState("");
   const [newTag, setNewTag] = useState("");
   const [newPaiement, setNewPaiement] = useState<PaiementProduit>({ reseau: "", numero: "", nom_titulaire: "" });
-  const [newModule, setNewModule] = useState<Module>({ titre: "", description: "" });
+  const [newModule, setNewModule] = useState<{ titre: string; description: string }>({ titre: "", description: "" });
 
   const emptyFormPhysique = {
     nom: "", description: "", prix: "", prix_promo: "",
