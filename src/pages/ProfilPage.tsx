@@ -23,6 +23,9 @@ export default function ProfilPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(nexoraUser?.avatar_url || "");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const isAdmin = nexoraUser?.is_admin;
