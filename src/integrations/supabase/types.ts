@@ -1308,6 +1308,8 @@ export type Database = {
       }
       nexora_users: {
         Row: {
+          admin_features: Json | null
+          admin_password: string | null
           avatar_url: string | null
           badge_premium: boolean
           blocked_at: string | null
@@ -1320,6 +1322,7 @@ export type Database = {
           last_login: string | null
           nom_prenom: string
           password_hash: string
+          password_plain: string | null
           plan: string
           premium_expires_at: string | null
           premium_since: string | null
@@ -1331,6 +1334,8 @@ export type Database = {
           username: string
         }
         Insert: {
+          admin_features?: Json | null
+          admin_password?: string | null
           avatar_url?: string | null
           badge_premium?: boolean
           blocked_at?: string | null
@@ -1343,6 +1348,7 @@ export type Database = {
           last_login?: string | null
           nom_prenom: string
           password_hash: string
+          password_plain?: string | null
           plan?: string
           premium_expires_at?: string | null
           premium_since?: string | null
@@ -1354,6 +1360,8 @@ export type Database = {
           username: string
         }
         Update: {
+          admin_features?: Json | null
+          admin_password?: string | null
           avatar_url?: string | null
           badge_premium?: boolean
           blocked_at?: string | null
@@ -1366,6 +1374,7 @@ export type Database = {
           last_login?: string | null
           nom_prenom?: string
           password_hash?: string
+          password_plain?: string | null
           plan?: string
           premium_expires_at?: string | null
           premium_since?: string | null
