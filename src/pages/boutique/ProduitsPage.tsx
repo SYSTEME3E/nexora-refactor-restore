@@ -13,12 +13,9 @@ import {
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ModeTarification = "unique" | "abonnement_mensuel" | "abonnement_annuel" | "versements";
-
 interface Variation { nom: string; valeurs: string[]; }
 interface PaiementProduit { reseau: string; numero: string; nom_titulaire: string; }
 interface ReseauxSociaux { instagram: string; tiktok: string; facebook: string; youtube: string; whatsapp: string; site_web: string; }
-interface Module { titre: string; description: string; }
 
 interface ProduitPhysique {
   id: string; boutique_id: string; nom: string; description: string;

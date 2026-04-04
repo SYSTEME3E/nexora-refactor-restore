@@ -13,7 +13,7 @@ import {
 import { getNexoraUser } from "@/lib/nexora-auth";
 import { Link } from "react-router-dom";
 
-const PLATFORM_LOGO = "https://i.postimg.cc/c1QgbZsG/ei_1773937801458_removebg_preview.png";
+
 
 export default function ProfilPage() {
   const nexoraUser = getNexoraUser();
