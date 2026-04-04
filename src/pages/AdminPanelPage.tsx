@@ -346,8 +346,10 @@ export default function AdminPanelPage() {
         const userId = boutique?.user_id;
         if (type === "supprimer_produit") {
           if (!actionReason.trim()) { toast({ title: "Motif obligatoire", variant: "destructive" }); return; }
-          // Supprimer d'abord les variations liées (contrainte FK)
+          // Supprimer d'abord les dépendances FK
           await supabase.from("variations_produit" as any).delete().eq("produit_id", target.id);
+          await supabase.from("commandes" as any).update({ produit_id: null }).eq("produit_id", target.id);
+          await supabase.from("avis_produits" as any).delete().eq("produit_id", target.id);
           await supabase.from("produits" as any).delete().eq("id", target.id);
           if (userId) await sendNotification(userId, "Produit supprimé", `Votre produit "${target.nom}" a été supprimé. Motif : ${actionReason}`);
           await logAction(userId ?? null, "produit_supprimé", `${target.nom} | ${actionReason}`);

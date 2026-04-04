@@ -316,7 +316,13 @@ export default function ProduitsPage() {
     // 1. Supprimer les variations liées
     await supabase.from("variations_produit" as any).delete().eq("produit_id", id);
 
-    // 2. Supprimer le produit
+    // 2. Détacher les commandes liées (mettre produit_id à null)
+    await supabase.from("commandes" as any).update({ produit_id: null }).eq("produit_id", id);
+
+    // 3. Supprimer les avis liés
+    await supabase.from("avis_produits" as any).delete().eq("produit_id", id);
+
+    // 4. Supprimer le produit
     const { error } = await supabase.from("produits" as any).delete().eq("id", id);
 
     if (error) {
