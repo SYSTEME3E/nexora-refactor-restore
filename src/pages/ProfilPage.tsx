@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hashPassword } from "@/lib/nexora-auth";
 import { playSuccessSound } from "@/lib/app-utils";
@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   User, Key, Save, Mail, AtSign,
-  BadgeCheck, Crown, Zap, Lock, CheckCircle2, X
+  BadgeCheck, Crown, Zap, Camera, CheckCircle2, X
 } from "lucide-react";
 import { getNexoraUser } from "@/lib/nexora-auth";
 import { Link } from "react-router-dom";
 
-const PLATFORM_LOGO = "https://i.postimg.cc/c1QgbZsG/ei_1773937801458_removebg_preview.png";
+
 
 export default function ProfilPage() {
   const nexoraUser = getNexoraUser();
@@ -23,6 +23,9 @@ export default function ProfilPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(nexoraUser?.avatar_url || "");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const isAdmin = nexoraUser?.is_admin;
@@ -112,19 +115,64 @@ export default function ProfilPage() {
           {/* Avatar + infos */}
           <div className="flex items-center gap-5">
 
-            {/* ── Avatar fixe — logo plateforme ── */}
+            {/* ── Avatar avec upload ── */}
             <div className="relative flex-shrink-0">
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary shadow-brand bg-white flex items-center justify-center">
-                <img
-                  src={PLATFORM_LOGO}
-                  alt="Logo Nexora"
-                  className="w-16 h-16 object-contain"
-                />
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary shadow-brand bg-muted flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-10 h-10 text-muted-foreground" />
+                )}
               </div>
+
+              {/* Bouton caméra pour changer la photo */}
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center border-2 border-background shadow-md hover:opacity-90 transition-opacity"
+                title="Changer la photo"
+              >
+                <Camera className="w-4 h-4 text-primary-foreground" />
+              </button>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !nexoraUser) return;
+                  setUploadingAvatar(true);
+                  try {
+                    const ext = file.name.split(".").pop();
+                    const path = `avatars/${nexoraUser.id}_${Date.now()}.${ext}`;
+                    const { error } = await supabase.storage.from("mes-secrets-media").upload(path, file, { upsert: true });
+                    if (error) throw error;
+                    const { data: urlData } = supabase.storage.from("mes-secrets-media").getPublicUrl(path);
+                    const newUrl = urlData.publicUrl;
+                    setAvatarUrl(newUrl);
+                    await supabase.from("nexora_users" as any).update({ avatar_url: newUrl }).eq("id", nexoraUser.id);
+                    // Update localStorage
+                    const stored = localStorage.getItem("nexora_current_user") || sessionStorage.getItem("nexora_current_user");
+                    if (stored) {
+                      const user = JSON.parse(stored);
+                      const updated = { ...user, avatar_url: newUrl };
+                      if (localStorage.getItem("nexora_current_user")) localStorage.setItem("nexora_current_user", JSON.stringify(updated));
+                      else sessionStorage.setItem("nexora_current_user", JSON.stringify(updated));
+                    }
+                    playSuccessSound();
+                    toast({ title: "Photo de profil mise à jour !" });
+                  } catch (err: any) {
+                    toast({ title: "Erreur", description: err.message, variant: "destructive" });
+                  }
+                  setUploadingAvatar(false);
+                }}
+              />
 
               {/* Badge bleu rond style Facebook */}
               {hasBadge && (
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white shadow-md"
+                <div className="absolute -bottom-1 -left-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center border-2 border-background shadow-md"
                   title={isAdmin ? "Administrateur" : "Compte Premium"}>
                   <BadgeCheck className="w-4 h-4 text-white fill-white" />
                 </div>
@@ -135,7 +183,6 @@ export default function ProfilPage() {
             <div className="flex-1 min-w-0">
               <div className="font-display font-bold text-lg flex items-center gap-2 flex-wrap">
                 <span className="truncate">{nom || "Utilisateur"}</span>
-                {/* Badge bleu inline style Facebook */}
                 {hasBadge && (
                   <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full flex-shrink-0"
                     title={isAdmin ? "Administrateur" : "Premium"}>
@@ -162,7 +209,7 @@ export default function ProfilPage() {
                   </span>
                 )}
                 {!isPremium && !isAdmin && (
-                  <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2.5 py-1 rounded-full border border-gray-200">
+                  <span className="text-xs bg-muted text-muted-foreground font-semibold px-2.5 py-1 rounded-full border border-border">
                     Plan Gratuit
                   </span>
                 )}
@@ -170,11 +217,11 @@ export default function ProfilPage() {
             </div>
           </div>
 
-          {/* Note photo bloquée */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <p className="text-xs text-gray-500">
-              La photo de profil est le logo officiel de la plateforme Nexora et ne peut pas être modifiée.
+          {/* Note upload */}
+          <div className="bg-muted/50 border border-border rounded-xl p-3 flex items-center gap-2">
+            <Camera className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              {uploadingAvatar ? "Upload en cours..." : "Cliquez sur l'icône caméra pour changer votre photo de profil."}
             </p>
           </div>
 

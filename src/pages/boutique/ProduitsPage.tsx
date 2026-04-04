@@ -13,12 +13,9 @@ import {
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ModeTarification = "unique" | "abonnement_mensuel" | "abonnement_annuel" | "versements";
-
 interface Variation { nom: string; valeurs: string[]; }
 interface PaiementProduit { reseau: string; numero: string; nom_titulaire: string; }
 interface ReseauxSociaux { instagram: string; tiktok: string; facebook: string; youtube: string; whatsapp: string; site_web: string; }
-interface Module { titre: string; description: string; }
 
 interface ProduitPhysique {
   id: string; boutique_id: string; nom: string; description: string;
@@ -39,34 +36,11 @@ const CATEGORIES_PHYSIQUE = [
   "Sport", "Enfants", "Auto & Moto", "Autre"
 ];
 
-const CATEGORIES_DIGITAL = [
-  "Marketing Digital", "Développement Web", "Design Graphique",
-  "Business & Finance", "Photographie", "Musique & Audio",
-  "Développement Personnel", "Langues", "Cuisine", "Sport & Fitness",
-  "Informatique", "Art & Créativité", "Autre"
-];
-
-
-const MODES_TARIFICATION: Record<ModeTarification, string> = {
-  unique:             "Paiement unique",
-  abonnement_mensuel: "Abonnement mensuel",
-  abonnement_annuel:  "Abonnement annuel",
-  versements:         "Paiement en plusieurs fois",
-};
-
 const SECTIONS_PHYSIQUE = [
   { id: "general", label: "Général" }, { id: "media", label: "Médias" },
   { id: "prix", label: "Prix & Stock" }, { id: "variations", label: "Variations" },
   { id: "paiement", label: "Paiement" }, { id: "reseaux", label: "Réseaux" },
   { id: "politiques", label: "Politiques" }, { id: "seo", label: "SEO" },
-];
-
-const SECTIONS_DIGITAL = [
-  { id: "type", label: "Type" }, { id: "general", label: "Général" },
-  { id: "media", label: "Couverture" }, { id: "contenu", label: "Contenu" },
-  { id: "prix", label: "Prix" }, { id: "paiement", label: "Paiement" },
-  { id: "reseaux", label: "Réseaux" }, { id: "politiques", label: "Politiques" },
-  { id: "seo", label: "SEO" },
 ];
 
 function formatPrix(prix: number, devise: string = "XOF"): string {
@@ -116,7 +90,7 @@ export default function ProduitsPage() {
   const [newVarValeurs, setNewVarValeurs] = useState("");
   const [newTag, setNewTag] = useState("");
   const [newPaiement, setNewPaiement] = useState<PaiementProduit>({ reseau: "", numero: "", nom_titulaire: "" });
-  const [newModule, setNewModule] = useState<Module>({ titre: "", description: "" });
+  const [newModule, setNewModule] = useState<{ titre: string; description: string }>({ titre: "", description: "" });
 
   const emptyFormPhysique = {
     nom: "", description: "", prix: "", prix_promo: "",

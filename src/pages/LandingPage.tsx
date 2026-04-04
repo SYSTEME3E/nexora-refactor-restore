@@ -830,7 +830,7 @@ export default function LandingPage() {
           {[
             {
               q: "NEXORA est-il gratuit ?",
-              a: "Oui, l'inscription est 100% gratuite et sans carte bancaire. Vous pouvez accéder à la plupart des modules gratuitement. Certaines fonctionnalités avancées (comme le téléchargement de contacts WhatsApp) nécessitent un abonnement Premium."
+              a: "Oui, l'inscription est 100% gratuite et sans carte bancaire. Vous pouvez accéder à la plupart des modules gratuitement. Certaines fonctionnalités avancées nécessitent un abonnement Premium."
             },
             {
               q: "Comment fonctionne le Transfert d'Argent Africa ?",
@@ -842,7 +842,7 @@ export default function LandingPage() {
             },
             {
               q: "Mes données sont-elles sécurisées ?",
-              a: "Absolument. NEXORA utilise un chiffrement AES-256 pour les données au repos et TLS 1.3 pour les données en transit. Votre coffre-fort digital est inaccessible même pour nos équipes. Vos données vous appartiennent et vous pouvez les exporter ou supprimer votre compte à tout moment."
+              a: "Absolument. NEXORA utilise un chiffrement AES-256 pour les données au repos et TLS 1.3 pour les données en transit. Votre coffre-fort digital est inaccessible même pour nos équipes. Vos données vous appartiennent."
             },
             {
               q: "Dans quels pays NEXORA est-il disponible ?",
@@ -850,15 +850,43 @@ export default function LandingPage() {
             },
             {
               q: "Comment créer des factures PDF professionnelles ?",
-              a: "Depuis le module Facturation, remplissez les informations de votre client et vos services, puis générez votre facture PDF en un clic. Le document est personnalisé avec votre branding et numéroté automatiquement. Vous pouvez le télécharger ou le partager instantanément."
+              a: "Depuis le module Facturation, remplissez les informations de votre client et vos services, puis générez votre facture PDF en un clic. Le document est personnalisé avec votre branding et numéroté automatiquement."
             },
             {
-              q: "Puis-je vendre des produits physiques et digitaux ?",
-              a: "Oui ! La boutique e-commerce NEXORA permet de vendre aussi bien des produits physiques (avec gestion des stocks et suivi des commandes) que des produits digitaux (fichiers, formations, templates…). Votre vitrine est publique et personnalisée."
+              q: "Comment fonctionne la boutique e-commerce ?",
+              a: "La boutique NEXORA vous permet de vendre vos produits physiques en ligne. Créez votre vitrine publique, ajoutez vos produits avec photos et descriptions, définissez vos prix et modes de paiement, et gérez vos commandes facilement."
             },
             {
               q: "Comment contacter le support ?",
               a: "Vous pouvez nous joindre par email à support@nexora.africa. Notre équipe répond dans les meilleurs délais. Vous pouvez aussi utiliser le chat intégré à la plateforme une fois connecté."
+            },
+            {
+              q: "Qu'est-ce que le Coffre-Fort Digital ?",
+              a: "Le Coffre-Fort Digital vous permet de stocker en toute sécurité vos mots de passe, identifiants de comptes, numéros de téléphone et notes confidentielles. Toutes vos données sont chiffrées et accessibles uniquement par vous."
+            },
+            {
+              q: "Comment fonctionne le marché immobilier ?",
+              a: "Publiez et découvrez des biens immobiliers dans toute l'Afrique : maisons, appartements, terrains, bureaux. Ajoutez des photos HD, définissez votre prix et recevez des contacts directs d'acheteurs ou locataires intéressés."
+            },
+            {
+              q: "Puis-je gérer mes prêts et dettes ?",
+              a: "Oui ! Le module Prêts & Dettes vous permet de suivre l'argent que vous avez prêté ou emprunté. Ajoutez des signatures électroniques, des témoins, et recevez des rappels pour les échéances de remboursement."
+            },
+            {
+              q: "Comment fonctionnent les investissements ?",
+              a: "Le module Investissements vous aide à suivre vos projets d'épargne et d'investissement. Définissez un objectif, enregistrez vos versements et suivez votre progression avec des graphiques clairs."
+            },
+            {
+              q: "Comment fonctionne la plateforme Crypto P2P ?",
+              a: "Notre marketplace Crypto P2P permet d'acheter et vendre des cryptomonnaies (USDT, BTC, ETH…) directement entre utilisateurs avec paiement via Mobile Money. Les transactions sont sécurisées et vérifiées par la plateforme."
+            },
+            {
+              q: "Y a-t-il une application mobile ?",
+              a: "NEXORA est une application web progressive (PWA) optimisée pour mobile. Vous pouvez l'ajouter à votre écran d'accueil comme une application native et l'utiliser hors ligne pour certaines fonctionnalités."
+            },
+            {
+              q: "Comment passer au plan Premium ?",
+              a: "Rendez-vous dans la section Abonnement depuis votre tableau de bord. Choisissez le plan qui vous convient (Boss ou Roi) et payez via Mobile Money. Votre compte est activé instantanément avec un badge bleu vérifié."
             },
           ].map((item, i) => (
             <FAQItem key={i} question={item.q} answer={item.a} />
