@@ -511,7 +511,6 @@ export default function AdminPanelPage() {
     { id: "stats",       label: "Statistiques", icon: BarChart3        },
     { id: "users",       label: "Utilisateurs",  icon: Users            },
     { id: "boutiques",   label: "Boutiques",     icon: Store            },
-    { id: "crypto",      label: "Crypto P2P",    icon: ArrowRightLeft   },
     { id: "abonnements", label: "Abonnements",   icon: Crown            },
     { id: "logs",        label: "Logs",          icon: Activity         },
   ];
