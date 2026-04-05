@@ -877,8 +877,8 @@ export default function LandingPage() {
               a: "Le module Investissements vous aide à suivre vos projets d'épargne et d'investissement. Définissez un objectif, enregistrez vos versements et suivez votre progression avec des graphiques clairs."
             },
             {
-              q: "Comment fonctionne la plateforme Crypto P2P ?",
-              a: "Notre marketplace Crypto P2P permet d'acheter et vendre des cryptomonnaies (USDT, BTC, ETH…) directement entre utilisateurs avec paiement via Mobile Money. Les transactions sont sécurisées et vérifiées par la plateforme."
+              q: "Comment fonctionne le module Transfert ?",
+              a: "NEXORA Transfert vous permet d'envoyer de l'argent vers 24 pays africains via Mobile Money (Wave, Orange Money, MTN, Moov). Rechargez votre compte, puis envoyez en renseignant le nom, le réseau, le numéro et le montant."
             },
             {
               q: "Y a-t-il une application mobile ?",

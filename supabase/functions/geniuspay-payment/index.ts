@@ -126,12 +126,13 @@ serve(async (req) => {
     const transaction = gpData.data;
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const fraisNexora = body.type === "abonnement_premium" ? 0 : 100;
     await supabase.from("nexora_transactions").insert({
       user_id:      body.user_id,
       moneroo_id:   transaction.reference,
       type:         body.type,
       amount:       body.amount_net,
-      frais:        100,
+      frais:        fraisNexora,
       currency:     body.currency ?? "XOF",
       status:       "pending",
       checkout_url: transaction.payment_url,
