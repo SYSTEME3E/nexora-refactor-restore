@@ -140,7 +140,7 @@ const ALL_ADMIN_FEATURES = [
   { key: "abonnements",    label: "Voir les abonnements"    },
   { key: "logs",           label: "Voir les logs"           },
   { key: "transferts",     label: "Gestion transferts / dettes" },
-  { key: "crypto_manage",  label: "Gestion Crypto P2P"      },
+  
 ];
 
 const ADMIN_CODE = "ERIC";
