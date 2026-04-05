@@ -1212,24 +1212,6 @@ export default function AdminPanelPage() {
           </div>
         )}
 
-        {/* ── CRYPTO P2P ── */}
-        {tab === "crypto" && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-6 shadow-lg">
-              <ArrowRightLeft className="w-10 h-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-black text-foreground mb-2">Crypto P2P</h2>
-            <p className="text-muted-foreground text-sm mb-1 max-w-xs">
-              Cette section sera bientôt disponible.
-            </p>
-            <p className="text-muted-foreground text-xs max-w-xs">
-              La marketplace Crypto P2P est en cours de finalisation. Restez connecté !
-            </p>
-            <div className="mt-6 px-4 py-2 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
-              🚀 Bientôt en ligne
-            </div>
-          </div>
-        )}
 
         {/* ── LOGS ── */}
         {tab === "logs" && (
