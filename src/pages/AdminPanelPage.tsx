@@ -180,9 +180,6 @@ export default function AdminPanelPage() {
   const [abonnements,   setAbonnements]   = useState<Abonnement[]>([]);
   const [logs,          setLogs]          = useState<any[]>([]);
   const [transferts,    setTransferts]    = useState<Transfert[]>([]);
-  const [cryptoSellers, setCryptoSellers] = useState<any[]>([]);
-  const [cryptoOffers,  setCryptoOffers]  = useState<any[]>([]);
-  const [cryptoOrders,  setCryptoOrders]  = useState<any[]>([]);
 
   const [searchUser,       setSearchUser]       = useState("");
   const [filterPlan,       setFilterPlan]       = useState("");
