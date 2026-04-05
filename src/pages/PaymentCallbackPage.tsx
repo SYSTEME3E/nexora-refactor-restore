@@ -1,19 +1,14 @@
-// src/pages/PaymentCallbackPage.tsx
-// ─────────────────────────────────────────────────────────────────
-// Page de retour après paiement Moneroo
-// URL configurée dans Moneroo : /payment/callback
-// ─────────────────────────────────────────────────────────────────
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { verifyPaymentFromCallback } from "@/lib/Moneroo";
+import { refreshNexoraSession } from "@/lib/nexora-auth";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 
 export default function PaymentCallbackPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
-  const [type, setType]     = useState<string | null>(null);
+  const [type, setType] = useState<string | null>(null);
 
   useEffect(() => {
     const check = async () => {
@@ -21,8 +16,9 @@ export default function PaymentCallbackPage() {
       setType(result.type);
 
       if (result.status === "success" || result.status === "completed") {
+        // Rafraîchir la session locale pour récupérer les changements (plan premium, etc.)
+        await refreshNexoraSession();
         setStatus("success");
-        // Redirection selon le type après 3 secondes
         setTimeout(() => {
           if (result.type === "abonnement") navigate("/abonnement");
           else if (result.type === "transfert") navigate("/transfert");
@@ -39,8 +35,8 @@ export default function PaymentCallbackPage() {
 
   const messages: Record<string, string> = {
     abonnement: "Votre plan Premium est maintenant actif !",
-    transfert:  "Votre compte Transfert a été rechargé !",
-    epargne:    "Votre dépôt épargne a été effectué !",
+    transfert: "Votre compte Transfert a été rechargé !",
+    epargne: "Votre dépôt épargne a été effectué !",
   };
 
   return (
