@@ -260,9 +260,6 @@ export default function AdminPanelPage() {
 
       setUsers(u); setBoutiques(b); setProduits(p); setCommandes(c);
       setAbonnements(ab); setLogs(logsData); setTransferts(tr);
-      setCryptoSellers(cryptoSellersData);
-      setCryptoOffers(cryptoOffersData);
-      setCryptoOrders(cryptoOrdersData);
 
       const ca   = c.reduce((acc, cmd) => acc + (Number(cmd.total) || 0), 0);
       const caAb = ab.filter(a => a.statut === "actif" || a.statut === "paye").reduce((acc, a) => acc + (Number(a.montant) || 0), 0);
