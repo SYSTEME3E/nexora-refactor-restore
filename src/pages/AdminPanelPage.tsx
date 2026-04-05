@@ -781,19 +781,8 @@ export default function AdminPanelPage() {
             )}
           </div>
 
-          {/* ── Gestion Crypto P2P ── */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="font-bold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-              <ArrowRightLeft className="w-4 h-4 text-amber-500" /> Crypto P2P
-            </div>
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <div className="text-2xl">🚀</div>
-              <div>
-                <div className="text-sm font-bold text-amber-700">Bientôt en ligne</div>
-                <div className="text-xs text-amber-600">La gestion crypto P2P sera disponible prochainement.</div>
-              </div>
-            </div>
-          </div>
+
+
 
 
           {/* Modifier mot de passe */}
