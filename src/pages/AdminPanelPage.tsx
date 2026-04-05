@@ -203,12 +203,6 @@ export default function AdminPanelPage() {
   const [detteModal,   setDetteModal]   = useState<NexoraUser | null>(null);
   const [detteMontant, setDetteMontant] = useState("");
 
-  // ── Crypto P2P states ──
-  const [expandedSeller,    setExpandedSeller]    = useState<string | null>(null);
-  const [sellerMaxAmount,   setSellerMaxAmount]   = useState<Record<string, string>>({});
-  const [reservePayAmount,  setReservePayAmount]  = useState<Record<string, string>>({});
-  const [reservePayReason,  setReservePayReason]  = useState<Record<string, string>>({});
-  const [showSellerPwd,     setShowSellerPwd]     = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
